@@ -225,8 +225,8 @@ export default function Tuition({menuBtn}){
         {/* Right sidebar */}
         <div style={{display:"flex",flexDirection:"column",gap:14}}>
           <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:18}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}><div style={{fontSize:13,fontWeight:600,color:C.tp}}>월별 수입</div><div style={{fontSize:10,color:C.tt}}>단위: 백만원</div></div>
-            <div><ResponsiveContainer width="100%" height={160}><BarChart data={monthlyChart} margin={{top:5,right:5,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke={C.bl} vertical={false}/><XAxis dataKey="month" tick={{fontSize:10,fill:C.tt}} axisLine={false} tickLine={false}/><YAxis tick={{fontSize:10,fill:C.tt}} axisLine={false} tickLine={false} tickFormatter={v=>(v/1000000).toFixed(1)}/><Tooltip content={<CustomTooltip/>}/><Bar dataKey="income" fill={C.ac} radius={[5,5,0,0]} barSize={20}/></BarChart></ResponsiveContainer></div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}><div style={{fontSize:13,fontWeight:600,color:C.tp}}>월별 수입</div><div style={{fontSize:10,color:C.tt}}>단위: 만원</div></div>
+            <div><ResponsiveContainer width="100%" height={160}><BarChart data={monthlyChart} margin={{top:5,right:5,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke={C.bl} vertical={false}/><XAxis dataKey="month" tick={{fontSize:10,fill:C.tt}} axisLine={false} tickLine={false}/><YAxis tick={{fontSize:10,fill:C.tt}} axisLine={false} tickLine={false} tickFormatter={v=>Math.round(v/10000)}/><Tooltip content={<CustomTooltip/>}/><Bar dataKey="income" fill={C.ac} radius={[5,5,0,0]} barSize={20}/></BarChart></ResponsiveContainer></div>
           </div>
           <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:18}}>
             <div style={{fontSize:13,fontWeight:600,color:C.tp,marginBottom:12}}>미납 현황</div>
