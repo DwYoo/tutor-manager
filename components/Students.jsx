@@ -35,7 +35,7 @@ export default function Students({onDetail,menuBtn}){
   const fetchStudents=async()=>{const[sRes,lRes]=await Promise.all([supabase.from('students').select('*').order('created_at'),supabase.from('lessons').select('*').order('date')]);if(sRes.error||lRes.error){toast?.('데이터를 불러오지 못했습니다','error');}setStudents(sRes.data||[]);setLessons(lRes.data||[]);setLoading(false);};
 
   const lessonOnDate=(l,date)=>{const ds=fd(date),dw=date.getDay()===0?7:date.getDay();if(l.is_recurring&&l.recurring_exceptions&&l.recurring_exceptions.includes(ds))return false;if(l.date===ds)return true;if(l.is_recurring&&l.recurring_day===dw){if(ds<l.date)return false;if(l.recurring_end_date&&ds>=l.recurring_end_date)return false;return true;}return false;};
-  const getNextClass=(sid)=>{const now=new Date();for(let offset=0;offset<14;offset++){const d=new Date(now);d.setDate(now.getDate()+offset);const sLessons=lessons.filter(l=>l.student_id===sid&&lessonOnDate(l,d));for(const l of sLessons){const lm=l.start_hour*60+l.start_min;if(offset===0&&lm<=now.getHours()*60+now.getMinutes())continue;return `${DK[d.getDay()]} ${p2(l.start_hour)}:${p2(l.start_min)}`;}}return null;};
+  const getNextClass=(sid)=>{const now=new Date();for(let offset=0;offset<14;offset++){const d=new Date(now);d.setDate(now.getDate()+offset);const sLessons=lessons.filter(l=>l.student_id===sid&&lessonOnDate(l,d));for(const l of sLessons){const lm=l.start_hour*60+l.start_min;if(offset===0&&lm<=now.getHours()*60+now.getMinutes())continue;return `${d.getMonth()+1}/${d.getDate()}(${DK[d.getDay()]}) ${p2(l.start_hour)}:${p2(l.start_min)}`;}}return null;};
 
   const openAdd=()=>{setEditStu(null);setForm({name:'',grade:'',subject:'',school:'',phone:'',parent_phone:'',fee:'',fee_per_class:''});setShowAdd(true);};
   const openEdit=(s,e)=>{e.stopPropagation();setEditStu(s);setForm({name:s.name||'',grade:s.grade||'',subject:s.subject||'',school:s.school||'',phone:s.phone||'',parent_phone:s.parent_phone||'',fee:String(s.fee||''),fee_per_class:String(s.fee_per_class||'')});setShowAdd(true);};
@@ -103,7 +103,7 @@ export default function Students({onDetail,menuBtn}){
           const showL=canDrag&&dragId&&!isDrag&&dropIdx===idx&&!noDrop;
           const showR=canDrag&&dragId&&!isDrag&&idx===filtered.length-1&&dropIdx===filtered.length&&!noDrop;
           return(
-            <div key={s.id} onClick={()=>onDetail(s)} draggable={canDrag} onDragStart={e=>onDS(e,s.id)} onDragOver={e=>onDO(e,idx)} onDrop={onDR} onDragEnd={onDE} style={{position:"relative",background:C.sf,border:`1px solid ${C.bd}`,borderRadius:14,padding:20,cursor:canDrag?"grab":"pointer",borderTop:`3px solid ${col.b}`,opacity:isDrag?.4:1,transition:"opacity .15s"}} className="hcard">
+            <div key={s.id} onClick={()=>onDetail(s)} draggable={canDrag} onDragStart={e=>onDS(e,s.id)} onDragOver={e=>onDO(e,idx)} onDrop={onDR} onDragEnd={onDE} style={{position:"relative",display:"flex",flexDirection:"column",background:C.sf,border:`1px solid ${C.bd}`,borderRadius:14,padding:20,cursor:canDrag?"grab":"pointer",borderTop:`3px solid ${col.b}`,opacity:isDrag?.4:1,transition:"opacity .15s"}} className="hcard">
               {showL&&<div style={{position:"absolute",left:-9,top:4,bottom:4,width:3,borderRadius:2,background:C.ac,boxShadow:`0 0 8px ${C.ac}`,zIndex:5}}/>}
               {showR&&<div style={{position:"absolute",right:-9,top:4,bottom:4,width:3,borderRadius:2,background:C.ac,boxShadow:`0 0 8px ${C.ac}`,zIndex:5}}/>}
               <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14}}>
@@ -119,9 +119,9 @@ export default function Students({onDetail,menuBtn}){
               <div style={{fontSize:12,color:C.ts}}>
                 {(()=>{const nc=getNextClass(s.id);return nc?<span>다음: {nc}</span>:<span style={{color:C.tt}}>예정된 수업 없음</span>;})()}
               </div>
-              {s.school&&<div style={{marginTop:8,paddingTop:8,borderTop:`1px solid ${C.bl}`,fontSize:12}}>
-                <span style={{color:C.ts}}>{s.school}</span>
-              </div>}
+              <div style={{flex:1,marginTop:8,paddingTop:8,borderTop:`1px solid ${C.bl}`,fontSize:12}}>
+                {s.school&&<span style={{color:C.ts}}>{s.school}</span>}
+              </div>
               <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:8,paddingTop:8,borderTop:`1px solid ${C.bl}`}}>
                 {s.archived
                   ?<button onClick={e=>restoreStudent(s.id,e)} style={{background:"none",border:"none",cursor:"pointer",color:C.ac,fontSize:11,fontWeight:600,fontFamily:"inherit"}}>복원</button>
