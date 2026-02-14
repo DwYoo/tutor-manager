@@ -6,6 +6,8 @@ import { supabase } from '@/lib/supabase';
 const C={bg:"#FAFAF9",sf:"#FFFFFF",sfh:"#F5F5F4",bd:"#E7E5E4",bl:"#F0EFED",pr:"#1A1A1A",ac:"#2563EB",al:"#DBEAFE",as:"#EFF6FF",tp:"#1A1A1A",ts:"#78716C",tt:"#A8A29E",su:"#16A34A",sb:"#F0FDF4",dn:"#DC2626",db:"#FEF2F2",wn:"#F59E0B",wb:"#FFFBEB"};
 const SC=[{bg:"#DBEAFE",t:"#1E40AF",b:"#93C5FD"},{bg:"#FCE7F3",t:"#9D174D",b:"#F9A8D4"},{bg:"#D1FAE5",t:"#065F46",b:"#6EE7B7"},{bg:"#FEF3C7",t:"#92400E",b:"#FCD34D"},{bg:"#EDE9FE",t:"#5B21B6",b:"#C4B5FD"},{bg:"#FFE4E6",t:"#9F1239",b:"#FDA4AF"},{bg:"#CCFBF1",t:"#115E59",b:"#5EEAD4"},{bg:"#FEE2E2",t:"#991B1B",b:"#FCA5A5"}];
 const STATUS=[{id:"paid",l:"완납",c:C.su,bg:C.sb},{id:"partial",l:"일부납",c:C.wn,bg:C.wb},{id:"unpaid",l:"미납",c:C.dn,bg:C.db}];
+const DK=["일","월","화","수","목","금","토"];const p2=n=>String(n).padStart(2,"0");
+const fd=d=>`${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`;
 const ls={display:"block",fontSize:12,fontWeight:500,color:C.tt,marginBottom:6};
 const is={width:"100%",padding:"9px 12px",borderRadius:8,border:`1px solid ${C.bd}`,fontSize:14,color:C.tp,background:C.sf,outline:"none",fontFamily:"inherit"};
 const IcP=()=><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
@@ -15,6 +17,7 @@ export default function Students({onDetail,menuBtn}){
   const tog=menuBtn;
   const{user}=useAuth();
   const[students,setStudents]=useState([]);
+  const[lessons,setLessons]=useState([]);
   const[search,setSearch]=useState('');
   const[loading,setLoading]=useState(true);
   const[showAdd,setShowAdd]=useState(false);
@@ -22,7 +25,10 @@ export default function Students({onDetail,menuBtn}){
   const[form,setForm]=useState({name:'',grade:'',subject:'',school:'',phone:'',parent_phone:'',fee:'',fee_per_class:''});
 
   useEffect(()=>{fetchStudents();},[]);
-  const fetchStudents=async()=>{const{data}=await supabase.from('students').select('*').order('created_at');setStudents(data||[]);setLoading(false);};
+  const fetchStudents=async()=>{const[sRes,lRes]=await Promise.all([supabase.from('students').select('*').order('created_at'),supabase.from('lessons').select('*').order('date')]);setStudents(sRes.data||[]);setLessons(lRes.data||[]);setLoading(false);};
+
+  const lessonOnDate=(l,date)=>{const ds=fd(date),dw=date.getDay()===0?7:date.getDay();if(l.is_recurring&&l.recurring_exceptions&&l.recurring_exceptions.includes(ds))return false;if(l.date===ds)return true;if(l.is_recurring&&l.recurring_day===dw){if(ds<l.date)return false;if(l.recurring_end_date&&ds>=l.recurring_end_date)return false;return true;}return false;};
+  const getNextClass=(sid)=>{const now=new Date();for(let offset=0;offset<14;offset++){const d=new Date(now);d.setDate(now.getDate()+offset);const sLessons=lessons.filter(l=>l.student_id===sid&&lessonOnDate(l,d));for(const l of sLessons){const lm=l.start_hour*60+l.start_min;if(offset===0&&lm<=now.getHours()*60+now.getMinutes())continue;return `${DK[d.getDay()]} ${p2(l.start_hour)}:${p2(l.start_min)}`;}}return null;};
 
   const openAdd=()=>{setEditStu(null);setForm({name:'',grade:'',subject:'',school:'',phone:'',parent_phone:'',fee:'',fee_per_class:''});setShowAdd(true);};
   const openEdit=(s,e)=>{e.stopPropagation();setEditStu(s);setForm({name:s.name||'',grade:s.grade||'',subject:s.subject||'',school:s.school||'',phone:s.phone||'',parent_phone:s.parent_phone||'',fee:String(s.fee||''),fee_per_class:String(s.fee_per_class||'')});setShowAdd(true);};
@@ -70,7 +76,6 @@ export default function Students({onDetail,menuBtn}){
       <div className="stu-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:14}}>
         {filtered.map(s=>{
           const col=SC[(s.color_index||0)%8];
-          const st=STATUS.find(x=>x.id===s.fee_status)||STATUS[2];
           return(
             <div key={s.id} onClick={()=>onDetail(s)} style={{background:C.sf,border:`1px solid ${C.bd}`,borderRadius:14,padding:20,cursor:"pointer",borderTop:`3px solid ${col.b}`}} className="hcard">
               <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14}}>
@@ -83,14 +88,12 @@ export default function Students({onDetail,menuBtn}){
                   </div>
                 </div>
               </div>
-              <div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:C.ts}}>
-                <span>다음: {s.next_class||"-"}</span>
-                <span style={{background:st.bg,color:st.c,padding:"2px 8px",borderRadius:5,fontSize:10,fontWeight:600}}>{st.l}</span>
+              <div style={{fontSize:12,color:C.ts}}>
+                {(()=>{const nc=getNextClass(s.id);return nc?<span>다음: {nc}</span>:<span style={{color:C.tt}}>예정된 수업 없음</span>;})()}
               </div>
-              <div style={{display:"flex",justifyContent:"space-between",marginTop:8,paddingTop:8,borderTop:`1px solid ${C.bl}`,fontSize:12}}>
-                <span style={{color:C.ts}}>{s.school||""}</span>
-                <div style={{textAlign:"right"}}><div style={{fontWeight:600,color:C.tp}}>₩{(s.fee||0).toLocaleString()}/월</div>{s.fee_per_class>0&&<div style={{fontSize:10,color:C.tt}}>회당 ₩{(s.fee_per_class).toLocaleString()}</div>}</div>
-              </div>
+              {s.school&&<div style={{marginTop:8,paddingTop:8,borderTop:`1px solid ${C.bl}`,fontSize:12}}>
+                <span style={{color:C.ts}}>{s.school}</span>
+              </div>}
               <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:8,paddingTop:8,borderTop:`1px solid ${C.bl}`}}>
                 <button onClick={e=>openEdit(s,e)} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,fontSize:11,fontFamily:"inherit"}}>수정</button>
                 <button onClick={e=>deleteStudent(s.id,e)} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,fontSize:11,fontFamily:"inherit"}}>삭제</button>
