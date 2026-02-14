@@ -81,7 +81,7 @@ export default function Tuition({menuBtn}){
   const totalFee=monthRecs.reduce((a,r)=>a+r.totalDue,0);
   const totalPaid=monthRecs.reduce((a,r)=>a+r.paidAmount,0);
   const totalUnpaid=monthRecs.reduce((a,r)=>r.status!=="paid"?a+Math.max(0,r.totalDue-r.paidAmount):a,0);
-  const collectRate=totalFee>0?Math.round((totalFee-totalUnpaid)/totalFee*100):0;
+  const collectRate=totalFee>0?Math.max(0,Math.round((totalFee-totalUnpaid)/totalFee*100)):0;
 
   /* Monthly chart (last 6 months ending at curMonth) */
   const monthlyChart=Array.from({length:6},(_,i)=>{
