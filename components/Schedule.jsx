@@ -102,6 +102,8 @@ export default function Schedule({menuBtn}){
   const gCo=sid=>{const st=students.find(x=>x.id===sid);return SC[(st?.color_index||0)%8];};
   const getStu=sid=>students.find(x=>x.id===sid);
   const toggleStu=sid=>setActive(p=>p===sid?null:sid);
+  const todayStr=fd(today);
+  const effSt=(l,vd)=>{const s=l.status||'scheduled';if(s!=='scheduled')return s;return(vd||l.date)<todayStr?'completed':'scheduled';};
   const gMonthDays=()=>{const y=cur.getFullYear(),m=cur.getMonth();const first=new Date(y,m,1);const startDow=first.getDay()===0?6:first.getDay()-1;const dim=new Date(y,m+1,0).getDate();const days=[];for(let i=-startDow;i<42;i++){const d=new Date(y,m,1+i);days.push(d);if(i>=dim-1+startDow&&days.length%7===0)break;}return days;};
 
   /* Conflict detection */
@@ -289,15 +291,15 @@ export default function Schedule({menuBtn}){
         <div key={animKey} className={slideDir==='r'?'wk-r':slideDir==='l'?'wk-l':''} style={{padding:"0 24px 24px"}} onTouchStart={onTS} onTouchEnd={onTE}>
           <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:0,border:`1px solid ${C.bd}`,borderRadius:12,overflow:"hidden",background:C.sf}}>
             {DK.map(d=><div key={d} style={{padding:"8px 0",textAlign:"center",fontSize:12,fontWeight:600,color:C.tt,background:C.sfh,borderBottom:`1px solid ${C.bd}`}}>{d}</div>)}
-            {mDays.map((d,i)=>{const isM=d.getMonth()===cm;const it=sdy(d,today);const dl=gL(d);const cnt=dl.filter(l=>l.status!=='cancelled'&&(!activeStu||l.student_id===activeStu)).length;
+            {mDays.map((d,i)=>{const isM=d.getMonth()===cm;const it=sdy(d,today);const ds=fd(d);const dl=gL(d);const cnt=dl.filter(l=>effSt(l,ds)!=='cancelled'&&(!activeStu||l.student_id===activeStu)).length;
               return(<div key={i} onClick={()=>{setCur(d);setVM('week');}} style={{minHeight:90,padding:6,borderRight:(i%7<6)?`1px solid ${C.bl}`:"none",borderBottom:`1px solid ${C.bl}`,background:it?C.as:isM?"transparent":"#FAFAF8",cursor:"pointer",transition:"background .1s"}} onMouseEnter={e=>e.currentTarget.style.background=it?C.as:C.sfh} onMouseLeave={e=>e.currentTarget.style.background=it?C.as:isM?"transparent":"#FAFAF8"}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
                   <span style={{fontSize:13,fontWeight:it?700:isM?500:400,color:it?C.ac:isM?C.tp:C.tt,width:it?24:undefined,height:it?24:undefined,borderRadius:"50%",background:it?C.ac:"transparent",color:it?"#fff":isM?C.tp:C.tt,display:"inline-flex",alignItems:"center",justifyContent:"center"}}>{d.getDate()}</span>
                   {cnt>0&&<span style={{fontSize:10,fontWeight:600,color:C.ac,background:C.al,borderRadius:4,padding:"1px 5px"}}>{cnt}건</span>}
                 </div>
                 {isM&&<div style={{display:"flex",flexDirection:"column",gap:2}}>
-                  {dl.slice(0,3).map(l=>{const co=gCo(l.student_id);const st=getStu(l.student_id);const isCan=l.status==='cancelled';const dim=activeStu&&l.student_id!==activeStu;return(
-                    <div key={l.id} style={{fontSize:10,padding:"1px 4px",borderRadius:4,background:isCan||dim?C.sfh:co.bg,color:isCan||dim?C.tt:co.t,fontWeight:500,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",opacity:isCan?.5:dim?.3:1,textDecoration:isCan?'line-through':'none'}}>{p2(l.start_hour)}:{p2(l.start_min)} {st?.name||""}</div>);
+                  {dl.slice(0,3).map(l=>{const co=gCo(l.student_id);const st=getStu(l.student_id);const ls=effSt(l,ds);const isCan=ls==='cancelled';const dim=activeStu&&l.student_id!==activeStu;return(
+                    <div key={l.id} style={{fontSize:10,padding:"1px 4px",borderRadius:4,background:isCan||dim?C.sfh:co.bg,color:isCan||dim?C.tt:co.t,fontWeight:500,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",opacity:isCan?.5:dim?.3:1,textDecoration:isCan?'line-through':'none'}}>{p2(l.start_hour)}:{p2(l.start_min)} {st?.name||""}{ls==='completed'?' ✓':''}</div>);
                   })}
                   {dl.length>3&&<div style={{fontSize:9,color:C.tt,paddingLeft:4}}>+{dl.length-3}건</div>}
                 </div>}
@@ -335,7 +337,7 @@ export default function Schedule({menuBtn}){
                 )}
                 {dl.map(l=>{const co=gCo(l.student_id);const st=getStu(l.student_id);const tp=((l.start_hour*60+l.start_min)-stH*60)/SMN*SHT;const hp=Math.max(l.duration/SMN*SHT,SHT);
                   const isOrig=!l.is_recurring||l.date===fd(date);
-                  const lSt=l.status||'scheduled';const isCan=lSt==='cancelled';const dim=activeStu&&l.student_id!==activeStu;
+                  const lSt=effSt(l,fd(date));const isCan=lSt==='cancelled';const dim=activeStu&&l.student_id!==activeStu;
                   return(
                     <div key={l.id} className="lb" onMouseDown={e=>onLD(e,l,date)} onContextMenu={e=>onRC(e,l,date)} style={{position:"absolute",top:tp,left:3,right:3,height:hp-2,borderRadius:8,background:isCan||dim?C.sfh:co.bg,borderLeft:`3px solid ${isCan||dim?C.bd:co.b}`,padding:"4px 8px",overflow:"hidden",zIndex:dim?1:3,opacity:isCan?.45:dim?.25:1,transition:"opacity .15s"}}>
                       <div style={{display:"flex",alignItems:"center",gap:4}}>
@@ -368,7 +370,7 @@ export default function Schedule({menuBtn}){
           <div style={{padding:"6px 8px",fontSize:10,color:C.tt,fontWeight:600}}>상태 변경</div>
           <div style={{display:"flex",gap:4,padding:"2px 8px 8px"}}>
             {Object.entries(LSTATUS).map(([k,v])=>{
-              const cur=(ctxMenu.l.status||'scheduled')===k;
+              const cur=effSt(ctxMenu.l,fd(ctxMenu.vd))===k;
               return(<button key={k} onClick={()=>updStatus(k)} style={{fontSize:10,fontWeight:cur?700:500,color:cur?v.c:C.ts,background:cur?v.bg:'transparent',border:`1px solid ${cur?v.c:C.bd}`,borderRadius:5,padding:"3px 7px",cursor:"pointer",fontFamily:"inherit"}}>{v.l}</button>);
             })}
           </div>
