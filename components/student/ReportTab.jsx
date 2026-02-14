@@ -1,84 +1,48 @@
-'use client'
+import { useState } from 'react';
+import { C, ls, is } from './constants';
 
-import { useState } from 'react'
-import { supabase } from '@/lib/supabase'
+export default function ReportTab({ reports, isParent, onAdd, onDelete }) {
+  const [showNew, setShowNew] = useState(false);
+  const [nT, setNT] = useState("");
+  const [nB, setNB] = useState("");
+  const [nS, setNS] = useState(false);
 
-export default function ReportTab({ reports, studentId, isParent, onRefresh }) {
-  const [showNew, setShowNew] = useState(false)
-  const [form, setForm] = useState({ title: '', body: '', is_shared: false })
+  const handleAdd = async () => {
+    if (!nT.trim()) return;
+    await onAdd(nT, nB, nS);
+    setNT(""); setNB(""); setNS(false); setShowNew(false);
+  };
 
-  const addReport = async () => {
-    if (!form.title.trim()) return
-    await supabase.from('reports').insert({ student_id: studentId, ...form })
-    setForm({ title: '', body: '', is_shared: false })
-    setShowNew(false)
-    onRefresh()
-  }
-
-  const visibleReports = isParent ? reports.filter(r => r.is_shared) : reports
-
-  return (
-    <div>
-      <div className="flex justify-between items-center mb-4 gap-2">
-        <h3 className="text-base font-bold text-tp">학습 리포트</h3>
-        {!isParent && (
-          <button onClick={() => setShowNew(!showNew)}
-            className="bg-pr text-white border-none rounded-lg px-4 py-2 text-xs font-semibold cursor-pointer shrink-0">
-            + 새 리포트
-          </button>
-        )}
+  return (<div>
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, gap: 8 }}>
+      <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp }}>수업 기록</h3>
+      {!isParent && <button onClick={() => setShowNew(!showNew)} style={{ background: C.pr, color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>+ 새 기록</button>}
+    </div>
+    {showNew && !isParent && (<div style={{ background: C.sf, border: "2px solid " + C.ac, borderRadius: 14, padding: 20, marginBottom: 16 }}>
+      <div style={{ marginBottom: 10 }}><label style={ls}>제목</label><input value={nT} onChange={e => setNT(e.target.value)} style={is} placeholder="예: 3월 2주차 학습 정리" /></div>
+      <div style={{ marginBottom: 10 }}><label style={ls}>내용</label><textarea value={nB} onChange={e => setNB(e.target.value)} style={{ ...is, height: 120, resize: "vertical" }} placeholder="수업 내용, 학생 상태, 다음 계획 등을 자유롭게 기록하세요..." /></div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: C.ts, cursor: "pointer" }}><input type="checkbox" checked={nS} onChange={e => setNS(e.target.checked)} />학부모 공유</label>
+        <div style={{ display: "flex", gap: 8 }}><button onClick={() => setShowNew(false)} style={{ background: C.sfh, color: C.ts, border: "1px solid " + C.bd, borderRadius: 8, padding: "8px 14px", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>취소</button><button onClick={handleAdd} style={{ background: C.pr, color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>저장</button></div>
       </div>
-
-      {showNew && !isParent && (
-        <div className="bg-sf border-2 border-ac rounded-[14px] p-5 mb-4">
-          <div className="mb-3">
-            <label className="block text-xs font-medium text-tt mb-1.5">제목</label>
-            <input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
-              className="w-full px-3 py-2 rounded-lg border border-bd text-sm outline-none" placeholder="리포트 제목..." />
-          </div>
-          <div className="mb-3">
-            <label className="block text-xs font-medium text-tt mb-1.5">내용</label>
-            <textarea value={form.body} onChange={e => setForm(p => ({ ...p, body: e.target.value }))}
-              className="w-full px-3 py-2 rounded-lg border border-bd text-sm outline-none resize-y min-h-[100px]" placeholder="리포트 내용..." />
-          </div>
-          <div className="flex justify-between items-center">
-            <label className="flex items-center gap-1.5 text-xs text-ts cursor-pointer">
-              <input type="checkbox" checked={form.is_shared} onChange={e => setForm(p => ({ ...p, is_shared: e.target.checked }))} />
-              학부모 공유
-            </label>
-            <div className="flex gap-2">
-              <button onClick={() => setShowNew(false)} className="bg-sfh text-ts border border-bd rounded-lg px-3.5 py-2 text-xs cursor-pointer">취소</button>
-              <button onClick={addReport} className="bg-pr text-white border-none rounded-lg px-4 py-2 text-xs font-semibold cursor-pointer">저장</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {visibleReports.length === 0 ? (
-        <div className="bg-sf border border-bd rounded-[14px] p-10 text-center text-tt text-sm">리포트가 없습니다.</div>
-      ) : (
-        <div className="relative pl-5">
-          <div className="absolute left-[5px] top-2 bottom-2 w-0.5 bg-bl" />
-          {visibleReports.map((r, i) => (
-            <div key={r.id} className="relative mb-4">
-              <div className={`absolute -left-5 top-1.5 w-2.5 h-2.5 rounded-full ${i === 0 ? 'bg-ac' : 'bg-bd'}`} />
-              <div className="bg-sf border border-bd rounded-[14px] p-4" style={i === 0 ? { borderLeft: '3px solid #2563EB' } : {}}>
-                <div className="flex justify-between items-start mb-2">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-semibold text-tp">{r.title}</span>
-                    {r.is_shared
-                      ? <span className="bg-as text-ac px-2 py-0.5 rounded-[5px] text-[10px] font-semibold">공유됨</span>
-                      : <span className="bg-sfh text-tt px-2 py-0.5 rounded-[5px] text-[10px]">비공개</span>
-                    }
-                  </div>
-                  <span className="text-xs text-tt shrink-0">{r.date}</span>
-                </div>
-                <div className="text-[13px] text-ts leading-7">{r.body}</div>
+    </div>)}
+    {reports.length === 0 ? (<div style={{ textAlign: "center", padding: 40, color: C.tt, background: C.sf, border: "1px solid " + C.bd, borderRadius: 14 }}><div style={{ fontSize: 14 }}>기록이 없습니다</div><div style={{ fontSize: 12, marginTop: 4, color: C.tt }}>수업 후 학생의 진행 상황을 기록해보세요</div></div>) : (
+      <div style={{ position: "relative", paddingLeft: 20 }}>
+        <div style={{ position: "absolute", left: 5, top: 8, bottom: 8, width: 2, background: C.bl }} />
+        {reports.filter(r => isParent ? r.is_shared : true).map((r, i) => (<div key={r.id} style={{ position: "relative", marginBottom: 16 }}>
+          <div style={{ position: "absolute", left: -20 + 1, top: 6, width: 10, height: 10, borderRadius: "50%", background: i === 0 ? C.ac : C.bd }} />
+          <div style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 14, padding: 18, borderLeft: i === 0 ? "3px solid " + C.ac : "none" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}><span style={{ fontSize: 14, fontWeight: 600, color: C.tp }}>{r.title}</span>{r.is_shared ? <span style={{ background: C.as, color: C.ac, padding: "2px 8px", borderRadius: 5, fontSize: 10, fontWeight: 600 }}>공유됨</span> : <span style={{ background: C.sfh, color: C.tt, padding: "2px 8px", borderRadius: 5, fontSize: 10 }}>비공개</span>}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                <span style={{ fontSize: 12, color: C.tt }}>{r.date}</span>
+                {!isParent && <button onClick={() => onDelete(r.id)} style={{ background: "none", border: "none", color: C.tt, cursor: "pointer", fontSize: 11, fontFamily: "inherit", padding: "2px 4px" }} title="삭제">✕</button>}
               </div>
             </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
+            <div style={{ fontSize: 13, color: C.ts, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{r.body}</div>
+          </div>
+        </div>))}
+      </div>
+    )}
+  </div>);
 }
