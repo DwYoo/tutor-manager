@@ -22,6 +22,7 @@ export default function Tuition({menuBtn}){
   const[loading,setLoading]=useState(true);
   const[editId,setEditId]=useState(null);
   const[editForm,setEditForm]=useState({});
+  const[memoPopup,setMemoPopup]=useState(null);
 
   const year=+curMonth.split("-")[0],month=+curMonth.split("-")[1];
   const prevM=()=>{const m=month===1?12:month-1;const y=month===1?year-1:year;setCurMonth(y+"-"+p2(m));};
@@ -32,7 +33,7 @@ export default function Tuition({menuBtn}){
     const[sRes,tRes,lRes]=await Promise.all([
       supabase.from('students').select('*').order('created_at'),
       supabase.from('tuition').select('*'),
-      supabase.from('lessons').select('id, student_id, date, is_recurring, recurring_day, recurring_exceptions, recurring_end_date'),
+      supabase.from('lessons').select('*'),
     ]);
     setStudents(sRes.data||[]);setTuitions(tRes.data||[]);setLessons(lRes.data||[]);setLoading(false);
   },[]);
@@ -50,7 +51,11 @@ export default function Tuition({menuBtn}){
         if(l.student_id!==sid)return false;
         if(l.is_recurring&&l.recurring_exceptions&&l.recurring_exceptions.includes(ds))return false;
         if(l.date===ds)return true;
-        if(l.is_recurring&&l.recurring_day===dw){if(ds<l.date)return false;if(l.recurring_end_date&&ds>=l.recurring_end_date)return false;return true;}
+        if(l.is_recurring&&l.recurring_day===dw){
+          if(ds<l.date)return false;
+          if(l.recurring_end_date&&ds>=l.recurring_end_date)return false;
+          return true;
+        }
         return false;
       }).length;
     }
@@ -205,7 +210,7 @@ export default function Tuition({menuBtn}){
                     </td>
                     <td style={{padding:"10px 12px"}}>
                       {isEditing?<input value={editForm.memo} onChange={e=>setEditForm(p=>({...p,memo:e.target.value}))} style={{...eis,width:80,fontSize:11}} placeholder="메모"/>:
-                      rec.memo?<span title={rec.memo} style={{fontSize:10,color:C.tt,background:C.sfh,padding:"2px 6px",borderRadius:4}}>💬</span>:null}
+                      rec.memo?<span onClick={()=>setMemoPopup({name:s.name,memo:rec.memo})} style={{fontSize:10,color:C.tt,background:C.sfh,padding:"2px 6px",borderRadius:4,cursor:"pointer"}}>💬</span>:null}
                     </td>
                     <td style={{padding:"10px 12px"}}>
                       {isEditing?(
@@ -243,6 +248,19 @@ export default function Tuition({menuBtn}){
           </div>
         </div>
       </div>
+
+      {/* Memo popup */}
+      {memoPopup&&(
+        <div onClick={()=>setMemoPopup(null)} style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.3)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:C.sf,borderRadius:14,padding:24,minWidth:280,maxWidth:400,boxShadow:"0 8px 30px rgba(0,0,0,.12)"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+              <div style={{fontSize:14,fontWeight:700,color:C.tp}}>{memoPopup.name} 메모</div>
+              <button onClick={()=>setMemoPopup(null)} style={{background:"none",border:"none",cursor:"pointer",fontSize:16,color:C.tt,fontFamily:"inherit",padding:4}}>✕</button>
+            </div>
+            <div style={{fontSize:13,color:C.ts,lineHeight:1.6,whiteSpace:"pre-wrap",background:C.sfh,borderRadius:8,padding:14}}>{memoPopup.memo}</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
