@@ -84,7 +84,7 @@ export default function Schedule({menuBtn}){
   useEffect(()=>{fetchData();},[fetchData]);
 
   const nW=d=>{const t=new Date(cur);t.setDate(t.getDate()+d*7);setCur(t);};
-  const gL=date=>{const ds=fd(date),dw=date.getDay()===0?7:date.getDay();return lessons.filter(l=>{if(l.is_recurring&&l.recurring_exceptions&&l.recurring_exceptions.includes(ds))return false;if(l.date===ds)return true;if(l.is_recurring&&l.recurring_day===dw){if(date<new Date(l.date))return false;if(l.recurring_end_date&&date>=new Date(l.recurring_end_date))return false;return true;}return false;});};
+  const gL=date=>{const ds=fd(date),dw=date.getDay()===0?7:date.getDay();return lessons.filter(l=>{if(l.is_recurring&&l.recurring_exceptions&&l.recurring_exceptions.includes(ds))return false;if(l.date===ds)return true;if(l.is_recurring&&l.recurring_day===dw){if(ds<l.date)return false;if(l.recurring_end_date&&ds>=l.recurring_end_date)return false;return true;}return false;});};
   const gCo=sid=>{const st=students.find(x=>x.id===sid);return SC[(st?.color_index||0)%8];};
   const getStu=sid=>students.find(x=>x.id===sid);
 

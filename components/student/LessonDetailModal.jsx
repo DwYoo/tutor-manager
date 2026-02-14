@@ -30,6 +30,7 @@ export default function LessonDetailModal({ les, student, onUpdate, onClose }) {
   const [newHw, setNewHw] = useState("");
   const [dirty, setDirty] = useState(false);
   const markDirty = () => setDirty(true);
+  const [dragIdx, setDragIdx] = useState(null);
   useEffect(()=>{const h=e=>{if(e.key==="Escape")onClose();};window.addEventListener("keydown",h);return()=>window.removeEventListener("keydown",h);},[onClose]);
 
   const addHw = () => { if (!newHw.trim()) return; setHw(p => [...p, { id: Date.now(), title: newHw, pct: 0, note: "" }]); setNewHw(""); markDirty(); };
@@ -114,8 +115,9 @@ export default function LessonDetailModal({ les, student, onUpdate, onClose }) {
                     const pc = (h.completion_pct||0) >= 80 ? C.su : (h.completion_pct||0) >= 50 ? C.wn : C.dn;
                     const pbg = (h.completion_pct||0) >= 80 ? C.sb : (h.completion_pct||0) >= 50 ? C.wb : C.db;
                     return (
-                      <div key={h.id} style={{ border: "1px solid " + C.bd, borderRadius: 12, padding: 16 }}>
+                      <div key={h.id} draggable onDragStart={()=>setDragIdx(i)} onDragOver={e=>{e.preventDefault();}} onDrop={()=>{if(dragIdx!==null&&dragIdx!==i){const n=[...hw];const[m]=n.splice(dragIdx,1);n.splice(i,0,m);setHw(n);markDirty();}setDragIdx(null);}} onDragEnd={()=>setDragIdx(null)} style={{ border: "1px solid " + C.bd, borderRadius: 12, padding: 16, opacity: dragIdx===i?.4:1, transition:"opacity .15s", cursor:"grab" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                          <span style={{ fontSize: 14, color: C.tt, cursor: "grab", flexShrink: 0, userSelect: "none" }}>⠿</span>
                           <span style={{ fontSize: 12, color: C.tt, fontWeight: 600, background: C.sfh, borderRadius: 6, padding: "2px 8px", flexShrink: 0 }}>#{i + 1}</span>
                           <input value={h.title||""} onChange={e => { updHw(h.id, "title", e.target.value); }} style={{ fontSize: 14, fontWeight: 600, color: C.tp, border: "none", outline: "none", background: "transparent", padding: 0, fontFamily: "inherit", minWidth: 0, flex: 1 }} placeholder="숙제 제목..." />
                           <button onClick={() => delHw(h.id)} style={{ background: "none", border: "none", cursor: "pointer", color: C.tt, padding: 4, flexShrink: 0 }}>✕</button>

@@ -270,7 +270,7 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
           for(let i=sDow-1;i>=0;i--)cells.push({d:pvL-i,cur:false});
           for(let d=1;d<=dim;d++)cells.push({d,cur:true});
           while(cells.length%7!==0||cells.length<42)cells.push({d:cells.length-sDow-dim+1,cur:false});
-          const gLD=date=>{const ds=fd(date),dw=date.getDay()===0?7:date.getDay();return lessons.filter(l=>{if(l.is_recurring&&l.recurring_exceptions&&l.recurring_exceptions.includes(ds))return false;if(l.date===ds)return true;if(l.is_recurring&&l.recurring_day===dw){if(date<new Date(l.date))return false;if(l.recurring_end_date&&date>=new Date(l.recurring_end_date))return false;return true;}return false;});};
+          const gLD=date=>{const ds=fd(date),dw=date.getDay()===0?7:date.getDay();return lessons.filter(l=>{if(l.is_recurring&&l.recurring_exceptions&&l.recurring_exceptions.includes(ds))return false;if(l.date===ds)return true;if(l.is_recurring&&l.recurring_day===dw){if(ds<l.date)return false;if(l.recurring_end_date&&ds>=l.recurring_end_date)return false;return true;}return false;});};
           const DK=["월","화","수","목","금","토","일"];
           // Count lessons this month
           let mTotal=0;for(let d=1;d<=dim;d++)mTotal+=gLD(new Date(cy,cm,d)).length;
