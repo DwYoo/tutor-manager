@@ -330,7 +330,7 @@ export default function Schedule({menuBtn}){
             <span style={{marginRight:8}}>&#9998;</span>수정
           </button>
           <button className="cm-i" style={cms} onClick={copyLesson}>
-            <span style={{marginRight:8}}>&#128203;</span>복사 (보강)
+            <span style={{marginRight:8}}>&#128203;</span>복사
           </button>
           <div style={{height:1,background:C.bd,margin:"4px 0"}}/>
           <div style={{padding:"6px 8px",fontSize:10,color:C.tt,fontWeight:600}}>상태 변경</div>
