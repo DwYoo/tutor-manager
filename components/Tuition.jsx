@@ -72,7 +72,7 @@ export default function Tuition({menuBtn}){
   });
 
   const totalFee=monthRecs.reduce((a,r)=>a+r.totalDue,0);
-  const totalPaid=monthRecs.reduce((a,r)=>a+(r.status==="paid"?r.totalDue:r.paidAmount),0);
+  const totalPaid=monthRecs.reduce((a,r)=>a+r.paidAmount,0);
   const unpaidCount=monthRecs.filter(r=>r.status==="unpaid").length;
   const partialCount=monthRecs.filter(r=>r.status==="partial").length;
   const collectRate=totalFee>0?Math.round(totalPaid/totalFee*100):0;
