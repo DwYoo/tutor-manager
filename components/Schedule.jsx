@@ -23,7 +23,7 @@ const IcP=()=><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke
 const IcX=()=><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
 
 /* ── Add/Edit Modal ── */
-function SchModal({les,students,onSave,onDel,onStopRec,onClose}){
+function SchModal({les,students,onSave,onDel,onStopRec,onDelFuture,onClose}){
   const ed=!!les?.id;
   const[f,sF]=useState({student_id:les?.student_id||students[0]?.id||"",date:les?.date||fd(new Date()),start_hour:les?.start_hour??14,start_min:les?.start_min??0,duration:les?.duration||90,subject:les?.subject||students[0]?.subject||"수학",topic:les?.topic||"",is_recurring:les?.is_recurring||false});
   const u=(k,v)=>sF(p=>({...p,[k]:v}));
@@ -46,7 +46,7 @@ function SchModal({les,students,onSave,onDel,onStopRec,onClose}){
         <label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,color:C.ts,cursor:"pointer"}}><input type="checkbox" checked={f.is_recurring} onChange={e=>u("is_recurring",e.target.checked)}/>매주 반복</label>
       </div>
       <div style={{display:"flex",gap:10,marginTop:20,justifyContent:"space-between"}}>
-        <div style={{display:"flex",gap:6}}>{ed&&!les.is_recurring&&<button onClick={()=>onDel(les.id)} style={{background:C.db,color:C.dn,border:"none",borderRadius:8,padding:"10px 16px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>삭제</button>}{ed&&les.is_recurring&&<button onClick={()=>onStopRec(les.id)} style={{background:C.wb,color:"#92400E",border:"none",borderRadius:8,padding:"10px 12px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>반복 해제</button>}{ed&&les.is_recurring&&<button onClick={()=>onDel(les.id)} style={{background:C.db,color:C.dn,border:"none",borderRadius:8,padding:"10px 12px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>모든 반복 삭제</button>}</div>
+        <div style={{display:"flex",gap:6}}>{ed&&!les.is_recurring&&<button onClick={()=>onDel(les.id)} style={{background:C.db,color:C.dn,border:"none",borderRadius:8,padding:"10px 16px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>삭제</button>}{ed&&les.is_recurring&&<button onClick={()=>onStopRec(les.id)} style={{background:C.wb,color:"#92400E",border:"none",borderRadius:8,padding:"10px 12px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>반복 해제</button>}{ed&&les.is_recurring&&<button onClick={()=>onDelFuture(les.id,les._viewDate||les.date)} style={{background:C.db,color:C.dn,border:"none",borderRadius:8,padding:"10px 12px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>이후 반복 삭제</button>}</div>
         <div style={{display:"flex",gap:10}}><button onClick={onClose} style={{background:C.sfh,color:C.ts,border:`1px solid ${C.bd}`,borderRadius:8,padding:"10px 20px",fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>취소</button><button onClick={go} style={{background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"10px 24px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{ed?"저장":"추가"}</button></div>
       </div>
     </div>
@@ -81,7 +81,7 @@ export default function Schedule({menuBtn}){
   useEffect(()=>{fetchData();},[fetchData]);
 
   const nW=d=>{const t=new Date(cur);t.setDate(t.getDate()+d*7);setCur(t);};
-  const gL=date=>{const ds=fd(date),dw=date.getDay()===0?7:date.getDay();return lessons.filter(l=>{if(l.date===ds)return true;if(l.is_recurring&&l.recurring_day===dw)return date>=new Date(l.date);return false;});};
+  const gL=date=>{const ds=fd(date),dw=date.getDay()===0?7:date.getDay();return lessons.filter(l=>{if(l.date===ds)return true;if(l.is_recurring&&l.recurring_day===dw){if(date<new Date(l.date))return false;if(l.recurring_end_date&&date>=new Date(l.recurring_end_date))return false;return true;}return false;});};
   const gCo=sid=>{const st=students.find(x=>x.id===sid);return SC[(st?.color_index||0)%8];};
   const getStu=sid=>students.find(x=>x.id===sid);
 
@@ -101,6 +101,12 @@ export default function Schedule({menuBtn}){
   const del=async(id)=>{
     await supabase.from('lessons').delete().eq('id',id);
     setLessons(p=>p.filter(l=>l.id!==id));
+    setMO(false);setEL(null);
+  };
+  const delFuture=async(id,viewDate)=>{
+    const les=lessons.find(l=>l.id===id);
+    if(!les||les.date===viewDate){await supabase.from('lessons').delete().eq('id',id);setLessons(p=>p.filter(l=>l.id!==id));}
+    else{await supabase.from('lessons').update({recurring_end_date:viewDate}).eq('id',id);setLessons(p=>p.map(l=>l.id===id?{...l,recurring_end_date:viewDate}:l));}
     setMO(false);setEL(null);
   };
   const updDetail=async(id,data)=>{
@@ -139,7 +145,7 @@ export default function Schedule({menuBtn}){
     window.addEventListener("mousemove",mv);window.addEventListener("mouseup",up);
   };
 
-  const onRC=(e,l)=>{e.preventDefault();e.stopPropagation();setEL(l);setMO(true);};
+  const onRC=(e,l,vd)=>{e.preventDefault();e.stopPropagation();setEL({...l,_viewDate:fd(vd)});setMO(true);};
   const stopRec=async(id)=>{await supabase.from('lessons').update({is_recurring:false,recurring_day:null}).eq('id',id);setLessons(p=>p.map(l=>l.id===id?{...l,is_recurring:false,recurring_day:null}:l));setMO(false);setEL(null);};
 
   const onGD=(e,di)=>{
@@ -208,7 +214,7 @@ export default function Schedule({menuBtn}){
                 )}
                 {dl.map(l=>{const co=gCo(l.student_id);const st=getStu(l.student_id);const tp=((l.start_hour*60+l.start_min)-stH*60)/SMN*SHT;const hp=Math.max(l.duration/SMN*SHT,SHT);
                   return(
-                    <div key={l.id} className="lb" onMouseDown={e=>onLD(e,l)} onContextMenu={e=>onRC(e,l)} style={{position:"absolute",top:tp,left:3,right:3,height:hp-2,borderRadius:8,background:co.bg,borderLeft:`3px solid ${co.b}`,padding:"4px 8px",overflow:"hidden",zIndex:3}}>
+                    <div key={l.id} className="lb" onMouseDown={e=>onLD(e,l)} onContextMenu={e=>onRC(e,l,date)} style={{position:"absolute",top:tp,left:3,right:3,height:hp-2,borderRadius:8,background:co.bg,borderLeft:`3px solid ${co.b}`,padding:"4px 8px",overflow:"hidden",zIndex:3}}>
                       <div style={{display:"flex",alignItems:"center",gap:4}}><span style={{fontSize:11,fontWeight:600,color:co.t}}>{st?.name||""}</span>{(l.homework||[]).length>0&&<span style={{fontSize:9,background:co.t,color:co.bg,borderRadius:4,padding:"0 4px",fontWeight:600}}>{(l.homework||[]).length}</span>}</div>
                       {hp>32&&<div style={{fontSize:10,color:co.t,opacity:.7,marginTop:1}}>{l.topic||""}</div>}
                       {hp>48&&<div style={{fontSize:10,color:co.t,opacity:.6,marginTop:1}}>{p2(l.start_hour)}:{p2(l.start_min)} · {l.duration}분</div>}
@@ -221,7 +227,7 @@ export default function Schedule({menuBtn}){
         </div>
       </div>
 
-      {mOpen&&<SchModal les={eLes} students={students} onSave={save} onDel={del} onStopRec={stopRec} onClose={()=>{setMO(false);setEL(null);}}/>}
+      {mOpen&&<SchModal les={eLes} students={students} onSave={save} onDel={del} onStopRec={stopRec} onDelFuture={delFuture} onClose={()=>{setMO(false);setEL(null);}}/>}
       {dLes&&<LessonDetailModal les={dLes} student={getStu(dLes.student_id)} onUpdate={updDetail} onClose={()=>setDL(null)}/>}
     </div>
   );
