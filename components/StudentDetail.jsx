@@ -55,6 +55,7 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
   const [planThreat,setPlanThreat]=useState("");
   const [planComments,setPlanComments]=useState([]);
   const [planSaving,setPlanSaving]=useState(false);
+  const [planSaved,setPlanSaved]=useState(false);
   const [editingComment,setEditingComment]=useState(null);
   const [editCommentText,setEditCommentText]=useState("");
   const [showPlanReport,setShowPlanReport]=useState(false);
@@ -142,9 +143,35 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
   const addScore=async()=>{if(!scoreForm.score)return;const{data,error}=await supabase.from('scores').insert({student_id:s.id,date:scoreForm.date,score:parseInt(scoreForm.score),label:scoreForm.label,user_id:user.id}).select().single();if(!error&&data){setScores(p=>[...p,data]);setScoreForm({date:"",score:"",label:""});setShowAddScore(false);}};
   const openEditScore=(sc)=>{setEditScore(sc);setEditScoreForm({date:sc.date||"",score:String(sc.score),label:sc.label||""});};
   const saveEditScore=async()=>{if(!editScore||!editScoreForm.score)return;const{error}=await supabase.from('scores').update({date:editScoreForm.date,score:parseInt(editScoreForm.score),label:editScoreForm.label}).eq('id',editScore.id);if(!error){setScores(p=>p.map(x=>x.id===editScore.id?{...x,date:editScoreForm.date,score:parseInt(editScoreForm.score),label:editScoreForm.label}:x));setEditScore(null);}};
-  const savePlanFields=async()=>{setPlanSaving(true);await supabase.from('students').update({plan_strategy:planStrategy,plan_strength:planStrength,plan_weakness:planWeakness,plan_opportunity:planOpportunity,plan_threat:planThreat}).eq('id',s.id);setPlanSaving(false);};
-  const addPlanReport=async()=>{if(!planRpTitle.trim())return;const{data,error}=await supabase.from('reports').insert({student_id:s.id,title:planRpTitle,body:planRpBody,is_shared:planRpShared,type:"plan",date:fd(new Date()),user_id:user.id}).select().single();if(!error&&data){setPlanComments(p=>[data,...p]);setPlanRpTitle("");setPlanRpBody("");setPlanRpShared(false);setShowPlanReport(false);}};
-  const updatePlanComment=async(id)=>{if(!editCommentText.trim())return;await supabase.from('reports').update({body:editCommentText}).eq('id',id);setPlanComments(p=>p.map(c=>c.id===id?{...c,body:editCommentText}:c));setEditingComment(null);setEditCommentText("");};
+  const savePlanFields=async()=>{
+    setPlanSaving(true);setPlanSaved(false);
+    try{
+      const full={plan_strategy:planStrategy,plan_strength:planStrength,plan_weakness:planWeakness,plan_opportunity:planOpportunity,plan_threat:planThreat};
+      const{error}=await supabase.from('students').update(full).eq('id',s.id);
+      if(error){
+        // Fallback: try without new columns
+        const{error:e2}=await supabase.from('students').update({plan_strategy:planStrategy,plan_strength:planStrength,plan_weakness:planWeakness}).eq('id',s.id);
+        if(e2){alert("저장 실패: "+e2.message);setPlanSaving(false);return;}
+      }
+      setPlanSaved(true);setTimeout(()=>setPlanSaved(false),2000);
+    }catch(e){alert("저장 중 오류: "+e.message);}
+    setPlanSaving(false);
+  };
+  const addPlanReport=async()=>{
+    if(!planRpTitle.trim()){alert("제목을 입력해주세요.");return;}
+    try{
+      const row={student_id:s.id,title:planRpTitle,body:planRpBody,is_shared:planRpShared,type:"plan",date:fd(new Date()),user_id:user.id};
+      const{data,error}=await supabase.from('reports').insert(row).select().single();
+      if(error){alert("리포트 저장 실패: "+error.message);return;}
+      if(data){setPlanComments(p=>[data,...p]);setPlanRpTitle("");setPlanRpBody("");setPlanRpShared(false);setShowPlanReport(false);}
+    }catch(e){alert("리포트 저장 중 오류: "+e.message);}
+  };
+  const updatePlanComment=async(id)=>{
+    if(!editCommentText.trim())return;
+    const{error}=await supabase.from('reports').update({body:editCommentText}).eq('id',id);
+    if(error){alert("수정 실패: "+error.message);return;}
+    setPlanComments(p=>p.map(c=>c.id===id?{...c,body:editCommentText}:c));setEditingComment(null);setEditCommentText("");
+  };
   const handleFileDrop=async(e)=>{e.preventDefault();setFileDrag(false);const files=e.dataTransfer?e.dataTransfer.files:e.target.files;if(!files||!files.length)return;setUploading(true);
     for(const file of files){
       const ext=file.name.split('.').pop().toLowerCase();
@@ -691,7 +718,7 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
             </div>
           </div>
           {!isParent&&<div style={{textAlign:"right",marginBottom:20}}>
-            <button onClick={savePlanFields} style={{background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"8px 20px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",opacity:planSaving?.6:1}}>{planSaving?"저장 중...":"저장"}</button>
+            <button onClick={savePlanFields} style={{background:planSaved?C.su:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"8px 20px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",opacity:planSaving?.6:1,transition:"background .2s"}}>{planSaving?"저장 중...":planSaved?"저장 완료":"저장"}</button>
           </div>}
 
           {/* 학습 리포트 */}
