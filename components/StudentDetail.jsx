@@ -35,6 +35,7 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
   const [scores,setScores]=useState([]);
   const [wrongs,setWrongs]=useState([]);
   const [reports,setReports]=useState([]);
+  const [studyPlans,setStudyPlans]=useState([]);
   const [lesDetailData,setLesDetailData]=useState(null);
   const [calMonth,setCalMonth]=useState(new Date());
   const [showNew,setShowNew]=useState(false);
@@ -72,6 +73,14 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
   const [planRpTitle,setPlanRpTitle]=useState("");
   const [planRpBody,setPlanRpBody]=useState("");
   const [planRpShared,setPlanRpShared]=useState(false); // planRpShared is "비공개" checkbox (true = private)
+  const [showStudyPlan,setShowStudyPlan]=useState(false);
+  const [studyPlanTitle,setStudyPlanTitle]=useState("");
+  const [studyPlanBody,setStudyPlanBody]=useState("");
+  const [studyPlanShared,setStudyPlanShared]=useState(false);
+  const [editingStudyPlan,setEditingStudyPlan]=useState(null);
+  const [editStudyPlanTitle,setEditStudyPlanTitle]=useState("");
+  const [editStudyPlanBody,setEditStudyPlanBody]=useState("");
+  const [editStudyPlanShared,setEditStudyPlanShared]=useState(false);
   const [fileDrag,setFileDrag]=useState(false);
   const [uploading,setUploading]=useState(false);
   const [standaloneFiles,setStandaloneFiles]=useState([]);
@@ -81,8 +90,8 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
   // Tabs: 리포트를 수업 안 "기록" 서브탭으로, 계획 제거, 분석에서 리포트 제거
   const mainTabs=[
     {id:"class",l:"수업",subs:[{id:"timeline",l:"타임라인"},{id:"calendar",l:"수업일정"}]},
-    {id:"study",l:"학습관리",subs:[{id:"homework",l:"숙제"},{id:"wrong",l:"오답관리"}]},
-    {id:"analysis",l:"학습분석",subs:[{id:"plan",l:"오버뷰"},{id:"scores",l:"성적"}]},
+    {id:"study",l:"학습 관리",subs:[{id:"homework",l:"숙제"},{id:"wrong",l:"오답관리"}]},
+    {id:"analysis",l:"학습 분석",subs:[{id:"plan",l:"오버뷰"},{id:"scores",l:"성적"}]},
     {id:"archive",l:"자료실",subs:[{id:"files",l:"자료"}]}
   ];
   const curMain=mainTabs.find(m=>m.id===mainTab);
@@ -90,17 +99,19 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
 
   const fetchAll=useCallback(async()=>{
     if(!s.id)return;setLoading(true);
-    const [a,b,c,d]=await Promise.all([
+    const [a,b,c,d,e]=await Promise.all([
       supabase.from('lessons').select('*, homework(*), files(*)').eq('student_id',s.id).order('date',{ascending:false}),
       supabase.from('scores').select('*').eq('student_id',s.id).order('created_at'),
       supabase.from('wrong_answers').select('*').eq('student_id',s.id).order('created_at',{ascending:false}),
       supabase.from('reports').select('*').eq('student_id',s.id).order('date',{ascending:false}),
+      supabase.from('study_plans').select('*').eq('student_id',s.id).order('date',{ascending:false}),
     ]);
-    if(a.error||b.error||c.error||d.error)toast?.('데이터를 불러오지 못했습니다','error');
+    if(a.error||b.error||c.error||d.error||e.error)toast?.('데이터를 불러오지 못했습니다','error');
     setLessons(a.data||[]);setScores(b.data||[]);setWrongs(c.data||[]);
     const allReps=d.data||[];
     setReports(allReps.filter(r=>r.type!=='plan'));
     setPlanComments(allReps.filter(r=>r.type==='plan'));
+    setStudyPlans(e.data||[]);
     // Load plan fields from student
     setPlanStrategy(s.plan_strategy||"");
     setPlanStrength(s.plan_strength||"");
@@ -186,6 +197,21 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
     const{error}=await supabase.from('reports').update({title:editCommentTitle,body:editCommentText,is_shared:!editCommentShared}).eq('id',id);
     if(error){toast?.('기록 수정에 실패했습니다','error');return;}
     setPlanComments(p=>p.map(c=>c.id===id?{...c,title:editCommentTitle,body:editCommentText,is_shared:!editCommentShared}:c));setEditingComment(null);setEditCommentText("");setEditCommentTitle("");
+  };
+  const addStudyPlan=async()=>{
+    if(!studyPlanTitle.trim()){toast?.('제목을 입력해주세요','error');return;}
+    try{
+      const row={student_id:s.id,title:studyPlanTitle,body:studyPlanBody,is_shared:!studyPlanShared,date:fd(new Date()),user_id:user.id};
+      const{data,error}=await supabase.from('study_plans').insert(row).select().single();
+      if(error){toast?.('학습 계획 저장에 실패했습니다','error');return;}
+      if(data){setStudyPlans(p=>[data,...p]);setStudyPlanTitle("");setStudyPlanBody("");setStudyPlanShared(false);setShowStudyPlan(false);toast?.('학습 계획이 등록되었습니다');}
+    }catch(e){toast?.('학습 계획 저장 중 오류가 발생했습니다','error');}
+  };
+  const updateStudyPlan=async(id)=>{
+    if(!editStudyPlanTitle.trim()){toast?.('제목을 입력해주세요','error');return;}
+    const{error}=await supabase.from('study_plans').update({title:editStudyPlanTitle,body:editStudyPlanBody,is_shared:!editStudyPlanShared}).eq('id',id);
+    if(error){toast?.('학습 계획 수정에 실패했습니다','error');return;}
+    setStudyPlans(p=>p.map(sp=>sp.id===id?{...sp,title:editStudyPlanTitle,body:editStudyPlanBody,is_shared:!editStudyPlanShared}:sp));setEditingStudyPlan(null);setEditStudyPlanTitle("");setEditStudyPlanBody("");
   };
   const handleFileDrop=async(e)=>{e.preventDefault();setFileDrag(false);const files=e.dataTransfer?e.dataTransfer.files:e.target.files;if(!files||!files.length)return;setUploading(true);
     for(const file of files){
@@ -867,6 +893,58 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
               </div>
             </div>
           </>)}
+
+          {/* 학습 계획 */}
+          <div style={{borderTop:"1px solid "+C.bd,paddingTop:20}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+              <div style={{fontSize:16,fontWeight:700,color:C.tp}}>학습 계획</div>
+              {!isParent&&<button onClick={()=>setShowStudyPlan(!showStudyPlan)} style={{background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"8px 16px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>+ 새 계획</button>}
+            </div>
+
+            {/* New study plan form */}
+            {showStudyPlan&&!isParent&&(<div style={{background:C.sf,border:"2px solid "+C.ac,borderRadius:14,padding:20,marginBottom:16}}>
+              <div style={{marginBottom:10}}><label style={ls}>제목</label><input value={studyPlanTitle} onChange={e=>setStudyPlanTitle(e.target.value)} style={is} placeholder="예: 3월 학습 계획"/></div>
+              <div style={{marginBottom:10}}><label style={ls}>내용</label><textarea value={studyPlanBody} onChange={e=>setStudyPlanBody(e.target.value)} style={{...is,minHeight:120,resize:"vertical"}} placeholder="학습 목표, 주요 과제, 일정 등을 작성하세요..."/></div>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <label style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:C.ts,cursor:"pointer"}}><input type="checkbox" checked={studyPlanShared} onChange={e=>setStudyPlanShared(e.target.checked)}/><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>비공개</label>
+                <div style={{display:"flex",gap:8}}>
+                  <button onClick={()=>setShowStudyPlan(false)} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:8,padding:"8px 14px",fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>취소</button>
+                  <button onClick={addStudyPlan} style={{background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"8px 16px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>저장</button>
+                </div>
+              </div>
+            </div>)}
+
+            {/* Study plan timeline */}
+            {studyPlans.length===0?(<div style={{textAlign:"center",padding:40,color:C.tt,background:C.sf,border:"1px solid "+C.bd,borderRadius:14}}><div style={{fontSize:14}}>아직 학습 계획이 없습니다</div><div style={{fontSize:12,marginTop:4,color:C.tt}}>학생의 학습 계획을 작성해보세요</div></div>):(
+              <div style={{position:"relative",paddingLeft:20}}>
+                <div style={{position:"absolute",left:5,top:8,bottom:8,width:2,background:C.bl}}/>
+                {studyPlans.map((sp,i)=>(<div key={sp.id} style={{position:"relative",marginBottom:16}}>
+                  <div style={{position:"absolute",left:-20+1,top:6,width:10,height:10,borderRadius:"50%",background:i===0?C.ac:C.bd}}/>
+                  <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:18,borderLeft:i===0?"3px solid "+C.ac:"none"}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+                      <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                        <span style={{fontSize:14,fontWeight:600,color:C.tp}}>{sp.title||"학습 계획"}</span>
+                        {sp.is_shared?<span style={{background:C.as,color:C.ac,padding:"2px 8px",borderRadius:5,fontSize:10,fontWeight:600}}>공유됨</span>:<span style={{background:C.sfh,color:C.tt,padding:"2px 8px",borderRadius:5,fontSize:10}}>비공개</span>}
+                        {!isParent&&editingStudyPlan!==sp.id&&<button onClick={()=>{setEditingStudyPlan(sp.id);setEditStudyPlanTitle(sp.title||"");setEditStudyPlanBody(sp.body||"");setEditStudyPlanShared(!sp.is_shared);}} style={{background:"none",border:"none",fontSize:10,color:C.ac,cursor:"pointer",fontFamily:"inherit",padding:0}}>수정</button>}
+                      </div>
+                      <span style={{fontSize:12,color:C.tt,flexShrink:0}}>{sp.date}</span>
+                    </div>
+                    {editingStudyPlan===sp.id?(<div>
+                      <div style={{marginBottom:8}}><label style={{...ls,marginBottom:4}}>제목</label><input value={editStudyPlanTitle} onChange={e=>setEditStudyPlanTitle(e.target.value)} style={{...is,fontSize:12}} placeholder="학습 계획 제목"/></div>
+                      <div style={{marginBottom:8}}><label style={{...ls,marginBottom:4}}>내용</label><textarea value={editStudyPlanBody} onChange={e=>setEditStudyPlanBody(e.target.value)} style={{...is,minHeight:80,resize:"vertical",fontSize:12}}/></div>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                        <label style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:C.ts,cursor:"pointer"}}><input type="checkbox" checked={editStudyPlanShared} onChange={e=>setEditStudyPlanShared(e.target.checked)}/><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>비공개</label>
+                        <div style={{display:"flex",gap:6}}>
+                          <button onClick={()=>setEditingStudyPlan(null)} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:6,padding:"4px 10px",fontSize:10,cursor:"pointer",fontFamily:"inherit"}}>취소</button>
+                          <button onClick={()=>updateStudyPlan(sp.id)} style={{background:C.pr,color:"#fff",border:"none",borderRadius:6,padding:"4px 10px",fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>저장</button>
+                        </div>
+                      </div>
+                    </div>):(<div style={{fontSize:13,color:C.ts,lineHeight:1.7,whiteSpace:"pre-wrap"}}>{sp.body}</div>)}
+                  </div>
+                </div>))}
+              </div>
+            )}
+          </div>
 
           {/* 학습 리포트 */}
           <div style={{borderTop:"1px solid "+C.bd,paddingTop:20}}>
