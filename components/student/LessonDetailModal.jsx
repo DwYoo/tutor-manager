@@ -112,8 +112,8 @@ export default function LessonDetailModal({ les, student, onUpdate, onClose }) {
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   {hw.map((h, i) => {
-                    const pv=(h.completion_pct||0);const pc = pv >= 100 ? C.su : pv > 30 ? C.wn : pv > 0 ? C.lo : C.dn;
-                    const pbg = pv >= 100 ? C.sb : pv > 30 ? C.wb : pv > 0 ? C.lob : C.db;
+                    const pv=(h.completion_pct||0);const pc = pv >= 100 ? C.su : pv > 30 ? C.wn : pv > 0 ? "#EA580C" : C.dn;
+                    const pbg = pv >= 100 ? C.sb : pv > 30 ? C.wb : pv > 0 ? "#FFF7ED" : C.db;
                     return (
                       <div key={h.id} draggable onDragStart={()=>setDragIdx(i)} onDragOver={e=>{e.preventDefault();}} onDrop={()=>{if(dragIdx!==null&&dragIdx!==i){const n=[...hw];const[m]=n.splice(dragIdx,1);n.splice(i,0,m);setHw(n);markDirty();}setDragIdx(null);}} onDragEnd={()=>setDragIdx(null)} style={{ border: "1px solid " + C.bd, borderRadius: 12, padding: 16, opacity: dragIdx===i?.4:1, transition:"opacity .15s", cursor:"grab" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
