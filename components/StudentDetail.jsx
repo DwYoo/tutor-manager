@@ -314,15 +314,15 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
               return(<div style={{marginTop:16}}>
                 <div style={{fontSize:13,fontWeight:600,color:C.tp,marginBottom:10}}>{cm+1}월 수업 목록</div>
                 <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                  {upcoming.map((l,i)=>(
+                  {upcoming.map((l,i)=>{const isOrig=!l.is_recurring||l.date===l._d;return(
                     <div key={l.id+"-"+l._d+"-"+i} onClick={()=>openLesson(l,l._d)} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",background:C.sf,border:"1px solid "+C.bd,borderRadius:10,cursor:"pointer",borderLeft:"3px solid "+col.b}} className="hcard">
                       <span style={{fontSize:12,color:C.tt,minWidth:70}}>{l._d}</span>
                       <span style={{fontSize:12,color:C.ts}}>{p2(l.start_hour)}:{p2(l.start_min)}</span>
-                      <span style={{fontSize:13,fontWeight:600,color:C.tp,flex:1}}>{l.topic||l.subject||"-"}</span>
+                      <span style={{fontSize:13,fontWeight:600,color:C.tp,flex:1}}>{isOrig?(l.topic||l.subject||"-"):(l.subject||"-")}</span>
                       <span style={{fontSize:11,color:C.tt}}>{l.duration}분</span>
-                      {(l.homework||[]).length>0&&<span style={{fontSize:10,background:C.wb,color:C.wn,padding:"2px 6px",borderRadius:4,fontWeight:600}}>숙제 {(l.homework||[]).length}</span>}
+                      {isOrig&&(l.homework||[]).length>0&&<span style={{fontSize:10,background:C.wb,color:C.wn,padding:"2px 6px",borderRadius:4,fontWeight:600}}>숙제 {(l.homework||[]).length}</span>}
                     </div>
-                  ))}
+                  );})}
                 </div>
               </div>);
             })()}
