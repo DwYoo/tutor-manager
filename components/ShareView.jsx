@@ -82,14 +82,15 @@ export default function ShareView({ token }) {
   const hwNotStarted = allHw.filter(h => (h.completion_pct || 0) === 0).length;
   const hwAvg = allHw.length ? Math.round(allHw.reduce((s, h) => s + (h.completion_pct || 0), 0) / allHw.length) : 0;
 
-  // Score stats
-  const scoreData = scores.map(sc => ({ date: sc.date, score: sc.score, grade: sc.grade, label: sc.label }));
-  const latestScore = scores.length ? scores[scores.length - 1].score : null;
-  const bestScore = scores.length ? Math.max(...scores.map(x => x.score)) : null;
-  const avgScore = scores.length ? Math.round(scores.reduce((a, x) => a + x.score, 0) / scores.length) : null;
+  // Score stats (sort by date first)
+  const sortedScores = [...scores].sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+  const scoreData = sortedScores.map(sc => ({ date: sc.date, score: sc.score, grade: sc.grade, label: sc.label }));
+  const latestScore = sortedScores.length ? sortedScores[sortedScores.length - 1].score : null;
+  const bestScore = sortedScores.length ? Math.max(...sortedScores.map(x => x.score)) : null;
+  const avgScore = sortedScores.length ? Math.round(sortedScores.reduce((a, x) => a + x.score, 0) / sortedScores.length) : null;
 
-  // Grade stats
-  const gradeEntries = scores.filter(x => x.grade != null);
+  // Grade stats (sort by date first)
+  const gradeEntries = sortedScores.filter(x => x.grade != null);
   const latestGrade = gradeEntries.length ? gradeEntries[gradeEntries.length - 1].grade : null;
   const bestGrade = gradeEntries.length ? Math.min(...gradeEntries.map(x => x.grade)) : null;
   const avgGrade = gradeEntries.length ? Math.round(gradeEntries.reduce((a, x) => a + x.grade, 0) / gradeEntries.length) : null;
