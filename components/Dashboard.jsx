@@ -71,8 +71,6 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
     const cnt=lessons.filter(l=>lessonOnDate(l,d)).length;
     return{day:DKS[i],c:cnt};
   });
-  const weekTotal=weekData.reduce((a,d)=>a+d.c,0);
-  const thisWeekTotal=weekOff===0?weekTotal:gwd(today).reduce((a,d)=>a+lessons.filter(l=>lessonOnDate(l,d)).length,0);
   const todayIdx=weekOff===0?(today.getDay()===0?6:today.getDay()-1):-1;
 
   // ── Fee calculation: match Tuition tab logic (with fee_override) ──
@@ -192,31 +190,20 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
   // ── Today's date formatted ──
   const todayLabel=`${today.getFullYear()}년 ${today.getMonth()+1}월 ${today.getDate()}일 ${DK[today.getDay()]}요일`;
 
-  const stats=[
-    {l:"전체 학생",v:String(activeStudents.length),sub:"관리 중",c:C.ac,click:()=>onNav("students")},
-    {l:"이번 주 수업",v:String(thisWeekTotal),sub:`오늘 ${todayClasses.length}`,c:C.su,click:()=>onNav("schedule")},
-  ];
-
   if(loading)return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:C.tt,fontSize:14}}>불러오는 중...</div></div>);
 
   return(
     <div className="main-pad" style={{padding:28}}>
       <style>{`.hcard{transition:all .12s;cursor:pointer;}.hcard:hover{background:${C.sfh}!important;}
-        @media(max-width:768px){.dash-stats{grid-template-columns:repeat(2,1fr)!important;}.dash-main{grid-template-columns:1fr!important;}.main-pad{padding:16px!important;}}
-        @media(max-width:480px){.dash-stats{grid-template-columns:1fr 1fr!important;}.dash-stats>div{padding:14px!important;}}`}</style>
+        @media(max-width:768px){.dash-main{grid-template-columns:1fr!important;}.main-pad{padding:16px!important;}}`}</style>
 
       {/* Header */}
-      <div style={{marginBottom:28,display:"flex",alignItems:"center",gap:12}}>
+      <div style={{marginBottom:24,display:"flex",alignItems:"center",gap:12}}>
         {tog}
         <div>
           <h1 style={{fontSize:22,fontWeight:700,color:C.tp}}>안녕하세요, 선생님 👋</h1>
-          <p style={{fontSize:14,color:C.ts,marginTop:4}}>{todayLabel}</p>
+          <p style={{fontSize:14,color:C.ts,marginTop:4}}>{todayLabel}{todayClasses.length>0?` · 오늘 수업 ${todayClasses.length}건`:""}</p>
         </div>
-      </div>
-
-      {/* Stats */}
-      <div className="dash-stats" style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:14,marginBottom:28}}>
-        {stats.map((s,i)=>(<div key={i} onClick={s.click} style={{background:C.sf,border:`1px solid ${C.bd}`,borderRadius:14,padding:20,cursor:"pointer"}} className="hcard"><div style={{fontSize:12,color:C.tt,marginBottom:6}}>{s.l}</div><div style={{fontSize:24,fontWeight:700,color:C.tp}}>{s.v}</div><div style={{fontSize:11,color:s.c,marginTop:4}}>{s.sub}</div></div>))}
       </div>
 
       {/* Main grid */}
@@ -288,13 +275,6 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
             </div>
           )}
 
-          {/* Quick actions */}
-          <div style={{background:C.sf,border:`1px solid ${C.bd}`,borderRadius:14,padding:20}}>
-            <h3 style={{fontSize:15,fontWeight:600,color:C.tp,marginBottom:16}}>빠른 작업</h3>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-              {[{l:"수업 추가",d:"새 수업 일정",bg:C.as,c:C.ac,p:"schedule"},{l:"학생 추가",d:"새 학생 등록",bg:C.sb,c:C.su,p:"students"},{l:"수업료 관리",d:"청구/확인",bg:C.wb,c:C.wn,p:"tuition"},{l:"일정 보기",d:"이번 주 일정",bg:C.db,c:C.dn,p:"schedule"}].map((a,i)=>(<button key={i} onClick={()=>onNav(a.p)} style={{background:a.bg,borderRadius:12,padding:16,border:"none",cursor:"pointer",textAlign:"left",fontFamily:"inherit"}} className="hcard"><div style={{fontSize:14,fontWeight:600,color:a.c,marginBottom:4}}>{a.l}</div><div style={{fontSize:11,color:C.tt}}>{a.d}</div></button>))}
-            </div>
-          </div>
         </div>
 
         {/* Right column */}
