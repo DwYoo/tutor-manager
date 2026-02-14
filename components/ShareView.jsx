@@ -131,7 +131,7 @@ export default function ShareView({ token }) {
 
       {/* Recent Report (above tabs) */}
       {(() => {
-        const allReports = [...planComments, ...reports].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+        const allReports = [...planComments, ...reports].filter(r => r.is_shared !== false).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
         const recentReport = allReports[0];
         return recentReport ? (
           <div style={{ background: C.sf, borderBottom: "1px solid " + C.bd, padding: "20px 0" }}>
@@ -602,7 +602,7 @@ export default function ShareView({ token }) {
 
           {/* Past Reports (below scores chart) */}
           {(() => {
-            const allReports = [...planComments, ...reports].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+            const allReports = [...planComments, ...reports].filter(r => r.is_shared !== false).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
             const pastReports = allReports.slice(1); // All reports except the most recent one
             return pastReports.length > 0 ? (
               <div style={{ marginTop: 24 }}>
