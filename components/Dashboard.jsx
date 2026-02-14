@@ -232,7 +232,8 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
       const stuStat=activeStudents.map(s=>{
         const allHw=lessons.filter(l=>l.student_id===s.id).flatMap(l=>l.homework||[]);
         const hwInc=allHw.filter(h=>(h.completion_pct||0)<100).length;
-        const recent=lessons.filter(l=>l.student_id===s.id).sort((a,b)=>(b.date||"").localeCompare(a.date||""))[0];
+        const todayStr=fd(today);
+        const recent=lessons.filter(l=>l.student_id===s.id&&(l.date||"")<=todayStr).sort((a,b)=>(b.date||"").localeCompare(a.date||""))[0];
         const nc=getNextClass(s.id);
         return{s,hwInc,recent,nc};
       });
