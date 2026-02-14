@@ -22,6 +22,7 @@ export default function Tuition({menuBtn}){
   const[loading,setLoading]=useState(true);
   const[editId,setEditId]=useState(null);
   const[editForm,setEditForm]=useState({});
+  const[memoPopup,setMemoPopup]=useState(null);
 
   const year=+curMonth.split("-")[0],month=+curMonth.split("-")[1];
   const prevM=()=>{const m=month===1?12:month-1;const y=month===1?year-1:year;setCurMonth(y+"-"+p2(m));};
@@ -32,7 +33,7 @@ export default function Tuition({menuBtn}){
     const[sRes,tRes,lRes]=await Promise.all([
       supabase.from('students').select('*').order('created_at'),
       supabase.from('tuition').select('*'),
-      supabase.from('lessons').select('id, student_id, date, is_recurring, recurring_day, recurring_exceptions, recurring_end_date'),
+      supabase.from('lessons').select('*'),
     ]);
     setStudents(sRes.data||[]);setTuitions(tRes.data||[]);setLessons(lRes.data||[]);setLoading(false);
   },[]);
@@ -43,40 +44,47 @@ export default function Tuition({menuBtn}){
     const dim=new Date(yr,mo,0).getDate();
     let cnt=0;
     for(let d=1;d<=dim;d++){
-      const dt=new Date(yr,mo-1,d);
       const ds=yr+"-"+p2(mo)+"-"+p2(d);
-      const dw=dt.getDay()===0?7:dt.getDay();
+      const dw=new Date(yr,mo-1,d).getDay();
+      const dwN=dw===0?7:dw;
       cnt+=lessons.filter(l=>{
         if(l.student_id!==sid)return false;
+        const ld=(l.date||"").slice(0,10);
         if(l.is_recurring&&l.recurring_exceptions&&l.recurring_exceptions.includes(ds))return false;
-        if(l.date===ds)return true;
-        if(l.is_recurring&&l.recurring_day===dw){if(ds<l.date)return false;if(l.recurring_end_date&&ds>=l.recurring_end_date)return false;return true;}
+        if(ld===ds)return true;
+        if(l.is_recurring&&+l.recurring_day===dwN){
+          if(ds<ld)return false;
+          if(l.recurring_end_date&&ds>=(l.recurring_end_date+"").slice(0,10))return false;
+          return true;
+        }
         return false;
       }).length;
     }
     return cnt;
   };
 
+  /* Auto status */
+  const autoStatus=(amt,due)=>amt>=due?"paid":amt>0?"partial":"unpaid";
+
   /* Build month records */
   const monthRecs=students.map(s=>{
     const rec=tuitions.find(t=>t.student_id===s.id&&t.month===curMonth);
     const lessonCnt=countLessons(s.id,year,month);
-    const autoFee=(s.fee_per_class||0)*lessonCnt; // 자동계산: 회당단가 × 횟수
-    // fee_override가 있으면 수동 입력값, 없으면 자동계산
-    const fee=(rec&&rec.fee_override!=null)?rec.fee_override:autoFee;
+    const autoFee=(s.fee_per_class||0)*lessonCnt;
     const carryover=rec?.carryover||0;
-    const totalDue=fee+carryover;
+    const autoTotalDue=autoFee+carryover;
+    // fee_override가 있으면 청구액 수동값, 없으면 자동계산(수업료+이월)
+    const totalDue=(rec&&rec.fee_override!=null)?rec.fee_override:autoTotalDue;
     const paidAmount=rec?.amount||0;
-    const status=rec?.status||"unpaid";
+    const status=autoStatus(paidAmount,totalDue);
     const isOverridden=(rec&&rec.fee_override!=null);
-    return{student:s,record:rec||{student_id:s.id,month:curMonth,status:"unpaid",amount:0,carryover:0,memo:""},lessonCnt,autoFee,fee,carryover,totalDue,paidAmount,status,isOverridden};
+    return{student:s,record:rec||{student_id:s.id,month:curMonth,status:"unpaid",amount:0,carryover:0,memo:""},lessonCnt,autoFee,carryover,autoTotalDue,totalDue,paidAmount,status,isOverridden};
   });
 
   const totalFee=monthRecs.reduce((a,r)=>a+r.totalDue,0);
   const totalPaid=monthRecs.reduce((a,r)=>a+r.paidAmount,0);
-  const unpaidCount=monthRecs.filter(r=>r.status==="unpaid").length;
-  const partialCount=monthRecs.filter(r=>r.status==="partial").length;
-  const collectRate=totalFee>0?Math.round(totalPaid/totalFee*100):0;
+  const totalUnpaid=monthRecs.reduce((a,r)=>r.status!=="paid"?a+Math.max(0,r.totalDue-r.paidAmount):a,0);
+  const collectRate=totalFee>0?Math.max(0,Math.round((totalFee-totalUnpaid)/totalFee*100)):0;
 
   /* Monthly chart (last 6 months ending at curMonth) */
   const monthlyChart=Array.from({length:6},(_,i)=>{
@@ -90,19 +98,20 @@ export default function Tuition({menuBtn}){
   const startEdit=(r)=>{
     setEditId(r.record.id||r.student.id);
     setEditForm({
-      fee:r.fee, // 현재 수업료 (자동 or 수동)
+      totalDue:r.totalDue,
       carryover:r.carryover,
       amount:r.paidAmount,
-      status:r.record.status||"unpaid",
+      status:autoStatus(r.paidAmount,r.totalDue),
       memo:r.record.memo||"",
     });
   };
   const cancelEdit=()=>{setEditId(null);setEditForm({});};
 
   const saveEdit=async(studentId,autoFee)=>{
-    const feeVal=parseInt(editForm.fee)||0;
-    // fee_override: 자동계산과 다르면 수동값 저장, 같으면 null
-    const feeOverride=(feeVal!==autoFee)?feeVal:null;
+    const totalDueVal=parseInt(editForm.totalDue)||0;
+    const carryoverVal=parseInt(editForm.carryover)||0;
+    // fee_override: 청구액이 자동계산(수업료+이월)과 다르면 수동값 저장
+    const feeOverride=(totalDueVal!==(autoFee+carryoverVal))?totalDueVal:null;
     const existing=tuitions.find(t=>t.student_id===studentId&&t.month===curMonth);
     const payload={
       student_id:studentId,month:curMonth,
@@ -158,7 +167,7 @@ export default function Tuition({menuBtn}){
       <div className="tu-stats" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:24}}>
         <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:18}}><div style={{fontSize:12,color:C.tt,marginBottom:4}}>총 청구액</div><div style={{fontSize:20,fontWeight:700,color:C.tp}}>₩{totalFee.toLocaleString()}</div></div>
         <div style={{background:C.sb,border:"1px solid #BBF7D0",borderRadius:14,padding:18}}><div style={{fontSize:12,color:C.su,marginBottom:4}}>납부 완료</div><div style={{fontSize:20,fontWeight:700,color:C.su}}>₩{totalPaid.toLocaleString()}</div></div>
-        <div style={{background:(unpaidCount||partialCount)?C.db:C.sb,border:"1px solid "+((unpaidCount||partialCount)?"#FECACA":"#BBF7D0"),borderRadius:14,padding:18}}><div style={{fontSize:12,color:unpaidCount?C.dn:C.su,marginBottom:4}}>미수금</div><div style={{fontSize:20,fontWeight:700,color:unpaidCount?C.dn:C.su}}>₩{Math.max(0,totalFee-totalPaid).toLocaleString()}</div></div>
+        <div style={{background:totalUnpaid>0?C.db:C.sb,border:"1px solid "+(totalUnpaid>0?"#FECACA":"#BBF7D0"),borderRadius:14,padding:18}}><div style={{fontSize:12,color:totalUnpaid>0?C.dn:C.su,marginBottom:4}}>미수금</div><div style={{fontSize:20,fontWeight:700,color:totalUnpaid>0?C.dn:C.su}}>₩{totalUnpaid.toLocaleString()}</div></div>
         <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:18}}><div style={{fontSize:12,color:C.tt,marginBottom:4}}>수납률</div><div style={{fontSize:20,fontWeight:700,color:collectRate>=90?C.su:C.wn}}>{collectRate}%</div><div style={{height:5,background:C.bl,borderRadius:3,marginTop:6,overflow:"hidden"}}><div style={{height:"100%",width:collectRate+"%",background:collectRate>=90?C.su:C.wn,borderRadius:3}}/></div></div>
       </div>
 
@@ -180,23 +189,23 @@ export default function Tuition({menuBtn}){
                     <td style={{padding:"10px 12px",fontWeight:600,color:C.tp}}>{s.name}</td>
                     <td style={{padding:"10px 12px",color:C.ts}}>₩{(s.fee_per_class||0).toLocaleString()}</td>
                     <td style={{padding:"10px 12px",fontWeight:600}}>{r.lessonCnt}회</td>
+                    <td style={{padding:"10px 12px",fontWeight:500,color:C.tp}}>₩{r.autoFee.toLocaleString()}</td>
+                    <td style={{padding:"10px 12px"}}>
+                      {isEditing?<input type="number" value={editForm.carryover} onChange={e=>setEditForm(p=>({...p,carryover:e.target.value}))} style={{...eis,width:80}}/>:
+                      r.carryover!==0?<><span style={{color:r.carryover>0?C.dn:C.ac,fontWeight:600}}>{r.carryover>0?"+":"−"}₩{Math.abs(r.carryover).toLocaleString()}</span><div style={{fontSize:9,color:r.carryover>0?C.dn:C.ac}}>{r.carryover>0?"미납이월":"선납"}</div></>:<span style={{color:C.tt}}>-</span>}
+                    </td>
                     <td style={{padding:"10px 12px"}}>
                       {isEditing?(
-                        <input type="number" value={editForm.fee} onChange={e=>setEditForm(p=>({...p,fee:e.target.value}))} style={{...eis,width:100}}/>
+                        <input type="number" value={editForm.totalDue} onChange={e=>{const td=e.target.value;const t=parseInt(td)||0;const a=parseInt(editForm.amount)||0;setEditForm(p=>({...p,totalDue:td,status:autoStatus(a,t)}));}} style={{...eis,width:100}}/>
                       ):(
                         <div>
-                          <span style={{fontWeight:500,color:C.tp}}>₩{r.fee.toLocaleString()}</span>
+                          <span style={{fontWeight:700,color:C.tp}}>₩{r.totalDue.toLocaleString()}</span>
                           {r.isOverridden&&<span onClick={()=>resetFee(s.id)} style={{marginLeft:4,fontSize:9,color:C.ac,cursor:"pointer",background:C.al,padding:"1px 4px",borderRadius:3}} title="자동계산으로 되돌리기">수동</span>}
                         </div>
                       )}
                     </td>
                     <td style={{padding:"10px 12px"}}>
-                      {isEditing?<input type="number" value={editForm.carryover} onChange={e=>setEditForm(p=>({...p,carryover:e.target.value}))} style={{...eis,width:80}}/>:
-                      r.carryover!==0?<><span style={{color:r.carryover>0?C.dn:C.ac,fontWeight:600}}>{r.carryover>0?"+":"−"}₩{Math.abs(r.carryover).toLocaleString()}</span><div style={{fontSize:9,color:r.carryover>0?C.dn:C.ac}}>{r.carryover>0?"미납이월":"결석공제"}</div></>:<span style={{color:C.tt}}>-</span>}
-                    </td>
-                    <td style={{padding:"10px 12px",fontWeight:700,color:C.tp}}>₩{r.totalDue.toLocaleString()}</td>
-                    <td style={{padding:"10px 12px"}}>
-                      {isEditing?<input type="number" value={editForm.amount} onChange={e=>setEditForm(p=>({...p,amount:e.target.value}))} style={{...eis,width:90}}/>:
+                      {isEditing?<input type="number" value={editForm.amount} onChange={e=>{const amt=e.target.value;const a=parseInt(amt)||0;const t=parseInt(editForm.totalDue)||0;setEditForm(p=>({...p,amount:amt,status:autoStatus(a,t)}));}} style={{...eis,width:90}}/>:
                       <span style={{fontWeight:600,color:r.status==="paid"?C.su:r.status==="partial"?C.wn:C.tt}}>₩{r.paidAmount.toLocaleString()}</span>}
                     </td>
                     <td style={{padding:"10px 12px"}}>
@@ -205,7 +214,7 @@ export default function Tuition({menuBtn}){
                     </td>
                     <td style={{padding:"10px 12px"}}>
                       {isEditing?<input value={editForm.memo} onChange={e=>setEditForm(p=>({...p,memo:e.target.value}))} style={{...eis,width:80,fontSize:11}} placeholder="메모"/>:
-                      rec.memo?<span title={rec.memo} style={{fontSize:10,color:C.tt,background:C.sfh,padding:"2px 6px",borderRadius:4}}>💬</span>:null}
+                      rec.memo?<span onClick={()=>setMemoPopup({name:s.name,memo:rec.memo})} style={{fontSize:10,color:C.tt,background:C.sfh,padding:"2px 6px",borderRadius:4,cursor:"pointer"}}>💬</span>:null}
                     </td>
                     <td style={{padding:"10px 12px"}}>
                       {isEditing?(
@@ -243,6 +252,19 @@ export default function Tuition({menuBtn}){
           </div>
         </div>
       </div>
+
+      {/* Memo popup */}
+      {memoPopup&&(
+        <div onClick={()=>setMemoPopup(null)} style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.3)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:C.sf,borderRadius:14,padding:24,minWidth:280,maxWidth:400,boxShadow:"0 8px 30px rgba(0,0,0,.12)"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+              <div style={{fontSize:14,fontWeight:700,color:C.tp}}>{memoPopup.name} 메모</div>
+              <button onClick={()=>setMemoPopup(null)} style={{background:"none",border:"none",cursor:"pointer",fontSize:16,color:C.tt,fontFamily:"inherit",padding:4}}>✕</button>
+            </div>
+            <div style={{fontSize:13,color:C.ts,lineHeight:1.6,whiteSpace:"pre-wrap",background:C.sfh,borderRadius:8,padding:14}}>{memoPopup.memo}</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
