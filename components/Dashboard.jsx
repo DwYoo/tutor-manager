@@ -31,6 +31,7 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
   useEffect(()=>{fetchData();},[fetchData]);
 
   /* ── Derived data ── */
+  const activeStudents=students.filter(s=>!s.archived);
   const today=new Date();const todayStr=fd(today);
   const todayDw=today.getDay()===0?7:today.getDay();
   const wkBase=new Date(today);wkBase.setDate(today.getDate()+weekOff*7);
@@ -71,7 +72,7 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
     return cnt;
   };
 
-  const monthRecs=students.map(s=>{
+  const monthRecs=activeStudents.map(s=>{
     const rec=tuitions.find(t=>t.student_id===s.id&&t.month===curMonth);
     const lessonCnt=countMonthLessons(s.id);
     const calcFee=(s.fee_per_class||0)*lessonCnt;
@@ -108,7 +109,7 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
   const getCol=sid=>{const s=getStu(sid);return SC[(s?.color_index||0)%8];};
 
   const stats=[
-    {l:"전체 학생",v:String(students.length),sub:"관리 중",c:C.ac,click:()=>onNav("students")},
+    {l:"전체 학생",v:String(activeStudents.length),sub:"관리 중",c:C.ac,click:()=>onNav("students")},
     {l:"이번 주 수업",v:String(thisWeekTotal),sub:`오늘 ${todayClasses.length}`,c:C.su,click:()=>onNav("schedule")},
     {l:"월 수입",v:totalFee>0?`₩${Math.round(totalFee/10000)}만`:"₩0",sub:"이번 달",c:C.wn,click:()=>onNav("tuition")},
     {l:"미수금",v:unpaidAmount>0?`₩${Math.round(unpaidAmount/10000)}만`:"₩0",sub:`${unpaidRecs.length}명`,c:C.dn,click:()=>onNav("tuition")},
@@ -199,13 +200,13 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
               <button onClick={()=>onNav("students")} style={{fontSize:11,color:C.ac,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>전체보기 →</button>
             </div>
             <div style={{maxHeight:320,overflow:"auto"}}>
-              {students.map((s,i)=>{const col=SC[(s.color_index||0)%8];const nc=getNextClass(s.id);return(
-                <div key={s.id} onClick={()=>onDetail(s)} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 4px",borderBottom:i<students.length-1?`1px solid ${C.bl}`:"none",cursor:"pointer",borderRadius:6}} className="hcard">
+              {activeStudents.map((s,i)=>{const col=SC[(s.color_index||0)%8];const nc=getNextClass(s.id);return(
+                <div key={s.id} onClick={()=>onDetail(s)} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 4px",borderBottom:i<activeStudents.length-1?`1px solid ${C.bl}`:"none",cursor:"pointer",borderRadius:6}} className="hcard">
                   <div style={{width:28,height:28,borderRadius:7,background:col.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:col.t}}>{(s.name||"?")[0]}</div>
                   <div style={{flex:1}}><div style={{fontSize:13,fontWeight:500,color:C.tp}}>{s.name}</div><div style={{fontSize:11,color:C.tt}}>{s.subject} · {s.grade}</div></div>
                   <span style={{fontSize:11,color:C.tt}}>{nc}</span>
                 </div>);})}
-              {students.length===0&&<div style={{textAlign:"center",padding:20,color:C.tt,fontSize:13}}>학생을 추가해보세요</div>}
+              {activeStudents.length===0&&<div style={{textAlign:"center",padding:20,color:C.tt,fontSize:13}}>학생을 추가해보세요</div>}
             </div>
           </div>
         </div>
