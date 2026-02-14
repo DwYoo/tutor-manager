@@ -15,7 +15,18 @@ export default function CalendarTab({ lessons, student, col }) {
   for (let i = 0; i < startOffset; i++) cells.push({ d: null })
   for (let i = 1; i <= daysInMonth; i++) {
     const ds = `${year}-${p2(month + 1)}-${p2(i)}`
-    const dayLessons = lessons.filter(l => l.date === ds)
+    const dt = new Date(year, month, i)
+    const dw = dt.getDay() === 0 ? 7 : dt.getDay()
+    const dayLessons = lessons.filter(l => {
+      if (l.is_recurring && l.recurring_exceptions && l.recurring_exceptions.includes(ds)) return false
+      if (l.date === ds) return true
+      if (l.is_recurring && l.recurring_day === dw) {
+        if (ds < l.date) return false
+        if (l.recurring_end_date && ds >= l.recurring_end_date) return false
+        return true
+      }
+      return false
+    })
     cells.push({ d: i, lessons: dayLessons })
   }
   const rem = 42 - cells.length
