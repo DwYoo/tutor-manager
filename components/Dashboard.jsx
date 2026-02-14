@@ -75,8 +75,9 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
     const rec=tuitions.find(t=>t.student_id===s.id&&t.month===curMonth);
     const lessonCnt=countMonthLessons(s.id);
     const calcFee=(s.fee_per_class||0)*lessonCnt;
+    const fee=(rec&&rec.fee_override!=null)?rec.fee_override:calcFee;
     const carryover=rec?.carryover||0;
-    const totalDue=calcFee+carryover;
+    const totalDue=fee+carryover;
     const paidAmount=rec?.amount||0;
     const status=rec?.status||"unpaid";
     return{student:s,totalDue,paidAmount,status};
