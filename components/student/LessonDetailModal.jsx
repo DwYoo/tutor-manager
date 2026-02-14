@@ -31,6 +31,7 @@ export default function LessonDetailModal({ les, student, onUpdate, onClose }) {
   const [dirty, setDirty] = useState(false);
   const markDirty = () => setDirty(true);
   const [dragIdx, setDragIdx] = useState(null);
+  const [hwDropIdx, setHwDropIdx] = useState(null);
   useEffect(()=>{const h=e=>{if(e.key==="Escape")onClose();};window.addEventListener("keydown",h);return()=>window.removeEventListener("keydown",h);},[onClose]);
 
   const addHw = () => { if (!newHw.trim()) return; setHw(p => [...p, { id: Date.now(), title: newHw, pct: 0, note: "" }]); setNewHw(""); markDirty(); };
@@ -38,7 +39,7 @@ export default function LessonDetailModal({ les, student, onUpdate, onClose }) {
   const updHw = (id, k, v) => { setHw(p => p.map(h => h.id === id ? { ...h, [k]: v } : h)); markDirty(); };
   const addFile = () => { if (!newFileName.trim()) return; setFiles(p => [...p, { id: Date.now(), name: newFileName, type: newFileName.split(".").pop() || "file" }]); setNewFileName(""); markDirty(); };
   const delFile = id => { setFiles(p => p.filter(f => f.id !== id)); markDirty(); };
-  const doSave = async () => { await onUpdate(les.id, { top: topic, content, feedback, tMemo, hw, planPrivate, planShared, files }); setDirty(false); onClose(); };
+  const doSave = async () => { try { await onUpdate(les.id, { top: topic, content, feedback, tMemo, hw, planPrivate, planShared, files }); setDirty(false); onClose(); } catch(e) { /* error handled by parent toast */ } };
 
   const tabs = [{ id: "content", l: "수업 내용" }, { id: "feedback", l: "피드백" }, { id: "hw", l: "숙제" }, { id: "files", l: "자료" }, { id: "plan", l: "계획" }];
 
@@ -114,8 +115,13 @@ export default function LessonDetailModal({ les, student, onUpdate, onClose }) {
                   {hw.map((h, i) => {
                     const pv=(h.completion_pct||0);const pc = pv >= 100 ? C.su : pv > 30 ? C.wn : pv > 0 ? "#EA580C" : C.dn;
                     const pbg = pv >= 100 ? C.sb : pv > 30 ? C.wb : pv > 0 ? "#FFF7ED" : C.db;
+                    const isDrag=dragIdx===i,noHwD=hwDropIdx!=null&&(hwDropIdx===dragIdx||hwDropIdx===dragIdx+1);
+                    const showT=dragIdx!=null&&!isDrag&&hwDropIdx===i&&!noHwD;
+                    const showB=dragIdx!=null&&!isDrag&&i===hw.length-1&&hwDropIdx===hw.length&&!noHwD;
                     return (
-                      <div key={h.id} draggable onDragStart={()=>setDragIdx(i)} onDragOver={e=>{e.preventDefault();}} onDrop={()=>{if(dragIdx!==null&&dragIdx!==i){const n=[...hw];const[m]=n.splice(dragIdx,1);n.splice(i,0,m);setHw(n);markDirty();}setDragIdx(null);}} onDragEnd={()=>setDragIdx(null)} style={{ border: "1px solid " + C.bd, borderRadius: 12, padding: 16, opacity: dragIdx===i?.4:1, transition:"opacity .15s", cursor:"grab" }}>
+                      <div key={h.id} draggable onDragStart={()=>setDragIdx(i)} onDragOver={e=>{e.preventDefault();const r=e.currentTarget.getBoundingClientRect();const ni=e.clientY<r.top+r.height/2?i:i+1;if(ni!==hwDropIdx)setHwDropIdx(ni);}} onDrop={()=>{const fi=dragIdx,di=hwDropIdx;setDragIdx(null);setHwDropIdx(null);if(fi==null||di==null)return;const n=[...hw];const[m]=n.splice(fi,1);const ai=di>fi?di-1:di;n.splice(ai,0,m);if(!n.every((x,j)=>x.id===hw[j].id)){setHw(n);markDirty();}}} onDragEnd={()=>{setDragIdx(null);setHwDropIdx(null);}} style={{ position:"relative", border: "1px solid " + C.bd, borderRadius: 12, padding: 16, opacity: isDrag?.4:1, transition:"opacity .15s", cursor:"grab" }}>
+                        {showT&&<div style={{position:"absolute",left:0,right:0,top:-8,height:3,borderRadius:2,background:C.ac,boxShadow:`0 0 8px ${C.ac}`,zIndex:5}}/>}
+                        {showB&&<div style={{position:"absolute",left:0,right:0,bottom:-8,height:3,borderRadius:2,background:C.ac,boxShadow:`0 0 8px ${C.ac}`,zIndex:5}}/>}
                         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
                           <span style={{ fontSize: 14, color: C.tt, cursor: "grab", flexShrink: 0, userSelect: "none" }}>⠿</span>
                           <span style={{ fontSize: 12, color: C.tt, fontWeight: 600, background: C.sfh, borderRadius: 6, padding: "2px 8px", flexShrink: 0 }}>#{i + 1}</span>

@@ -1,9 +1,10 @@
 'use client';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, Fragment } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, BarChart, Bar, Cell } from 'recharts';
 import LessonDetailModal from './student/LessonDetailModal';
+import { useToast } from '@/components/Toast';
 
 const C={bg:"#FAFAF9",sf:"#FFFFFF",sfh:"#F5F5F4",bd:"#E7E5E4",bl:"#F0EFED",pr:"#1A1A1A",ac:"#2563EB",al:"#DBEAFE",as:"#EFF6FF",tp:"#1A1A1A",ts:"#78716C",tt:"#A8A29E",su:"#16A34A",sb:"#F0FDF4",dn:"#DC2626",db:"#FEF2F2",wn:"#F59E0B",wb:"#FFFBEB"};
 const SC=[{bg:"#DBEAFE",t:"#1E40AF",b:"#93C5FD"},{bg:"#FCE7F3",t:"#9D174D",b:"#F9A8D4"},{bg:"#D1FAE5",t:"#065F46",b:"#6EE7B7"},{bg:"#FEF3C7",t:"#92400E",b:"#FCD34D"},{bg:"#EDE9FE",t:"#5B21B6",b:"#C4B5FD"},{bg:"#FFE4E6",t:"#9F1239",b:"#FDA4AF"},{bg:"#CCFBF1",t:"#115E59",b:"#5EEAD4"},{bg:"#FEE2E2",t:"#991B1B",b:"#FCA5A5"}];
@@ -20,6 +21,7 @@ const ReasonTooltip=({active,payload})=>{if(!active||!payload?.length)return nul
 
 export default function StudentDetail({ student, onBack, menuBtn }) {
   const{user}=useAuth();
+  const toast=useToast();
   const s = student;
   if (!s) return null;
   const tog = menuBtn;
@@ -51,20 +53,31 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
   const [planStrategy,setPlanStrategy]=useState("");
   const [planStrength,setPlanStrength]=useState("");
   const [planWeakness,setPlanWeakness]=useState("");
-  const [planComment,setPlanComment]=useState("");
+  const [planOpportunity,setPlanOpportunity]=useState("");
+  const [planThreat,setPlanThreat]=useState("");
   const [planComments,setPlanComments]=useState([]);
   const [planSaving,setPlanSaving]=useState(false);
+  const [planSaved,setPlanSaved]=useState(false);
+  const [planEditing,setPlanEditing]=useState(false);
   const [editingComment,setEditingComment]=useState(null);
   const [editCommentText,setEditCommentText]=useState("");
+  const [editCommentTitle,setEditCommentTitle]=useState("");
+  const [editCommentShared,setEditCommentShared]=useState(false);
+  const [showPlanReport,setShowPlanReport]=useState(false);
+  const [planRpTitle,setPlanRpTitle]=useState("");
+  const [planRpBody,setPlanRpBody]=useState("");
+  const [planRpShared,setPlanRpShared]=useState(false);
   const [fileDrag,setFileDrag]=useState(false);
   const [uploading,setUploading]=useState(false);
   const [standaloneFiles,setStandaloneFiles]=useState([]);
+  const [shareToken,setShareToken]=useState(s.share_token||null);
+  const [shareCopied,setShareCopied]=useState(false);
 
   // Tabs: 리포트를 수업 안 "기록" 서브탭으로, 계획 제거, 분석에서 리포트 제거
   const mainTabs=[
-    {id:"class",l:"수업",subs:[{id:"timeline",l:"타임라인"},{id:"calendar",l:"일정"},{id:"notes",l:"레포트"}]},
+    {id:"class",l:"수업",subs:[{id:"timeline",l:"타임라인"},{id:"calendar",l:"일정"}]},
     {id:"study",l:"학습관리",subs:[{id:"homework",l:"숙제"},{id:"wrong",l:"오답관리"}]},
-    {id:"analysis",l:"분석",subs:[{id:"scores",l:"성적"},{id:"plan",l:"계획"}]},
+    {id:"analysis",l:"분석",subs:[{id:"plan",l:"오버뷰"},{id:"scores",l:"성적"}]},
     {id:"archive",l:"자료실",subs:[{id:"files",l:"자료"}]}
   ];
   const curMain=mainTabs.find(m=>m.id===mainTab);
@@ -78,6 +91,7 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
       supabase.from('wrong_answers').select('*').eq('student_id',s.id).order('created_at',{ascending:false}),
       supabase.from('reports').select('*').eq('student_id',s.id).order('date',{ascending:false}),
     ]);
+    if(a.error||b.error||c.error||d.error)toast?.('데이터를 불러오지 못했습니다','error');
     setLessons(a.data||[]);setScores(b.data||[]);setWrongs(c.data||[]);
     const allReps=d.data||[];
     setReports(allReps.filter(r=>r.type!=='plan'));
@@ -86,6 +100,8 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
     setPlanStrategy(s.plan_strategy||"");
     setPlanStrength(s.plan_strength||"");
     setPlanWeakness(s.plan_weakness||"");
+    setPlanOpportunity(s.plan_opportunity||"");
+    setPlanThreat(s.plan_threat||"");
     // Fetch standalone files (not linked to lessons)
     const{data:sf}=await supabase.from('files').select('*').eq('student_id',s.id).is('lesson_id',null).order('created_at',{ascending:false});
     setStandaloneFiles(sf||[]);
@@ -104,10 +120,11 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
   const reasonMap={};
   reasonSource.forEach(w=>{const r=w.reason||"미분류";reasonMap[r]=(reasonMap[r]||0)+1;});
   const reasonData=Object.entries(reasonMap).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([reason,count],i)=>({name:reason,count,fill:REASON_COLORS[i%REASON_COLORS.length]}));
-  const chapterSource=chapterBook?wrongs.filter(w=>w.book===chapterBook):wrongs;
+  const chapterBookSel=chapterBook||wBooks[0]||"";
+  const chapterSource=chapterBookSel?wrongs.filter(w=>w.book===chapterBookSel):wrongs;
   const chapterMap={};
   chapterSource.forEach(w=>{const c=w.chapter||"미분류";chapterMap[c]=(chapterMap[c]||0)+1;});
-  const chapterData=Object.entries(chapterMap).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([name,count],i)=>({name,count,fill:REASON_COLORS[i%REASON_COLORS.length]}));
+  const chapterData=Object.entries(chapterMap).sort((a,b)=>a[0].localeCompare(b[0],undefined,{numeric:true})).slice(0,8).map(([name,count],i)=>({name,count,fill:REASON_COLORS[i%REASON_COLORS.length]}));
 
   const _rmc={};wrongs.forEach(w=>{const r=w.reason||"미분류";_rmc[r]=(_rmc[r]||0)+1;});
   const reasonColorMap={};Object.entries(_rmc).sort((a,b)=>b[1]-a[1]).forEach(([r],i)=>{reasonColorMap[r]=REASON_COLORS[i%REASON_COLORS.length];});
@@ -127,34 +144,66 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
     if(l.is_recurring&&l.date!==viewDate){const d=await materialize(l,viewDate);if(d)setLesDetailData(d);}
     else setLesDetailData(l);
   };
-  const addWrong=async()=>{if(!wForm.problem_num.trim())return;const nums=wForm.problem_num.split(',').map(n=>n.trim()).filter(Boolean);if(!nums.length)return;const rows=nums.map(n=>({student_id:s.id,book:wForm.book,chapter:wForm.chapter,problem_num:n,reason:wForm.reason,note:wForm.note,user_id:user.id}));const{data,error}=await supabase.from('wrong_answers').insert(rows).select();if(!error&&data){setWrongs(p=>[...data,...p]);setWForm(f=>({...f,problem_num:"",reason:"",note:""}));setWPage(0);}};
-  const delWrong=async(id)=>{await supabase.from('wrong_answers').delete().eq('id',id);setWrongs(p=>p.filter(w=>w.id!==id));};
+  const addWrong=async()=>{if(!wForm.problem_num.trim())return;const nums=wForm.problem_num.split(',').map(n=>n.trim()).filter(Boolean);if(!nums.length)return;const rows=nums.map(n=>({student_id:s.id,book:wForm.book,chapter:wForm.chapter,problem_num:n,reason:wForm.reason,note:wForm.note,user_id:user.id}));const{data,error}=await supabase.from('wrong_answers').insert(rows).select();if(error){toast?.('오답 추가에 실패했습니다','error');return;}if(data){setWrongs(p=>[...data,...p]);setWForm(f=>({...f,problem_num:"",reason:"",note:""}));setWPage(0);toast?.(`오답 ${data.length}건 추가됨`);}};
+  const delWrong=async(id)=>{const{error}=await supabase.from('wrong_answers').delete().eq('id',id);if(error){toast?.('삭제에 실패했습니다','error');return;}setWrongs(p=>p.filter(w=>w.id!==id));};
   const wTimers=useRef({});
   const updWrong=(id,key,val)=>{setWrongs(p=>p.map(w=>w.id===id?{...w,[key]:val}:w));const tk=id+key;clearTimeout(wTimers.current[tk]);wTimers.current[tk]=setTimeout(async()=>{await supabase.from('wrong_answers').update({[key]:val}).eq('id',id);},500);};
-  const addRp=async()=>{if(!nT.trim())return;const{data,error}=await supabase.from('reports').insert({student_id:s.id,title:nT,body:nB,is_shared:nS,date:fd(new Date()),user_id:user.id}).select().single();if(!error&&data){setReports(p=>[data,...p]);setNT("");setNB("");setNS(false);setShowNew(false);}};
-  const addScore=async()=>{if(!scoreForm.score)return;const{data,error}=await supabase.from('scores').insert({student_id:s.id,date:scoreForm.date,score:parseInt(scoreForm.score),label:scoreForm.label,user_id:user.id}).select().single();if(!error&&data){setScores(p=>[...p,data]);setScoreForm({date:"",score:"",label:""});setShowAddScore(false);}};
+  const addRp=async()=>{if(!nT.trim())return;const{data,error}=await supabase.from('reports').insert({student_id:s.id,title:nT,body:nB,is_shared:nS,date:fd(new Date()),user_id:user.id}).select().single();if(error){toast?.('레포트 저장에 실패했습니다','error');return;}if(data){setReports(p=>[data,...p]);setNT("");setNB("");setNS(false);setShowNew(false);toast?.('레포트가 등록되었습니다');}};
+  const addScore=async()=>{if(!scoreForm.score)return;const{data,error}=await supabase.from('scores').insert({student_id:s.id,date:scoreForm.date,score:parseInt(scoreForm.score),label:scoreForm.label,user_id:user.id}).select().single();if(error){toast?.('성적 추가에 실패했습니다','error');return;}if(data){setScores(p=>[...p,data]);setScoreForm({date:"",score:"",label:""});setShowAddScore(false);toast?.('성적이 추가되었습니다');}};
   const openEditScore=(sc)=>{setEditScore(sc);setEditScoreForm({date:sc.date||"",score:String(sc.score),label:sc.label||""});};
-  const saveEditScore=async()=>{if(!editScore||!editScoreForm.score)return;const{error}=await supabase.from('scores').update({date:editScoreForm.date,score:parseInt(editScoreForm.score),label:editScoreForm.label}).eq('id',editScore.id);if(!error){setScores(p=>p.map(x=>x.id===editScore.id?{...x,date:editScoreForm.date,score:parseInt(editScoreForm.score),label:editScoreForm.label}:x));setEditScore(null);}};
-  const savePlanFields=async()=>{setPlanSaving(true);await supabase.from('students').update({plan_strategy:planStrategy,plan_strength:planStrength,plan_weakness:planWeakness}).eq('id',s.id);setPlanSaving(false);};
-  const addPlanComment=async()=>{if(!planComment.trim())return;const{data,error}=await supabase.from('reports').insert({student_id:s.id,title:"",body:planComment,type:"plan",date:fd(new Date()),user_id:user.id}).select().single();if(!error&&data){setPlanComments(p=>[data,...p]);setPlanComment("");}};
-  const updatePlanComment=async(id)=>{if(!editCommentText.trim())return;await supabase.from('reports').update({body:editCommentText}).eq('id',id);setPlanComments(p=>p.map(c=>c.id===id?{...c,body:editCommentText}:c));setEditingComment(null);setEditCommentText("");};
+  const saveEditScore=async()=>{if(!editScore||!editScoreForm.score)return;const{error}=await supabase.from('scores').update({date:editScoreForm.date,score:parseInt(editScoreForm.score),label:editScoreForm.label}).eq('id',editScore.id);if(error){toast?.('성적 수정에 실패했습니다','error');return;}setScores(p=>p.map(x=>x.id===editScore.id?{...x,date:editScoreForm.date,score:parseInt(editScoreForm.score),label:editScoreForm.label}:x));setEditScore(null);toast?.('성적이 수정되었습니다');};
+  const savePlanFields=async()=>{
+    setPlanSaving(true);setPlanSaved(false);
+    try{
+      const full={plan_strategy:planStrategy,plan_strength:planStrength,plan_weakness:planWeakness,plan_opportunity:planOpportunity,plan_threat:planThreat};
+      const{error}=await supabase.from('students').update(full).eq('id',s.id);
+      if(error){
+        // Fallback: try without new columns
+        const{error:e2}=await supabase.from('students').update({plan_strategy:planStrategy,plan_strength:planStrength,plan_weakness:planWeakness}).eq('id',s.id);
+        if(e2){toast?.('계획 저장에 실패했습니다','error');setPlanSaving(false);return;}
+      }
+      setPlanEditing(false);toast?.('계획이 저장되었습니다');
+    }catch(e){toast?.('계획 저장 중 오류가 발생했습니다','error');}
+    setPlanSaving(false);
+  };
+  const addPlanReport=async()=>{
+    if(!planRpTitle.trim()){toast?.('제목을 입력해주세요','error');return;}
+    try{
+      const row={student_id:s.id,title:planRpTitle,body:planRpBody,is_shared:planRpShared,type:"plan",date:fd(new Date()),user_id:user.id};
+      const{data,error}=await supabase.from('reports').insert(row).select().single();
+      if(error){toast?.('리포트 저장에 실패했습니다','error');return;}
+      if(data){setPlanComments(p=>[data,...p]);setPlanRpTitle("");setPlanRpBody("");setPlanRpShared(false);setShowPlanReport(false);toast?.('리포트가 등록되었습니다');}
+    }catch(e){toast?.('리포트 저장 중 오류가 발생했습니다','error');}
+  };
+  const updatePlanComment=async(id)=>{
+    if(!editCommentTitle.trim()){toast?.('제목을 입력해주세요','error');return;}
+    const{error}=await supabase.from('reports').update({title:editCommentTitle,body:editCommentText,is_shared:editCommentShared}).eq('id',id);
+    if(error){toast?.('기록 수정에 실패했습니다','error');return;}
+    setPlanComments(p=>p.map(c=>c.id===id?{...c,title:editCommentTitle,body:editCommentText,is_shared:editCommentShared}:c));setEditingComment(null);setEditCommentText("");setEditCommentTitle("");
+  };
   const handleFileDrop=async(e)=>{e.preventDefault();setFileDrag(false);const files=e.dataTransfer?e.dataTransfer.files:e.target.files;if(!files||!files.length)return;setUploading(true);
     for(const file of files){
       const ext=file.name.split('.').pop().toLowerCase();
       const ftype=["pdf"].includes(ext)?"pdf":["jpg","jpeg","png","gif","webp"].includes(ext)?"img":"file";
       const path=`students/${s.id}/${Date.now()}_${file.name}`;
       const{error:upErr}=await supabase.storage.from('files').upload(path,file);
-      if(upErr){console.error(upErr);continue;}
+      if(upErr){toast?.(`${file.name} 업로드 실패`,'error');continue;}
       const{data:urlData}=supabase.storage.from('files').getPublicUrl(path);
       const{data,error}=await supabase.from('files').insert({student_id:s.id,file_name:file.name,file_type:ftype,file_url:urlData.publicUrl,user_id:user.id}).select().single();
       if(!error&&data)setStandaloneFiles(p=>[data,...p]);
     }
     setUploading(false);
   };
-  const delFile=async(id)=>{await supabase.from('files').delete().eq('id',id);setStandaloneFiles(p=>p.filter(f=>f.id!==id));};
+  const delFile=async(id)=>{const{error}=await supabase.from('files').delete().eq('id',id);if(error){toast?.('파일 삭제에 실패했습니다','error');return;}setStandaloneFiles(p=>p.filter(f=>f.id!==id));};
+  const copyShareLink=async()=>{
+    let tk=shareToken;
+    if(!tk){tk=crypto.randomUUID();const{error}=await supabase.from('students').update({share_token:tk}).eq('id',s.id);if(error){toast?.('공유 링크 생성에 실패했습니다','error');return;}setShareToken(tk);}
+    const url=window.location.origin+"/share/"+tk;
+    try{await navigator.clipboard.writeText(url);setShareCopied(true);setTimeout(()=>setShareCopied(false),2000);}catch{prompt("링크를 복사하세요:",url);}
+  };
   const updLesDetail=async(id,data)=>{
     const u={};if(data.top!==undefined)u.topic=data.top;if(data.content!==undefined)u.content=data.content;if(data.feedback!==undefined)u.feedback=data.feedback;if(data.tMemo!==undefined)u.private_memo=data.tMemo;if(data.planShared!==undefined)u.plan_shared=data.planShared;if(data.planPrivate!==undefined)u.plan_private=data.planPrivate;
-    if(Object.keys(u).length)await supabase.from('lessons').update(u).eq('id',id);
+    if(Object.keys(u).length){const{error}=await supabase.from('lessons').update(u).eq('id',id);if(error){toast?.('수업 정보 저장에 실패했습니다','error');return;}}
     // Sync homework to DB
     const les=lessons.find(l=>l.id===id);
     const oldHw=les?.homework||[],newHw=data.hw||[];
@@ -169,6 +218,7 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
     const finalHw=[...toUpd,...ins];
     setLesDetailData(p=>p?{...p,...data,homework:finalHw}:p);
     setLessons(p=>p.map(l=>l.id===id?{...l,...u,homework:finalHw,files:data.files||l.files}:l));
+    toast?.('수업 정보가 저장되었습니다');
   };
 
   if(loading)return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:C.tt,fontSize:14}}>불러오는 중...</div></div>);
@@ -190,7 +240,10 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
             <div style={{fontSize:13,color:C.ts}}>{s.subject} · {s.grade}{s.school?" · "+s.school:""}</div>
           </div>
         </div>
-        <label style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:C.ts,cursor:"pointer"}}><input type="checkbox" checked={isParent} onChange={e=>setIsParent(e.target.checked)}/>학부모 뷰</label>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <button onClick={copyShareLink} style={{background:shareCopied?C.sb:C.as,color:shareCopied?C.su:C.ac,border:"1px solid "+(shareCopied?"#BBF7D0":C.al),borderRadius:8,padding:"6px 12px",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",transition:"all .2s"}}>{shareCopied?"링크 복사됨":"공유 링크"}</button>
+          <label style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:C.ts,cursor:"pointer",whiteSpace:"nowrap"}}><input type="checkbox" checked={isParent} onChange={e=>setIsParent(e.target.checked)}/>학부모 뷰</label>
+        </div>
       </div>
 
       {/* Main tabs */}
@@ -484,8 +537,7 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
               <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:12,padding:"14px 12px"}}>
                 <div style={{fontSize:12,fontWeight:600,color:C.tp,marginBottom:6}}>단원별 오답</div>
                 <div style={{display:"flex",gap:3,marginBottom:8,flexWrap:"wrap"}}>
-                  <button onClick={()=>setChapterBook("")} style={{padding:"2px 8px",borderRadius:5,border:"1px solid "+(!chapterBook?C.ac:C.bd),background:!chapterBook?C.as:"transparent",fontSize:9,fontWeight:!chapterBook?600:400,color:!chapterBook?C.ac:C.ts,cursor:"pointer",fontFamily:"inherit"}}>전체</button>
-                  {wBooks.map(b=>(<button key={b} onClick={()=>setChapterBook(chapterBook===b?"":b)} style={{padding:"2px 8px",borderRadius:5,border:"1px solid "+(chapterBook===b?C.ac:C.bd),background:chapterBook===b?C.as:"transparent",fontSize:9,fontWeight:chapterBook===b?600:400,color:chapterBook===b?C.ac:C.ts,cursor:"pointer",fontFamily:"inherit"}}>{b}</button>))}
+                  {wBooks.map(b=>(<button key={b} onClick={()=>setChapterBook(b)} style={{padding:"2px 8px",borderRadius:5,border:"1px solid "+(chapterBookSel===b?C.ac:C.bd),background:chapterBookSel===b?C.as:"transparent",fontSize:9,fontWeight:chapterBookSel===b?600:400,color:chapterBookSel===b?C.ac:C.ts,cursor:"pointer",fontFamily:"inherit"}}>{b}</button>))}
                 </div>
                 {chapterData.length>0?(<ResponsiveContainer width="100%" height={120}>
                   <BarChart data={chapterData} margin={{top:4,right:4,left:-20,bottom:0}}>
@@ -526,34 +578,50 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
                 <span style={{fontSize:13,fontWeight:600,color:book?C.tp:C.tt}}>{book||"교재명 미지정"} <span style={{fontWeight:400,color:C.tt}}>({items.length})</span></span>
                 <span style={{fontSize:12,color:C.tt}}>{exp?"▲":"▼"}</span>
               </div>
-              {exp&&<table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-                <thead><tr>{["단원","번호","사유","메모",""].map((h,i)=>(<th key={i} style={{padding:"8px 10px",textAlign:"left",color:C.tt,fontWeight:500,borderBottom:"1px solid "+C.bd}}>{h}</th>))}</tr></thead>
-                <tbody>{items.map(w=>{const rc=reasonColorMap[w.reason||"미분류"]||"#888";const cc=chapterColorMap[w.chapter]||null;return(<tr key={w.id} style={{borderBottom:"1px solid "+C.bl}}>
-                  <td style={{padding:"6px 4px"}}>{isParent?<span style={{fontSize:12,padding:"0 6px",display:"inline-flex",alignItems:"center",gap:4,color:w.chapter?C.ts:"#bbb"}}>{cc&&<span style={{display:"inline-block",width:7,height:7,borderRadius:"50%",background:cc,flexShrink:0}}/>}{w.chapter||"단원"}</span>:<div style={{display:"flex",alignItems:"center",gap:4}}>{cc&&<span style={{display:"inline-block",width:7,height:7,borderRadius:"50%",background:cc,flexShrink:0}}/>}<input value={w.chapter||""} onChange={e=>updWrong(w.id,"chapter",e.target.value)} style={{border:"none",outline:"none",background:"transparent",color:C.ts,fontSize:12,fontFamily:"inherit",width:"100%",padding:"2px 6px"}} placeholder="단원"/></div>}</td>
+              {exp&&(()=>{const uCh=[];const seen=new Set();items.forEach(w=>{const ch=w.chapter||"";if(!seen.has(ch)){seen.add(ch);uCh.push(ch);}});return <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+                <thead><tr>{["번호","사유","메모",""].map((h,i)=>(<th key={i} style={{padding:"8px 10px",textAlign:"left",color:C.tt,fontWeight:500,borderBottom:"1px solid "+C.bd}}>{h}</th>))}</tr></thead>
+                <tbody>{uCh.map(ch=>{const ck=bk+"::"+(ch||"__no_ch__");const chExp=wExpanded[ck]!==false;const chItems=items.filter(w=>(w.chapter||"")===ch);const cc=chapterColorMap[ch]||null;return(<Fragment key={ck}>
+                  <tr onClick={()=>setWExpanded(p=>({...p,[ck]:!chExp}))} style={{cursor:"pointer"}}>
+                    <td colSpan={4} style={{padding:"7px 8px",background:C.sf,borderBottom:"1px solid "+C.bd}}>
+                      <div style={{display:"flex",alignItems:"center",gap:6}}>
+                        {cc&&<span style={{display:"inline-block",width:7,height:7,borderRadius:"50%",background:cc,flexShrink:0}}/>}
+                        <span style={{fontSize:12,fontWeight:500,color:ch?C.ts:C.tt}}>{ch||"단원 미지정"}</span>
+                        <span style={{fontSize:10,color:C.tt}}>({chItems.length})</span>
+                        <span style={{fontSize:10,color:C.tt,marginLeft:"auto"}}>{chExp?"▲":"▼"}</span>
+                      </div>
+                    </td>
+                  </tr>
+                  {chExp&&chItems.map(w=>{const rc=reasonColorMap[w.reason||"미분류"]||"#888";return(<tr key={w.id} style={{borderBottom:"1px solid "+C.bl}}>
                   <td style={{padding:"6px 4px"}}>{isParent?<span style={{fontWeight:600,color:C.tp,fontSize:12,padding:"0 6px"}}>{w.problem_num}</span>:<input value={w.problem_num||""} onChange={e=>updWrong(w.id,"problem_num",e.target.value)} style={{border:"none",outline:"none",background:"transparent",fontWeight:600,color:C.tp,fontSize:12,fontFamily:"inherit",width:60,padding:"2px 6px"}}/>}</td>
                   <td style={{padding:"6px 4px"}}>{isParent?<span style={{background:rc+"20",color:rc,padding:"2px 8px",borderRadius:5,fontSize:10,fontWeight:600}}>{w.reason||"-"}</span>:<input value={w.reason||""} onChange={e=>updWrong(w.id,"reason",e.target.value)} style={{border:"none",outline:"none",background:rc+"20",color:rc,fontSize:11,fontWeight:600,fontFamily:"inherit",borderRadius:5,padding:"2px 8px",width:"100%"}} placeholder="사유"/>}</td>
                   <td style={{padding:"6px 4px"}}>{isParent?<span style={{color:C.ts,fontSize:12,padding:"0 6px"}}>{w.note||"-"}</span>:<input value={w.note||""} onChange={e=>updWrong(w.id,"note",e.target.value)} style={{border:"none",outline:"none",background:"transparent",color:C.ts,fontSize:12,fontFamily:"inherit",width:"100%",padding:"2px 6px"}} placeholder="메모"/>}</td>
                   <td style={{padding:"6px 4px"}}>{!isParent&&<button onClick={()=>delWrong(w.id)} style={{background:"none",border:"none",color:C.tt,cursor:"pointer",fontSize:11,fontFamily:"inherit"}}>삭제</button>}</td>
-                </tr>);})}</tbody>
-              </table>}
+                </tr>);})}
+                </Fragment>);})}</tbody>
+              </table>;})()}
             </div>);})):(
             <div>
-              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-                <thead><tr>{["단원","번호","사유","메모",""].map((h,i)=>(<th key={i} style={{padding:"8px 10px",textAlign:"left",color:C.tt,fontWeight:500,borderBottom:"1px solid "+C.bd}}>{h}</th>))}</tr></thead>
-                <tbody>{pagedW.map(w=>{const rc=reasonColorMap[w.reason||"미분류"]||"#888";const cc=chapterColorMap[w.chapter]||null;return(<tr key={w.id} style={{borderBottom:"1px solid "+C.bl}}>
-                  <td style={{padding:"6px 4px"}}>{isParent?<span style={{fontSize:12,padding:"0 6px",display:"inline-flex",alignItems:"center",gap:4,color:w.chapter?C.ts:"#bbb"}}>{cc&&<span style={{display:"inline-block",width:7,height:7,borderRadius:"50%",background:cc,flexShrink:0}}/>}{w.chapter||"단원"}</span>:<div style={{display:"flex",alignItems:"center",gap:4}}>{cc&&<span style={{display:"inline-block",width:7,height:7,borderRadius:"50%",background:cc,flexShrink:0}}/>}<input value={w.chapter||""} onChange={e=>updWrong(w.id,"chapter",e.target.value)} style={{border:"none",outline:"none",background:"transparent",color:C.ts,fontSize:12,fontFamily:"inherit",width:"100%",padding:"2px 6px"}} placeholder="단원"/></div>}</td>
+              {(()=>{const fItems=filteredW;const uCh=[];const seen=new Set();fItems.forEach(w=>{const ch=w.chapter||"";if(!seen.has(ch)){seen.add(ch);uCh.push(ch);}});const fk=wFilter||"__filtered__";return fItems.length===0?<div style={{textAlign:"center",padding:24,color:C.tt,fontSize:13}}>오답 기록이 없습니다</div>:<table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+                <thead><tr>{["번호","사유","메모",""].map((h,i)=>(<th key={i} style={{padding:"8px 10px",textAlign:"left",color:C.tt,fontWeight:500,borderBottom:"1px solid "+C.bd}}>{h}</th>))}</tr></thead>
+                <tbody>{uCh.map(ch=>{const ck=fk+"::"+(ch||"__no_ch__");const chExp=wExpanded[ck]!==false;const chItems=fItems.filter(w=>(w.chapter||"")===ch);const cc=chapterColorMap[ch]||null;return(<Fragment key={ck}>
+                  <tr onClick={()=>setWExpanded(p=>({...p,[ck]:!chExp}))} style={{cursor:"pointer"}}>
+                    <td colSpan={4} style={{padding:"7px 8px",background:C.sf,borderBottom:"1px solid "+C.bd}}>
+                      <div style={{display:"flex",alignItems:"center",gap:6}}>
+                        {cc&&<span style={{display:"inline-block",width:7,height:7,borderRadius:"50%",background:cc,flexShrink:0}}/>}
+                        <span style={{fontSize:12,fontWeight:500,color:ch?C.ts:C.tt}}>{ch||"단원 미지정"}</span>
+                        <span style={{fontSize:10,color:C.tt}}>({chItems.length})</span>
+                        <span style={{fontSize:10,color:C.tt,marginLeft:"auto"}}>{chExp?"▲":"▼"}</span>
+                      </div>
+                    </td>
+                  </tr>
+                  {chExp&&chItems.map(w=>{const rc=reasonColorMap[w.reason||"미분류"]||"#888";return(<tr key={w.id} style={{borderBottom:"1px solid "+C.bl}}>
                   <td style={{padding:"6px 4px"}}>{isParent?<span style={{fontWeight:600,color:C.tp,fontSize:12,padding:"0 6px"}}>{w.problem_num}</span>:<input value={w.problem_num||""} onChange={e=>updWrong(w.id,"problem_num",e.target.value)} style={{border:"none",outline:"none",background:"transparent",fontWeight:600,color:C.tp,fontSize:12,fontFamily:"inherit",width:60,padding:"2px 6px"}}/>}</td>
                   <td style={{padding:"6px 4px"}}>{isParent?<span style={{background:rc+"20",color:rc,padding:"2px 8px",borderRadius:5,fontSize:10,fontWeight:600}}>{w.reason||"-"}</span>:<input value={w.reason||""} onChange={e=>updWrong(w.id,"reason",e.target.value)} style={{border:"none",outline:"none",background:rc+"20",color:rc,fontSize:11,fontWeight:600,fontFamily:"inherit",borderRadius:5,padding:"2px 8px",width:"100%"}} placeholder="사유"/>}</td>
                   <td style={{padding:"6px 4px"}}>{isParent?<span style={{color:C.ts,fontSize:12,padding:"0 6px"}}>{w.note||"-"}</span>:<input value={w.note||""} onChange={e=>updWrong(w.id,"note",e.target.value)} style={{border:"none",outline:"none",background:"transparent",color:C.ts,fontSize:12,fontFamily:"inherit",width:"100%",padding:"2px 6px"}} placeholder="메모"/>}</td>
                   <td style={{padding:"6px 4px"}}>{!isParent&&<button onClick={()=>delWrong(w.id)} style={{background:"none",border:"none",color:C.tt,cursor:"pointer",fontSize:11,fontFamily:"inherit"}}>삭제</button>}</td>
-                </tr>);})}</tbody>
-              </table>
-              {pagedW.length===0&&<div style={{textAlign:"center",padding:24,color:C.tt,fontSize:13}}>오답 기록이 없습니다</div>}
-              {totalWPages>1&&(<div style={{display:"flex",justifyContent:"center",alignItems:"center",gap:8,marginTop:12}}>
-                <button onClick={()=>setWPage(p=>Math.max(0,p-1))} disabled={wPage===0} style={{padding:"4px 12px",border:"1px solid "+C.bd,borderRadius:6,fontSize:11,background:C.sf,cursor:wPage===0?"default":"pointer",opacity:wPage===0?.4:1,fontFamily:"inherit"}}>← 이전</button>
-                <span style={{fontSize:12,color:C.ts}}>{wPage+1} / {totalWPages}</span>
-                <button onClick={()=>setWPage(p=>Math.min(totalWPages-1,p+1))} disabled={wPage>=totalWPages-1} style={{padding:"4px 12px",border:"1px solid "+C.bd,borderRadius:6,fontSize:11,background:C.sf,cursor:wPage>=totalWPages-1?"default":"pointer",opacity:wPage>=totalWPages-1?.4:1,fontFamily:"inherit"}}>다음 →</button>
-              </div>)}
+                </tr>);})}
+                </Fragment>);})}</tbody>
+              </table>;})()}
             </div>
           )}
         </div>)}
@@ -617,30 +685,24 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
               </ResponsiveContainer>
             </div>
             {/* Test records */}
-            <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:20}}>
-              <h4 style={{fontSize:14,fontWeight:600,color:C.tp,marginBottom:14}}>시험 기록</h4>
-              <div style={{display:"flex",flexDirection:"column",gap:10}}>
-                {[...sorted].reverse().map((sc,i)=>{
-                  const d=sc.date?new Date(sc.date):null;
-                  const mLabel=d?`${d.getMonth()+1}월`:"";
-                  const barColor=sc.score>=85?C.su:sc.score>=70?C.wn:C.dn;
-                  const barBg=sc.score>=85?C.sb:sc.score>=70?C.wb:C.db;
-                  return(<div key={sc.id} style={{display:"flex",alignItems:"center",gap:12,cursor:isParent?undefined:"pointer",borderRadius:8,padding:"4px 0",transition:"background .15s"}} onClick={()=>{if(!isParent)openEditScore(sc);}} onMouseEnter={e=>{if(!isParent)e.currentTarget.style.background=C.sfh;}} onMouseLeave={e=>{e.currentTarget.style.background="transparent";}}>
-                    <div style={{minWidth:70,flexShrink:0}}>
-                      {i===0&&<div style={{fontSize:9,color:C.ac,fontWeight:600,marginBottom:1}}>최근</div>}
-                      <div style={{fontSize:13,fontWeight:600,color:C.tp}}>{sc.label||`${sorted.length-i}차`}</div>
-                      <div style={{fontSize:10,color:C.tt}}>{mLabel}</div>
-                    </div>
-                    <div style={{flex:1,height:28,background:C.bl,borderRadius:6,overflow:"hidden",position:"relative"}}>
-                      <div style={{height:"100%",width:`${sc.score}%`,background:barBg,borderRadius:6,position:"relative"}}>
-                        <div style={{position:"absolute",inset:0,background:barColor,opacity:.25,borderRadius:6}}/>
-                      </div>
-                    </div>
-                    <div style={{minWidth:44,textAlign:"right",fontSize:15,fontWeight:700,color:barColor}}>{sc.score}<span style={{fontSize:11,fontWeight:500}}>점</span></div>
-                    {!isParent&&<button onClick={e=>{e.stopPropagation();delScore(sc.id);}} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,fontSize:12,padding:4,flexShrink:0,opacity:.5}} title="삭제">x</button>}
-                  </div>);
-                })}
-              </div>
+            <div>
+              <h4 style={{fontSize:14,fontWeight:600,color:C.tp,marginBottom:12}}>시험 기록</h4>
+              {[...sorted].reverse().map((sc,i)=>{
+                const d=sc.date?new Date(sc.date):null;
+                const mLabel=d?`${d.getMonth()+1}월`:"";
+                const barColor=sc.score>=85?C.su:sc.score>=70?C.wn:C.dn;
+                return(<div key={sc.id} style={{display:"flex",alignItems:"center",padding:"10px 4px",cursor:isParent?undefined:"pointer",borderRadius:8,transition:"background .15s"}} onClick={()=>{if(!isParent)openEditScore(sc);}} onMouseEnter={e=>{if(!isParent)e.currentTarget.style.background=C.sfh;}} onMouseLeave={e=>{e.currentTarget.style.background="transparent";}}>
+                  <div style={{display:"flex",alignItems:"baseline",gap:8,minWidth:80,flexShrink:0}}>
+                    <span style={{fontSize:14,fontWeight:700,color:C.tp}}>{i===0?"최근":(sc.label||`${sorted.length-i}차`)}</span>
+                    <span style={{fontSize:12,color:C.tt}}>{mLabel}</span>
+                  </div>
+                  <div style={{flex:1}}/>
+                  <div style={{width:160,height:4,background:C.bl,borderRadius:2,overflow:"hidden",flexShrink:0,marginRight:12}}>
+                    <div style={{height:"100%",width:`${sc.score}%`,background:barColor,borderRadius:2}}/>
+                  </div>
+                  <div style={{minWidth:36,textAlign:"right",fontSize:16,fontWeight:700,color:barColor}}>{sc.score}</div>
+                </div>);
+              })}
             </div>
           </>)}
           {/* Edit Score Modal */}
@@ -662,55 +724,112 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
 
         {/* PLAN */}
         {subTab==="plan"&&(<div>
-          <h3 style={{fontSize:16,fontWeight:700,color:C.tp,marginBottom:16}}>학습 계획</h3>
-
-          {/* Editable plan fields */}
-          <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:20,marginBottom:16}}>
-            <div style={{fontSize:13,fontWeight:600,color:C.ac,marginBottom:10}}>🧭 학업 전략</div>
-            <textarea value={planStrategy} onChange={e=>{setPlanStrategy(e.target.value);e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px';}} onKeyDown={e=>bk(e,planStrategy,setPlanStrategy)} ref={el=>{if(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}}} style={{...is,minHeight:80,resize:"none",fontSize:13,lineHeight:1.7,overflow:"hidden"}} placeholder="학생의 전반적인 학습 방향과 전략을 작성하세요..." disabled={isParent}/>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+            <h3 style={{fontSize:16,fontWeight:700,color:C.tp}}>학습 오버뷰</h3>
+            {!isParent&&!planEditing&&<button onClick={()=>setPlanEditing(true)} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:8,padding:"6px 14px",fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>수정</button>}
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
-            <div style={{background:C.sb,border:"1px solid #BBF7D0",borderRadius:14,padding:16}}>
-              <div style={{fontSize:13,fontWeight:600,color:C.su,marginBottom:8}}>💪 강점</div>
-              <textarea value={planStrength} onChange={e=>{setPlanStrength(e.target.value);e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px';}} onKeyDown={e=>bk(e,planStrength,setPlanStrength)} ref={el=>{if(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}}} style={{...is,minHeight:60,resize:"none",fontSize:12,background:"transparent",border:"1px solid #BBF7D0",overflow:"hidden"}} placeholder="강점 기록..." disabled={isParent}/>
-            </div>
-            <div style={{background:C.db,border:"1px solid #FECACA",borderRadius:14,padding:16}}>
-              <div style={{fontSize:13,fontWeight:600,color:C.dn,marginBottom:8}}>🔧 보완점</div>
-              <textarea value={planWeakness} onChange={e=>{setPlanWeakness(e.target.value);e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px';}} onKeyDown={e=>bk(e,planWeakness,setPlanWeakness)} ref={el=>{if(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}}} style={{...is,minHeight:60,resize:"none",fontSize:12,background:"transparent",border:"1px solid #FECACA",overflow:"hidden"}} placeholder="보완점 기록..." disabled={isParent}/>
-            </div>
-          </div>
-          {!isParent&&<div style={{textAlign:"right",marginBottom:20}}>
-            <button onClick={savePlanFields} style={{background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"8px 20px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",opacity:planSaving?.6:1}}>{planSaving?"저장 중...":"계획 저장"}</button>
-          </div>}
 
-          {/* Timeline comments */}
+          {/* 학업 전략 + SWOT */}
+          {planEditing?(<>
+            {/* 편집 모드 */}
+            <div style={{background:C.sf,border:"2px solid "+C.ac,borderRadius:14,padding:20,marginBottom:16}}>
+              <div style={{fontSize:13,fontWeight:600,color:C.ac,marginBottom:10}}>🧭 학업 전략</div>
+              <textarea value={planStrategy} onChange={e=>{setPlanStrategy(e.target.value);e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px';}} onKeyDown={e=>bk(e,planStrategy,setPlanStrategy)} ref={el=>{if(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}}} style={{...is,minHeight:80,resize:"none",fontSize:13,lineHeight:1.7,overflow:"hidden"}} placeholder="학생의 전반적인 학습 방향과 전략을 작성하세요..."/>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+              <div style={{background:C.sb,border:"1px solid #BBF7D0",borderRadius:14,padding:16}}>
+                <div style={{fontSize:13,fontWeight:600,color:C.su,marginBottom:8}}>💪 강점 (S)</div>
+                <textarea value={planStrength} onChange={e=>{setPlanStrength(e.target.value);e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px';}} onKeyDown={e=>bk(e,planStrength,setPlanStrength)} ref={el=>{if(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}}} style={{...is,minHeight:60,resize:"none",fontSize:12,background:"transparent",border:"1px solid #BBF7D0",overflow:"hidden"}} placeholder="강점 기록..."/>
+              </div>
+              <div style={{background:C.db,border:"1px solid #FECACA",borderRadius:14,padding:16}}>
+                <div style={{fontSize:13,fontWeight:600,color:C.dn,marginBottom:8}}>🔧 약점 (W)</div>
+                <textarea value={planWeakness} onChange={e=>{setPlanWeakness(e.target.value);e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px';}} onKeyDown={e=>bk(e,planWeakness,setPlanWeakness)} ref={el=>{if(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}}} style={{...is,minHeight:60,resize:"none",fontSize:12,background:"transparent",border:"1px solid #FECACA",overflow:"hidden"}} placeholder="약점 기록..."/>
+              </div>
+              <div style={{background:"#EFF6FF",border:"1px solid #BFDBFE",borderRadius:14,padding:16}}>
+                <div style={{fontSize:13,fontWeight:600,color:C.ac,marginBottom:8}}>🚀 기회 (O)</div>
+                <textarea value={planOpportunity} onChange={e=>{setPlanOpportunity(e.target.value);e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px';}} onKeyDown={e=>bk(e,planOpportunity,setPlanOpportunity)} ref={el=>{if(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}}} style={{...is,minHeight:60,resize:"none",fontSize:12,background:"transparent",border:"1px solid #BFDBFE",overflow:"hidden"}} placeholder="기회 요인 기록..."/>
+              </div>
+              <div style={{background:C.wb,border:"1px solid #FDE68A",borderRadius:14,padding:16}}>
+                <div style={{fontSize:13,fontWeight:600,color:"#B45309",marginBottom:8}}>⚠️ 위협 (T)</div>
+                <textarea value={planThreat} onChange={e=>{setPlanThreat(e.target.value);e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px';}} onKeyDown={e=>bk(e,planThreat,setPlanThreat)} ref={el=>{if(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}}} style={{...is,minHeight:60,resize:"none",fontSize:12,background:"transparent",border:"1px solid #FDE68A",overflow:"hidden"}} placeholder="위협 요인 기록..."/>
+              </div>
+            </div>
+            <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginBottom:20}}>
+              <button onClick={()=>setPlanEditing(false)} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:8,padding:"8px 16px",fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>취소</button>
+              <button onClick={savePlanFields} style={{background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"8px 20px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",opacity:planSaving?.6:1}}>{planSaving?"저장 중...":"저장"}</button>
+            </div>
+          </>):(<>
+            {/* 읽기 모드 */}
+            <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:20,marginBottom:16}}>
+              <div style={{fontSize:13,fontWeight:600,color:C.ac,marginBottom:10}}>🧭 학업 전략</div>
+              <div style={{fontSize:13,color:planStrategy?C.tp:C.tt,lineHeight:1.7,whiteSpace:"pre-wrap",minHeight:20}}>{planStrategy||"아직 작성된 전략이 없습니다"}</div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}>
+              <div style={{background:C.sb,border:"1px solid #BBF7D0",borderRadius:14,padding:16}}>
+                <div style={{fontSize:13,fontWeight:600,color:C.su,marginBottom:8}}>💪 강점 (S)</div>
+                <div style={{fontSize:12,color:planStrength?C.tp:C.tt,lineHeight:1.7,whiteSpace:"pre-wrap",minHeight:20}}>{planStrength||"미작성"}</div>
+              </div>
+              <div style={{background:C.db,border:"1px solid #FECACA",borderRadius:14,padding:16}}>
+                <div style={{fontSize:13,fontWeight:600,color:C.dn,marginBottom:8}}>🔧 약점 (W)</div>
+                <div style={{fontSize:12,color:planWeakness?C.tp:C.tt,lineHeight:1.7,whiteSpace:"pre-wrap",minHeight:20}}>{planWeakness||"미작성"}</div>
+              </div>
+              <div style={{background:"#EFF6FF",border:"1px solid #BFDBFE",borderRadius:14,padding:16}}>
+                <div style={{fontSize:13,fontWeight:600,color:C.ac,marginBottom:8}}>🚀 기회 (O)</div>
+                <div style={{fontSize:12,color:planOpportunity?C.tp:C.tt,lineHeight:1.7,whiteSpace:"pre-wrap",minHeight:20}}>{planOpportunity||"미작성"}</div>
+              </div>
+              <div style={{background:C.wb,border:"1px solid #FDE68A",borderRadius:14,padding:16}}>
+                <div style={{fontSize:13,fontWeight:600,color:"#B45309",marginBottom:8}}>⚠️ 위협 (T)</div>
+                <div style={{fontSize:12,color:planThreat?C.tp:C.tt,lineHeight:1.7,whiteSpace:"pre-wrap",minHeight:20}}>{planThreat||"미작성"}</div>
+              </div>
+            </div>
+          </>)}
+
+          {/* 학습 리포트 */}
           <div style={{borderTop:"1px solid "+C.bd,paddingTop:20}}>
-            <div style={{fontSize:14,fontWeight:600,color:C.tp,marginBottom:14}}>기록</div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+              <div style={{fontSize:16,fontWeight:700,color:C.tp}}>학습 리포트</div>
+              {!isParent&&<button onClick={()=>setShowPlanReport(!showPlanReport)} style={{background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"8px 16px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>+ 새 리포트</button>}
+            </div>
 
-            {/* New comment input */}
-            {!isParent&&(<div style={{display:"flex",gap:8,marginBottom:16}}>
-              <textarea value={planComment} onChange={e=>setPlanComment(e.target.value)} style={{...is,height:50,resize:"none",fontSize:12,flex:1}} placeholder="진행 상황, 피드백, 계획 변경 등을 기록하세요..."/>
-              <button onClick={addPlanComment} style={{background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"8px 14px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",alignSelf:"flex-end",flexShrink:0}}>등록</button>
+            {/* New report form */}
+            {showPlanReport&&!isParent&&(<div style={{background:C.sf,border:"2px solid "+C.ac,borderRadius:14,padding:20,marginBottom:16}}>
+              <div style={{marginBottom:10}}><label style={ls}>제목</label><input value={planRpTitle} onChange={e=>setPlanRpTitle(e.target.value)} style={is} placeholder="예: 2월 1~2주차 학습 리포트"/></div>
+              <div style={{marginBottom:10}}><label style={ls}>내용</label><textarea value={planRpBody} onChange={e=>setPlanRpBody(e.target.value)} style={{...is,minHeight:120,resize:"vertical"}} placeholder="학습 진행 상황, 피드백, 계획 변경 등을 기록하세요..."/></div>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <label style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:C.ts,cursor:"pointer"}}><input type="checkbox" checked={planRpShared} onChange={e=>setPlanRpShared(e.target.checked)}/>학부모 공유</label>
+                <div style={{display:"flex",gap:8}}>
+                  <button onClick={()=>setShowPlanReport(false)} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:8,padding:"8px 14px",fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>취소</button>
+                  <button onClick={addPlanReport} style={{background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"8px 16px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>저장</button>
+                </div>
+              </div>
             </div>)}
 
-            {/* Comment timeline */}
-            {planComments.length===0?(<div style={{textAlign:"center",padding:24,color:C.tt,fontSize:12}}>아직 기록이 없습니다</div>):(
+            {/* Report timeline */}
+            {planComments.length===0?(<div style={{textAlign:"center",padding:40,color:C.tt,background:C.sf,border:"1px solid "+C.bd,borderRadius:14}}><div style={{fontSize:14}}>아직 학습 리포트가 없습니다</div><div style={{fontSize:12,marginTop:4,color:C.tt}}>학생의 학습 진행 상황을 기록해보세요</div></div>):(
               <div style={{position:"relative",paddingLeft:20}}>
-                <div style={{position:"absolute",left:5,top:4,bottom:4,width:2,background:C.bl}}/>
-                {planComments.map((c,i)=>(<div key={c.id} style={{position:"relative",marginBottom:12}}>
-                  <div style={{position:"absolute",left:-20+1,top:4,width:8,height:8,borderRadius:"50%",background:i===0?C.ac:C.bd}}/>
-                  <div style={{background:C.sfh,borderRadius:10,padding:"10px 14px"}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-                      <span style={{fontSize:11,color:C.tt}}>{c.date}</span>
-                      {!isParent&&editingComment!==c.id&&<button onClick={()=>{setEditingComment(c.id);setEditCommentText(c.body);}} style={{background:"none",border:"none",fontSize:10,color:C.ac,cursor:"pointer",fontFamily:"inherit"}}>수정</button>}
+                <div style={{position:"absolute",left:5,top:8,bottom:8,width:2,background:C.bl}}/>
+                {planComments.map((c,i)=>(<div key={c.id} style={{position:"relative",marginBottom:16}}>
+                  <div style={{position:"absolute",left:-20+1,top:6,width:10,height:10,borderRadius:"50%",background:i===0?C.ac:C.bd}}/>
+                  <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:18,borderLeft:i===0?"3px solid "+C.ac:"none"}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+                      <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                        <span style={{fontSize:14,fontWeight:600,color:C.tp}}>{c.title||"리포트"}</span>
+                        {c.is_shared?<span style={{background:C.as,color:C.ac,padding:"2px 8px",borderRadius:5,fontSize:10,fontWeight:600}}>공유됨</span>:<span style={{background:C.sfh,color:C.tt,padding:"2px 8px",borderRadius:5,fontSize:10}}>비공개</span>}
+                        {!isParent&&editingComment!==c.id&&<button onClick={()=>{setEditingComment(c.id);setEditCommentTitle(c.title||"");setEditCommentText(c.body||"");setEditCommentShared(!!c.is_shared);}} style={{background:"none",border:"none",fontSize:10,color:C.ac,cursor:"pointer",fontFamily:"inherit",padding:0}}>수정</button>}
+                      </div>
+                      <span style={{fontSize:12,color:C.tt,flexShrink:0}}>{c.date}</span>
                     </div>
                     {editingComment===c.id?(<div>
-                      <textarea value={editCommentText} onChange={e=>setEditCommentText(e.target.value)} style={{...is,height:50,resize:"none",fontSize:12,marginBottom:6}}/>
-                      <div style={{display:"flex",gap:6,justifyContent:"flex-end"}}>
-                        <button onClick={()=>setEditingComment(null)} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:6,padding:"4px 10px",fontSize:10,cursor:"pointer",fontFamily:"inherit"}}>취소</button>
-                        <button onClick={()=>updatePlanComment(c.id)} style={{background:C.pr,color:"#fff",border:"none",borderRadius:6,padding:"4px 10px",fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>저장</button>
+                      <div style={{marginBottom:8}}><label style={{...ls,marginBottom:4}}>제목</label><input value={editCommentTitle} onChange={e=>setEditCommentTitle(e.target.value)} style={{...is,fontSize:12}} placeholder="리포트 제목"/></div>
+                      <div style={{marginBottom:8}}><label style={{...ls,marginBottom:4}}>내용</label><textarea value={editCommentText} onChange={e=>setEditCommentText(e.target.value)} style={{...is,minHeight:80,resize:"vertical",fontSize:12}}/></div>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                        <label style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:C.ts,cursor:"pointer"}}><input type="checkbox" checked={editCommentShared} onChange={e=>setEditCommentShared(e.target.checked)}/>학부모 공유</label>
+                        <div style={{display:"flex",gap:6}}>
+                          <button onClick={()=>setEditingComment(null)} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:6,padding:"4px 10px",fontSize:10,cursor:"pointer",fontFamily:"inherit"}}>취소</button>
+                          <button onClick={()=>updatePlanComment(c.id)} style={{background:C.pr,color:"#fff",border:"none",borderRadius:6,padding:"4px 10px",fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>저장</button>
+                        </div>
                       </div>
-                    </div>):(<div style={{fontSize:13,color:C.tp,lineHeight:1.6,whiteSpace:"pre-wrap"}}>{c.body}</div>)}
+                    </div>):(<div style={{fontSize:13,color:C.ts,lineHeight:1.7,whiteSpace:"pre-wrap"}}>{c.body}</div>)}
                   </div>
                 </div>))}
               </div>
