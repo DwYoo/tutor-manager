@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, BarChart, Bar, Cell } from 'recharts';
@@ -94,7 +94,7 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
 
   const allFiles=lessons.flatMap(l=>(l.files||[]).map(f=>({...f,lesDate:l.date,lesTopic:l.topic||l.subject})));
   const wBooks=[...new Set(wrongs.map(w=>w.book).filter(Boolean))];
-  const filteredW=wFilter?wrongs.filter(w=>w.book===wFilter):wrongs;
+  const filteredW=(wFilter?wrongs.filter(w=>w.book===wFilter):wrongs).sort((a,b)=>{const an=parseInt(a.problem_num)||0,bn=parseInt(b.problem_num)||0;return an-bn;});
   const totalWPages=Math.max(1,Math.ceil(filteredW.length/PER_PAGE));
   const pagedW=filteredW.slice(wPage*PER_PAGE,(wPage+1)*PER_PAGE);
 
@@ -123,6 +123,8 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
   };
   const addWrong=async()=>{if(!wForm.problem_num.trim())return;const{data,error}=await supabase.from('wrong_answers').insert({student_id:s.id,...wForm,user_id:user.id}).select().single();if(!error&&data){setWrongs(p=>[data,...p]);setWForm(f=>({...f,problem_num:"",reason:"",note:""}));setWPage(0);}};
   const delWrong=async(id)=>{await supabase.from('wrong_answers').delete().eq('id',id);setWrongs(p=>p.filter(w=>w.id!==id));};
+  const wTimers=useRef({});
+  const updWrong=(id,key,val)=>{setWrongs(p=>p.map(w=>w.id===id?{...w,[key]:val}:w));const tk=id+key;clearTimeout(wTimers.current[tk]);wTimers.current[tk]=setTimeout(()=>{supabase.from('wrong_answers').update({[key]:val}).eq('id',id);},500);};
   const addRp=async()=>{if(!nT.trim())return;const{data,error}=await supabase.from('reports').insert({student_id:s.id,title:nT,body:nB,is_shared:nS,date:fd(new Date()),user_id:user.id}).select().single();if(!error&&data){setReports(p=>[data,...p]);setNT("");setNB("");setNS(false);setShowNew(false);}};
   const addScore=async()=>{if(!scoreForm.score)return;const{data,error}=await supabase.from('scores').insert({student_id:s.id,date:scoreForm.date,score:parseInt(scoreForm.score),label:scoreForm.label,user_id:user.id}).select().single();if(!error&&data){setScores(p=>[...p,data]);setScoreForm({date:"",score:"",label:""});setShowAddScore(false);}};
   const openEditScore=(sc)=>{setEditScore(sc);setEditScoreForm({date:sc.date||"",score:String(sc.score),label:sc.label||""});};
@@ -513,7 +515,7 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
 
           {/* Wrong answers list */}
           {wrongs.length===0?(<div style={{textAlign:"center",padding:40,color:C.tt,background:C.sf,border:"1px solid "+C.bd,borderRadius:14}}><div style={{fontSize:14}}>오답 기록이 없습니다</div></div>):
-          !wFilter?(wBooks.map(book=>{const items=wrongs.filter(w=>w.book===book);const exp=wExpanded[book]!==false;return(
+          !wFilter?(wBooks.map(book=>{const items=[...wrongs.filter(w=>w.book===book)].sort((a,b)=>{const an=parseInt(a.problem_num)||0,bn=parseInt(b.problem_num)||0;return an-bn;});const exp=wExpanded[book]!==false;return(
             <div key={book} style={{marginBottom:12}}>
               <div onClick={()=>setWExpanded(p=>({...p,[book]:!exp}))} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",background:C.sfh,borderRadius:10,cursor:"pointer",marginBottom:exp?8:0}}>
                 <span style={{fontSize:13,fontWeight:600,color:C.tp}}>{book} <span style={{fontWeight:400,color:C.tt}}>({items.length})</span></span>
@@ -522,11 +524,11 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
               {exp&&<table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
                 <thead><tr>{["단원","번호","사유","메모",""].map((h,i)=>(<th key={i} style={{padding:"8px 10px",textAlign:"left",color:C.tt,fontWeight:500,borderBottom:"1px solid "+C.bd}}>{h}</th>))}</tr></thead>
                 <tbody>{items.map(w=>(<tr key={w.id} style={{borderBottom:"1px solid "+C.bl}}>
-                  <td style={{padding:"8px 10px",color:C.ts}}>{w.chapter}</td>
-                  <td style={{padding:"8px 10px",fontWeight:600,color:C.tp}}>{w.problem_num}</td>
-                  <td style={{padding:"8px 10px"}}><span style={{background:C.wb,color:C.wn,padding:"2px 8px",borderRadius:5,fontSize:10,fontWeight:600}}>{w.reason||"-"}</span></td>
-                  <td style={{padding:"8px 10px",color:C.ts,maxWidth:200,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{w.note||"-"}</td>
-                  <td style={{padding:"8px 10px"}}>{!isParent&&<button onClick={()=>delWrong(w.id)} style={{background:"none",border:"none",color:C.tt,cursor:"pointer",fontSize:11,fontFamily:"inherit"}}>삭제</button>}</td>
+                  <td style={{padding:"6px 4px"}}>{isParent?<span style={{color:C.ts,fontSize:12,padding:"0 6px"}}>{w.chapter}</span>:<input value={w.chapter||""} onChange={e=>updWrong(w.id,"chapter",e.target.value)} style={{border:"none",outline:"none",background:"transparent",color:C.ts,fontSize:12,fontFamily:"inherit",width:"100%",padding:"2px 6px"}}/>}</td>
+                  <td style={{padding:"6px 4px"}}>{isParent?<span style={{fontWeight:600,color:C.tp,fontSize:12,padding:"0 6px"}}>{w.problem_num}</span>:<input value={w.problem_num||""} onChange={e=>updWrong(w.id,"problem_num",e.target.value)} style={{border:"none",outline:"none",background:"transparent",fontWeight:600,color:C.tp,fontSize:12,fontFamily:"inherit",width:60,padding:"2px 6px"}}/>}</td>
+                  <td style={{padding:"6px 4px"}}>{isParent?<span style={{background:C.wb,color:C.wn,padding:"2px 8px",borderRadius:5,fontSize:10,fontWeight:600}}>{w.reason||"-"}</span>:<input value={w.reason||""} onChange={e=>updWrong(w.id,"reason",e.target.value)} style={{border:"none",outline:"none",background:C.wb,color:C.wn,fontSize:11,fontWeight:600,fontFamily:"inherit",borderRadius:5,padding:"2px 8px",width:"100%"}} placeholder="사유"/>}</td>
+                  <td style={{padding:"6px 4px"}}>{isParent?<span style={{color:C.ts,fontSize:12,padding:"0 6px"}}>{w.note||"-"}</span>:<input value={w.note||""} onChange={e=>updWrong(w.id,"note",e.target.value)} style={{border:"none",outline:"none",background:"transparent",color:C.ts,fontSize:12,fontFamily:"inherit",width:"100%",padding:"2px 6px"}} placeholder="메모"/>}</td>
+                  <td style={{padding:"6px 4px"}}>{!isParent&&<button onClick={()=>delWrong(w.id)} style={{background:"none",border:"none",color:C.tt,cursor:"pointer",fontSize:11,fontFamily:"inherit"}}>삭제</button>}</td>
                 </tr>))}</tbody>
               </table>}
             </div>);})):(
@@ -534,11 +536,11 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
               <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
                 <thead><tr>{["단원","번호","사유","메모",""].map((h,i)=>(<th key={i} style={{padding:"8px 10px",textAlign:"left",color:C.tt,fontWeight:500,borderBottom:"1px solid "+C.bd}}>{h}</th>))}</tr></thead>
                 <tbody>{pagedW.map(w=>(<tr key={w.id} style={{borderBottom:"1px solid "+C.bl}}>
-                  <td style={{padding:"8px 10px",color:C.ts}}>{w.chapter}</td>
-                  <td style={{padding:"8px 10px",fontWeight:600,color:C.tp}}>{w.problem_num}</td>
-                  <td style={{padding:"8px 10px"}}><span style={{background:C.wb,color:C.wn,padding:"2px 8px",borderRadius:5,fontSize:10,fontWeight:600}}>{w.reason||"-"}</span></td>
-                  <td style={{padding:"8px 10px",color:C.ts}}>{w.note||"-"}</td>
-                  <td style={{padding:"8px 10px"}}>{!isParent&&<button onClick={()=>delWrong(w.id)} style={{background:"none",border:"none",color:C.tt,cursor:"pointer",fontSize:11,fontFamily:"inherit"}}>삭제</button>}</td>
+                  <td style={{padding:"6px 4px"}}>{isParent?<span style={{color:C.ts,fontSize:12,padding:"0 6px"}}>{w.chapter}</span>:<input value={w.chapter||""} onChange={e=>updWrong(w.id,"chapter",e.target.value)} style={{border:"none",outline:"none",background:"transparent",color:C.ts,fontSize:12,fontFamily:"inherit",width:"100%",padding:"2px 6px"}}/>}</td>
+                  <td style={{padding:"6px 4px"}}>{isParent?<span style={{fontWeight:600,color:C.tp,fontSize:12,padding:"0 6px"}}>{w.problem_num}</span>:<input value={w.problem_num||""} onChange={e=>updWrong(w.id,"problem_num",e.target.value)} style={{border:"none",outline:"none",background:"transparent",fontWeight:600,color:C.tp,fontSize:12,fontFamily:"inherit",width:60,padding:"2px 6px"}}/>}</td>
+                  <td style={{padding:"6px 4px"}}>{isParent?<span style={{background:C.wb,color:C.wn,padding:"2px 8px",borderRadius:5,fontSize:10,fontWeight:600}}>{w.reason||"-"}</span>:<input value={w.reason||""} onChange={e=>updWrong(w.id,"reason",e.target.value)} style={{border:"none",outline:"none",background:C.wb,color:C.wn,fontSize:11,fontWeight:600,fontFamily:"inherit",borderRadius:5,padding:"2px 8px",width:"100%"}} placeholder="사유"/>}</td>
+                  <td style={{padding:"6px 4px"}}>{isParent?<span style={{color:C.ts,fontSize:12,padding:"0 6px"}}>{w.note||"-"}</span>:<input value={w.note||""} onChange={e=>updWrong(w.id,"note",e.target.value)} style={{border:"none",outline:"none",background:"transparent",color:C.ts,fontSize:12,fontFamily:"inherit",width:"100%",padding:"2px 6px"}} placeholder="메모"/>}</td>
+                  <td style={{padding:"6px 4px"}}>{!isParent&&<button onClick={()=>delWrong(w.id)} style={{background:"none",border:"none",color:C.tt,cursor:"pointer",fontSize:11,fontFamily:"inherit"}}>삭제</button>}</td>
                 </tr>))}</tbody>
               </table>
               {pagedW.length===0&&<div style={{textAlign:"center",padding:24,color:C.tt,fontSize:13}}>오답 기록이 없습니다</div>}
