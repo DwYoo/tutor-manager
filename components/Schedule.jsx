@@ -25,7 +25,7 @@ const IcX=()=><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke
 const IcT=()=><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e25555" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>;
 
 /* ── Add/Edit Modal ── */
-function SchModal({les,students,onSave,onDel,onDelSingle,onDelFuture,onClose,checkConflict}){
+function SchModal({les,students,onSave,onClose,checkConflict}){
   const ed=!!les?.id;
   const isCopy=les?._status==='makeup';
   const[f,sF]=useState({student_id:les?.student_id||students[0]?.id||"",date:les?.date||fd(new Date()),start_hour:les?.start_hour??14,start_min:les?.start_min??0,duration:les?.duration||90,subject:les?.subject||students[0]?.subject||"수학",topic:les?.topic||"",is_recurring:les?.is_recurring||false});
@@ -55,9 +55,8 @@ function SchModal({les,students,onSave,onDel,onDelSingle,onDelFuture,onClose,che
           <span>{conflictStu?.name||"다른 수업"}과 시간이 겹칩니다 ({p2(conflict.start_hour)}:{p2(conflict.start_min)}~{m2s(conflict.start_hour*60+conflict.start_min+conflict.duration)})</span>
         </div>}
       </div>
-      <div style={{display:"flex",gap:10,marginTop:20,justifyContent:"space-between"}}>
-        <div style={{display:"flex",gap:6}}>{ed&&!les.is_recurring&&<button onClick={()=>onDel(les.id)} style={{background:C.db,color:C.dn,border:"none",borderRadius:8,padding:"10px 16px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>삭제</button>}{ed&&les.is_recurring&&<button onClick={()=>onDelSingle(les.id,les._viewDate||les.date)} title="이 수업만 삭제" style={{background:"none",color:C.tt,border:`1px solid ${C.bd}`,borderRadius:8,padding:"8px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><IcT/></button>}{ed&&les.is_recurring&&<button onClick={()=>onDelFuture(les.id,les._viewDate||les.date)} style={{background:C.db,color:C.dn,border:"none",borderRadius:8,padding:"10px 12px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>이후 반복 삭제</button>}</div>
-        <div style={{display:"flex",gap:10}}><button onClick={onClose} style={{background:C.sfh,color:C.ts,border:`1px solid ${C.bd}`,borderRadius:8,padding:"10px 20px",fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>취소</button><button onClick={go} style={{background:conflict?C.wn:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"10px 24px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{ed?"저장":isCopy?"보강 추가":"추가"}</button></div>
+      <div style={{display:"flex",gap:10,marginTop:20,justifyContent:"flex-end"}}>
+        <button onClick={onClose} style={{background:C.sfh,color:C.ts,border:`1px solid ${C.bd}`,borderRadius:8,padding:"10px 20px",fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>취소</button><button onClick={go} style={{background:conflict?C.wn:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"10px 24px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{ed?"저장":isCopy?"보강 추가":"추가"}</button>
       </div>
     </div>
   </div>);
@@ -342,7 +341,7 @@ export default function Schedule({menuBtn}){
                     <div key={l.id} className="lb" onMouseDown={e=>onLD(e,l,date)} onContextMenu={e=>onRC(e,l,date)} style={{position:"absolute",top:tp,left:3,right:3,height:hp-2,borderRadius:8,background:isCan||dim?C.sfh:co.bg,borderLeft:`3px solid ${isCan||dim?C.bd:co.b}`,padding:"4px 8px",overflow:"hidden",zIndex:dim?1:3,opacity:isCan?.45:dim?.25:1,transition:"opacity .15s"}}>
                       <div style={{display:"flex",alignItems:"center",gap:4}}>
                         <span style={{fontSize:11,fontWeight:600,color:isCan?C.tt:co.t,textDecoration:isCan?'line-through':'none'}}>{st?.name||""}</span>
-                        {lSt!=='scheduled'&&<span style={{fontSize:8,fontWeight:700,color:LSTATUS[lSt]?.c,background:LSTATUS[lSt]?.bg,borderRadius:3,padding:"1px 4px",lineHeight:"14px"}}>{LSTATUS[lSt]?.l}</span>}
+                        <span style={{fontSize:8,fontWeight:700,color:LSTATUS[lSt]?.c,background:LSTATUS[lSt]?.bg,borderRadius:3,padding:"1px 4px",lineHeight:"14px"}}>{LSTATUS[lSt]?.l}</span>
                         {isOrig&&(l.homework||[]).length>0&&<span style={{fontSize:9,background:co.t,color:co.bg,borderRadius:4,padding:"0 4px",fontWeight:600}}>{(l.homework||[]).length}</span>}
                       </div>
                       {hp>32&&<div style={{fontSize:10,color:isCan?C.tt:co.t,opacity:.7,marginTop:1,textDecoration:isCan?'line-through':'none'}}>{isOrig?(l.topic||""):(l.subject||"")}</div>}
@@ -388,7 +387,7 @@ export default function Schedule({menuBtn}){
         </div>
       </>}
 
-      {mOpen&&<SchModal les={eLes} students={students} onSave={save} onDel={del} onDelSingle={delSingle} onDelFuture={delFuture} onClose={()=>{setMO(false);setEL(null);}} checkConflict={checkConflict}/>}
+      {mOpen&&<SchModal les={eLes} students={students} onSave={save} onClose={()=>{setMO(false);setEL(null);}} checkConflict={checkConflict}/>}
       {dLes&&<LessonDetailModal les={dLes} student={getStu(dLes.student_id)} onUpdate={updDetail} onClose={()=>setDL(null)}/>}
     </div>
   );
