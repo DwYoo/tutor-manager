@@ -25,7 +25,7 @@ const IcX=()=><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke
 const IcT=()=><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e25555" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>;
 
 /* ── Add/Edit Modal ── */
-function SchModal({les,students,onSave,onClose,checkConflict}){
+function SchModal({les,students,onSave,onClose,checkConflict,durPresets}){
   const ed=!!les?.id;
   const isCopy=les?._status==='makeup';
   const[f,sF]=useState({student_id:les?.student_id||students[0]?.id||"",date:les?.date||fd(new Date()),start_hour:les?.start_hour??14,start_min:les?.start_min??0,duration:les?.duration||90,subject:les?.subject||students[0]?.subject||"수학",topic:les?.topic||"",is_recurring:les?.is_recurring||false});
@@ -46,7 +46,7 @@ function SchModal({les,students,onSave,onClose,checkConflict}){
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
           <div><label style={ls}>시작(시)</label><select value={f.start_hour} onChange={e=>u("start_hour",+e.target.value)} style={is}>{Array.from({length:24},(_,i)=>i).map(h=>(<option key={h} value={h}>{p2(h)}</option>))}</select></div>
           <div><label style={ls}>시작(분)</label><select value={f.start_min} onChange={e=>u("start_min",+e.target.value)} style={is}>{[0,5,10,15,20,25,30,35,40,45,50,55].map(m=>(<option key={m} value={m}>{p2(m)}</option>))}</select></div>
-          <div><label style={ls}>수업시간(분)</label><input type="number" value={f.duration} onChange={e=>u("duration",+e.target.value)} style={is} step="5"/><div style={{display:"flex",gap:4,marginTop:4}}>{[60,90,120].map(v=><button key={v} type="button" onClick={()=>u("duration",v)} style={{flex:1,padding:"4px 0",borderRadius:6,border:`1px solid ${f.duration===v?C.ac:C.bd}`,background:f.duration===v?C.al:"transparent",color:f.duration===v?C.ac:C.ts,fontSize:11,fontWeight:f.duration===v?700:500,cursor:"pointer",fontFamily:"inherit"}}>{v}분</button>)}</div></div>
+          <div><label style={ls}>수업시간(분)</label><input type="number" value={f.duration} onChange={e=>u("duration",+e.target.value)} style={is} step="5"/><div style={{display:"flex",gap:4,marginTop:4}}>{durPresets.map(v=><button key={v} type="button" onClick={()=>u("duration",v)} style={{flex:1,padding:"4px 0",borderRadius:6,border:`1px solid ${f.duration===v?C.ac:C.bd}`,background:f.duration===v?C.al:"transparent",color:f.duration===v?C.ac:C.ts,fontSize:11,fontWeight:f.duration===v?700:500,cursor:"pointer",fontFamily:"inherit"}}>{v}분</button>)}</div></div>
         </div>
         <div><label style={ls}>수업 주제</label><input value={f.topic} onChange={e=>u("topic",e.target.value)} style={is} placeholder="수업 주제..."/></div>
         <label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,color:C.ts,cursor:"pointer"}}><input type="checkbox" checked={f.is_recurring} onChange={e=>u("is_recurring",e.target.checked)}/>매주 반복</label>
@@ -79,6 +79,8 @@ export default function Schedule({menuBtn}){
   const[slideDir,setSlide]=useState(null);
   const[animKey,setAnim]=useState(0);
   const[activeStu,setActive]=useState(null);
+  const[durPresets,setDP]=useState(()=>{try{const v=localStorage.getItem('sch_durPresets');return v?JSON.parse(v):[120,150,180];}catch{return [120,150,180];}});
+  const[dpEdit,setDPE]=useState(false);
   const gridRef=useRef(null);const dragRef=useRef(null);const movedRef=useRef(false);const swipeRef=useRef(null);
   const today=new Date();const wk=gwd(cur);
   const hrs=Array.from({length:enH-stH},(_,i)=>i+stH);const tH=(enH-stH)*4*SHT;
@@ -282,6 +284,11 @@ export default function Schedule({menuBtn}){
             <span>~</span>
             <select value={enH} onChange={e=>{const v=+e.target.value;setEnH(v);localStorage.setItem('sch_enH',v);}} style={{padding:"2px 4px",borderRadius:4,border:`1px solid ${C.bd}`,fontSize:11,color:C.ts,background:C.sf,fontFamily:"inherit",cursor:"pointer"}}>{Array.from({length:24-stH},(_,i)=>i+stH+1).map(h=><option key={h} value={h}>{p2(h)}:00</option>)}</select>
           </div>}
+          <div style={{display:"flex",alignItems:"center",gap:4,marginLeft:viewMode==='week'?0:"auto",fontSize:11,color:C.ts,position:"relative"}}>
+            <span style={{color:C.tt,fontSize:10}}>프리셋:</span>
+            {!dpEdit?<>{durPresets.map(v=><span key={v} style={{background:C.sfh,borderRadius:4,padding:"2px 5px",fontSize:10}}>{v}분</span>)}<button onClick={()=>setDPE(true)} style={{background:"none",border:"none",cursor:"pointer",fontSize:10,color:C.ac,fontFamily:"inherit",padding:"2px 4px"}}>편집</button></>
+            :<>{durPresets.map((v,i)=><input key={i} type="number" value={v} onChange={e=>{const n=[...durPresets];n[i]=Math.max(5,+e.target.value||0);setDP(n);}} style={{width:44,padding:"2px 4px",borderRadius:4,border:`1px solid ${C.bd}`,fontSize:10,color:C.ts,background:C.sf,fontFamily:"inherit",textAlign:"center"}} step="5"/>)}<button onClick={()=>{localStorage.setItem('sch_durPresets',JSON.stringify(durPresets));setDPE(false);}} style={{background:C.pr,color:"#fff",border:"none",borderRadius:4,padding:"2px 6px",fontSize:10,cursor:"pointer",fontFamily:"inherit"}}>저장</button></>}
+          </div>
         </div>
       </div>
 
@@ -387,7 +394,7 @@ export default function Schedule({menuBtn}){
         </div>
       </>}
 
-      {mOpen&&<SchModal les={eLes} students={students} onSave={save} onClose={()=>{setMO(false);setEL(null);}} checkConflict={checkConflict}/>}
+      {mOpen&&<SchModal les={eLes} students={students} onSave={save} onClose={()=>{setMO(false);setEL(null);}} checkConflict={checkConflict} durPresets={durPresets}/>}
       {dLes&&<LessonDetailModal les={dLes} student={getStu(dLes.student_id)} onUpdate={updDetail} onClose={()=>setDL(null)}/>}
     </div>
   );
