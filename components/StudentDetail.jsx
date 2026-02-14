@@ -40,11 +40,10 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
   const [showNew,setShowNew]=useState(false);
   const [nT,setNT]=useState("");const [nB,setNB]=useState("");const [nS,setNS]=useState(false);
   const [wForm,setWForm]=useState({book:"",chapter:"",problem_num:"",reason:"",note:""});
-  const [wFilter,setWFilter]=useState("");const [wPage,setWPage]=useState(0);const [wSearch,setWSearch]=useState("");const [wBulkMode,setWBulkMode]=useState(false);const [wSelected,setWSelected]=useState(new Set());
+  const [wFilter,setWFilter]=useState("");const [wSearch,setWSearch]=useState("");const [wBulkMode,setWBulkMode]=useState(false);const [wSelected,setWSelected]=useState(new Set());
   const [wExpanded,setWExpanded]=useState(()=>{try{const s=localStorage.getItem("wExp_"+student.id);return s?JSON.parse(s):{};}catch{return{};}});
   useEffect(()=>{try{localStorage.setItem("wExp_"+student.id,JSON.stringify(wExpanded));}catch{}},[wExpanded,student.id]);
   const [hwFilter,setHwFilter]=useState(null);
-  const PER_PAGE=20;
   const [showAddScore,setShowAddScore]=useState(false);
   const [scoreForm,setScoreForm]=useState({date:"",score:"",label:""});
   const [editScore,setEditScore]=useState(null);
@@ -59,7 +58,6 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
   const [planThreat,setPlanThreat]=useState("");
   const [planComments,setPlanComments]=useState([]);
   const [planSaving,setPlanSaving]=useState(false);
-  const [planSaved,setPlanSaved]=useState(false);
   const [planEditing,setPlanEditing]=useState(false);
   const [editingComment,setEditingComment]=useState(null);
   const [editCommentText,setEditCommentText]=useState("");
@@ -144,7 +142,7 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
     if(l.is_recurring&&l.date!==viewDate){const d=await materialize(l,viewDate);if(d)setLesDetailData(d);}
     else setLesDetailData(l);
   };
-  const addWrong=async()=>{if(!wForm.problem_num.trim())return;const nums=wForm.problem_num.split(',').map(n=>n.trim()).filter(Boolean);if(!nums.length)return;const rows=nums.map(n=>({student_id:s.id,book:wForm.book,chapter:wForm.chapter,problem_num:n,reason:wForm.reason,note:wForm.note,user_id:user.id}));const{data,error}=await supabase.from('wrong_answers').insert(rows).select();if(error){toast?.('오답 추가에 실패했습니다','error');return;}if(data){setWrongs(p=>[...data,...p]);setWForm(f=>({...f,problem_num:"",reason:"",note:""}));setWPage(0);toast?.(`오답 ${data.length}건 추가됨`);}};
+  const addWrong=async()=>{if(!wForm.problem_num.trim())return;const nums=wForm.problem_num.split(',').map(n=>n.trim()).filter(Boolean);if(!nums.length)return;const rows=nums.map(n=>({student_id:s.id,book:wForm.book,chapter:wForm.chapter,problem_num:n,reason:wForm.reason,note:wForm.note,user_id:user.id}));const{data,error}=await supabase.from('wrong_answers').insert(rows).select();if(error){toast?.('오답 추가에 실패했습니다','error');return;}if(data){setWrongs(p=>[...data,...p]);setWForm(f=>({...f,problem_num:"",reason:"",note:""}));toast?.(`오답 ${data.length}건 추가됨`);}};
   const delWrong=async(id)=>{const{error}=await supabase.from('wrong_answers').delete().eq('id',id);if(error){toast?.('삭제에 실패했습니다','error');return;}setWrongs(p=>p.filter(w=>w.id!==id));};
   const bulkDelWrong=async()=>{const ids=[...wSelected];if(!ids.length)return;const{error}=await supabase.from('wrong_answers').delete().in('id',ids);if(error){toast?.('일괄 삭제에 실패했습니다','error');return;}setWrongs(p=>p.filter(w=>!wSelected.has(w.id)));setWSelected(new Set());setWBulkMode(false);toast?.(`${ids.length}건 삭제됨`);};
   const wTimers=useRef({});
@@ -154,7 +152,7 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
   const openEditScore=(sc)=>{setEditScore(sc);setEditScoreForm({date:sc.date||"",score:String(sc.score),label:sc.label||""});};
   const saveEditScore=async()=>{if(!editScore||!editScoreForm.score)return;const{error}=await supabase.from('scores').update({date:editScoreForm.date,score:parseInt(editScoreForm.score),label:editScoreForm.label}).eq('id',editScore.id);if(error){toast?.('성적 수정에 실패했습니다','error');return;}setScores(p=>p.map(x=>x.id===editScore.id?{...x,date:editScoreForm.date,score:parseInt(editScoreForm.score),label:editScoreForm.label}:x));setEditScore(null);toast?.('성적이 수정되었습니다');};
   const savePlanFields=async()=>{
-    setPlanSaving(true);setPlanSaved(false);
+    setPlanSaving(true);
     try{
       const full={plan_strategy:planStrategy,plan_strength:planStrength,plan_weakness:planWeakness,plan_opportunity:planOpportunity,plan_threat:planThreat};
       const{error}=await supabase.from('students').update(full).eq('id',s.id);
@@ -575,8 +573,8 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
             {wBulkMode&&wSelected.size>0&&(<button onClick={bulkDelWrong} style={{background:C.dn,color:"#fff",border:"none",borderRadius:8,padding:"5px 14px",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{wSelected.size}개 삭제</button>)}
           </div>
           <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
-            <button onClick={()=>{setWFilter("");setWPage(0);}} style={{background:!wFilter?C.as:C.sfh,border:"1px solid "+(!wFilter?C.ac:C.bd),borderRadius:8,padding:"5px 12px",fontSize:11,fontWeight:!wFilter?600:400,color:!wFilter?C.ac:C.ts,cursor:"pointer",fontFamily:"inherit"}}>전체 ({wrongs.length})</button>
-            {wBooks.map(b=>{const cnt=wrongs.filter(w=>w.book===b).length;return(<button key={b} onClick={()=>{setWFilter(wFilter===b?"":b);setWPage(0);}} style={{background:wFilter===b?C.as:C.sfh,border:"1px solid "+(wFilter===b?C.ac:C.bd),borderRadius:8,padding:"5px 12px",fontSize:11,fontWeight:wFilter===b?600:400,color:wFilter===b?C.ac:C.ts,cursor:"pointer",fontFamily:"inherit"}}>{b} ({cnt})</button>);})}
+            <button onClick={()=>setWFilter("")} style={{background:!wFilter?C.as:C.sfh,border:"1px solid "+(!wFilter?C.ac:C.bd),borderRadius:8,padding:"5px 12px",fontSize:11,fontWeight:!wFilter?600:400,color:!wFilter?C.ac:C.ts,cursor:"pointer",fontFamily:"inherit"}}>전체 ({wrongs.length})</button>
+            {wBooks.map(b=>{const cnt=wrongs.filter(w=>w.book===b).length;return(<button key={b} onClick={()=>setWFilter(wFilter===b?"":b)} style={{background:wFilter===b?C.as:C.sfh,border:"1px solid "+(wFilter===b?C.ac:C.bd),borderRadius:8,padding:"5px 12px",fontSize:11,fontWeight:wFilter===b?600:400,color:wFilter===b?C.ac:C.ts,cursor:"pointer",fontFamily:"inherit"}}>{b} ({cnt})</button>);})}
           </div>
 
           {/* Wrong answers list */}
