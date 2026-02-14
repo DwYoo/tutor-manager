@@ -22,6 +22,9 @@ export default function ShareView({ token }) {
   const [error, setError] = useState(null);
   const [tab, setTab] = useState("lessons");
   const [expandedLesson, setExpandedLesson] = useState(null);
+  const [showHwDetail, setShowHwDetail] = useState(false);
+  const [showProbNum, setShowProbNum] = useState(false);
+  const [chartMode, setChartMode] = useState("grade");
 
   useEffect(() => {
     if (!token) return;
@@ -64,28 +67,38 @@ export default function ShareView({ token }) {
   if (!s) return null;
   const col = SC[(typeof s.color_index === 'number' ? s.color_index : (s.name ? s.name.charCodeAt(0) : 0)) % 8] || SC[0];
 
-  // Homework aggregation
-  const allHw = lessons.flatMap(l => (l.homework || []).map(h => ({ ...h, lesDate: l.date, lesSub: l.subject })));
+  // Filter lessons to only show past lessons (not future ones)
+  const today = new Date().toISOString().split('T')[0];
+  const pastLessons = lessons.filter(l => l.date <= today);
+
+  // Homework aggregation (only from past lessons)
+  const allHw = pastLessons.flatMap(l => (l.homework || []).map(h => ({ ...h, lesDate: l.date, lesSub: l.subject })));
   const hwDone = allHw.filter(h => (h.completion_pct || 0) >= 100).length;
   const hwInProg = allHw.filter(h => (h.completion_pct || 0) > 0 && (h.completion_pct || 0) < 100).length;
   const hwAvg = allHw.length ? Math.round(allHw.reduce((s, h) => s + (h.completion_pct || 0), 0) / allHw.length) : 0;
 
   // Score stats
-  const scoreData = scores.map(sc => ({ date: sc.date, score: sc.score, label: sc.label }));
+  const scoreData = scores.map(sc => ({ date: sc.date, score: sc.score, grade: sc.grade, label: sc.label }));
   const latestScore = scores.length ? scores[scores.length - 1].score : null;
   const bestScore = scores.length ? Math.max(...scores.map(x => x.score)) : null;
   const avgScore = scores.length ? Math.round(scores.reduce((a, x) => a + x.score, 0) / scores.length) : null;
+
+  // Grade stats
+  const gradeEntries = scores.filter(x => x.grade != null);
+  const latestGrade = gradeEntries.length ? gradeEntries[gradeEntries.length - 1].grade : null;
+  const bestGrade = gradeEntries.length ? Math.min(...gradeEntries.map(x => x.grade)) : null;
+  const avgGrade = gradeEntries.length ? Math.round(gradeEntries.reduce((a, x) => a + x.grade, 0) / gradeEntries.length) : null;
 
   // Wrong answer reason stats
   const reasonMap = {};
   wrongs.forEach(w => { const r = w.reason || "미분류"; reasonMap[r] = (reasonMap[r] || 0) + 1; });
   const reasonData = Object.entries(reasonMap).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([name, count], i) => ({ name, count, fill: REASON_COLORS[i % REASON_COLORS.length] }));
 
-  // All files
-  const lessonFiles = lessons.flatMap(l => (l.files || []).map(f => ({ ...f, lesDate: l.date, lesTopic: l.topic || l.subject })));
+  // All files (only from past lessons)
+  const lessonFiles = pastLessons.flatMap(l => (l.files || []).map(f => ({ ...f, lesDate: l.date, lesTopic: l.topic || l.subject })));
 
   const tabs = [
-    { id: "lessons", l: "수업이력", count: lessons.length },
+    { id: "lessons", l: "수업이력", count: pastLessons.length },
     { id: "study", l: "학습관리", count: allHw.length + wrongs.length },
     { id: "analysis", l: "분석", count: scores.length },
     { id: "files", l: "자료실", count: lessonFiles.length + standaloneFiles.length },
@@ -122,11 +135,11 @@ export default function ShareView({ token }) {
 
         {/* === 수업이력 === */}
         {tab === "lessons" && (<div>
-          {lessons.length === 0 ? (
+          {pastLessons.length === 0 ? (
             <Empty text="수업 기록이 없습니다" />
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {lessons.map(l => {
+              {pastLessons.map(l => {
                 const sh = l.start_hour, sm = l.start_min, dur = l.duration;
                 const em = sh * 60 + sm + dur;
                 const hw = l.homework || [];
@@ -188,33 +201,49 @@ export default function ShareView({ token }) {
         {/* === 학습관리 === */}
         {tab === "study" && (<div>
           {/* Homework section */}
-          <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp, marginBottom: 12 }}>숙제 현황</h3>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp, margin: 0 }}>숙제 현황</h3>
+            {allHw.length > 0 && (
+              <button onClick={() => setShowHwDetail(!showHwDetail)} style={{ padding: "4px 12px", border: "1px solid " + C.bd, borderRadius: 8, background: C.sf, fontSize: 11, color: C.ts, cursor: "pointer", fontFamily: "inherit" }}>
+                {showHwDetail ? "상세 숨김" : "상세 보기"}
+              </button>
+            )}
+          </div>
           {allHw.length === 0 ? <Empty text="숙제 기록이 없습니다" /> : (<>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: showHwDetail ? 16 : 28 }}>
               <StatCard label="평균 완료율" value={hwAvg + "%"} color={C.ac} />
               <StatCard label="완료" value={hwDone + "건"} color={C.su} />
               <StatCard label="진행중" value={hwInProg + "건"} color={C.wn} />
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 28 }}>
-              {allHw.map(h => (
-                <div key={h.id} style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 10, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 500, color: C.tp }}>{h.title}</div>
-                    <div style={{ fontSize: 11, color: C.tt }}>{h.lesDate} · {h.lesSub}</div>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                    <div style={{ width: 60, height: 6, borderRadius: 3, background: C.bl, overflow: "hidden" }}>
-                      <div style={{ width: (h.completion_pct || 0) + "%", height: "100%", borderRadius: 3, background: (h.completion_pct || 0) >= 100 ? C.su : C.ac }} />
+            {showHwDetail && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 28 }}>
+                {allHw.map(h => (
+                  <div key={h.id} style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 10, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 500, color: C.tp }}>{h.title}</div>
+                      <div style={{ fontSize: 11, color: C.tt }}>{h.lesDate} · {h.lesSub}</div>
                     </div>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: (h.completion_pct || 0) >= 100 ? C.su : C.ts, width: 32, textAlign: "right" }}>{h.completion_pct || 0}%</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                      <div style={{ width: 60, height: 6, borderRadius: 3, background: C.bl, overflow: "hidden" }}>
+                        <div style={{ width: (h.completion_pct || 0) + "%", height: "100%", borderRadius: 3, background: (h.completion_pct || 0) >= 100 ? C.su : C.ac }} />
+                      </div>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: (h.completion_pct || 0) >= 100 ? C.su : C.ts, width: 32, textAlign: "right" }}>{h.completion_pct || 0}%</span>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </>)}
 
           {/* Wrong answers section */}
-          <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp, marginBottom: 12 }}>오답노트</h3>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp, margin: 0 }}>오답노트</h3>
+            {wrongs.length > 0 && (
+              <button onClick={() => setShowProbNum(!showProbNum)} style={{ padding: "4px 12px", border: "1px solid " + C.bd, borderRadius: 8, background: C.sf, fontSize: 11, color: C.ts, cursor: "pointer", fontFamily: "inherit" }}>
+                {showProbNum ? "번호 숨김" : "번호 보기"}
+              </button>
+            )}
+          </div>
           {wrongs.length === 0 ? <Empty text="오답 기록이 없습니다" /> : (<>
             {reasonData.length > 0 && (
               <div style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 14, padding: 20, marginBottom: 16 }}>
@@ -241,7 +270,7 @@ export default function ShareView({ token }) {
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid " + C.bd }}>
-                    {["교재", "단원", "번호", "틀린 이유", "메모"].map(h => (
+                    {["교재", "단원", ...(showProbNum ? ["번호"] : []), "틀린 이유", "메모"].map(h => (
                       <th key={h} style={{ padding: "10px 12px", textAlign: "left", fontWeight: 600, color: C.tt, fontSize: 11 }}>{h}</th>
                     ))}
                   </tr>
@@ -251,7 +280,7 @@ export default function ShareView({ token }) {
                     <tr key={w.id} style={{ borderBottom: "1px solid " + C.bl }}>
                       <td style={{ padding: "10px 12px", color: C.tp, fontWeight: 500 }}>{w.book}</td>
                       <td style={{ padding: "10px 12px", color: C.ts }}>{w.chapter}</td>
-                      <td style={{ padding: "10px 12px", color: C.ts }}>{w.problem_num}</td>
+                      {showProbNum && <td style={{ padding: "10px 12px", color: C.ts }}>{w.problem_num}</td>}
                       <td style={{ padding: "10px 12px" }}>
                         {w.reason && <span style={{ background: C.as, color: C.ac, padding: "2px 8px", borderRadius: 4, fontSize: 11 }}>{w.reason}</span>}
                       </td>
@@ -267,29 +296,6 @@ export default function ShareView({ token }) {
 
         {/* === 분석 === */}
         {tab === "analysis" && (<div>
-          {/* Scores */}
-          <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp, marginBottom: 12 }}>성적 추이</h3>
-          {scores.length === 0 ? <Empty text="성적 기록이 없습니다" /> : (<>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 16 }}>
-              <StatCard label="최근" value={latestScore + "점"} color={C.ac} />
-              <StatCard label="최고" value={bestScore + "점"} color={C.su} />
-              <StatCard label="평균" value={avgScore + "점"} color={C.ts} />
-            </div>
-            <div style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 14, padding: 20, marginBottom: 24 }}>
-              <div style={{ height: 200 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={scoreData} margin={{ top: 5, right: 10, bottom: 5, left: -20 }}>
-                    <defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={C.ac} stopOpacity={.15} /><stop offset="100%" stopColor={C.ac} stopOpacity={0} /></linearGradient></defs>
-                    <XAxis dataKey="date" tick={{ fontSize: 10, fill: C.tt }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 10, fill: C.tt }} axisLine={false} tickLine={false} domain={['dataMin-5', 'dataMax+5']} />
-                    <Tooltip content={<ScoreTooltip />} />
-                    <Area type="monotone" dataKey="score" stroke={C.ac} strokeWidth={2} fill="url(#sg)" dot={{ r: 4, fill: C.ac, stroke: "#fff", strokeWidth: 2 }} activeDot={{ r: 6 }} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </>)}
-
           {/* SWOT */}
           <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp, marginBottom: 12 }}>학습 오버뷰</h3>
           <div style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 14, padding: 20, marginBottom: 16 }}>
@@ -306,7 +312,7 @@ export default function ShareView({ token }) {
           {/* Reports */}
           <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp, marginBottom: 12 }}>학습 리포트</h3>
           {planComments.length === 0 && reports.length === 0 ? <Empty text="리포트가 없습니다" /> : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 }}>
               {[...planComments, ...reports].sort((a, b) => (b.date || "").localeCompare(a.date || "")).map(r => (
                 <div key={r.id} style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 14, padding: 18 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
@@ -318,6 +324,66 @@ export default function ShareView({ token }) {
               ))}
             </div>
           )}
+
+          {/* Scores (moved to bottom) */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp, margin: 0 }}>성적 추이</h3>
+            {scores.length > 0 && (
+              <div style={{ display: "flex", gap: 6 }}>
+                <button onClick={() => setChartMode("grade")} style={{ padding: "4px 12px", border: "1px solid " + (chartMode === "grade" ? "#8B5CF6" : C.bd), borderRadius: 8, background: chartMode === "grade" ? "#EDE9FE" : C.sf, fontSize: 11, fontWeight: chartMode === "grade" ? 600 : 400, color: chartMode === "grade" ? "#8B5CF6" : C.ts, cursor: "pointer", fontFamily: "inherit" }}>등급</button>
+                <button onClick={() => setChartMode("score")} style={{ padding: "4px 12px", border: "1px solid " + (chartMode === "score" ? C.ac : C.bd), borderRadius: 8, background: chartMode === "score" ? C.as : C.sf, fontSize: 11, fontWeight: chartMode === "score" ? 600 : 400, color: chartMode === "score" ? C.ac : C.ts, cursor: "pointer", fontFamily: "inherit" }}>점수</button>
+              </div>
+            )}
+          </div>
+          {scores.length === 0 ? <Empty text="성적 기록이 없습니다" /> : (<>
+            {chartMode === "grade" ? (
+              gradeEntries.length === 0 ? <Empty text="등급 데이터가 없습니다" /> : (<>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 16 }}>
+                  <StatCard label="최근 등급" value={latestGrade != null ? latestGrade + "등급" : "-"} color="#8B5CF6" />
+                  <StatCard label="최고 등급" value={bestGrade != null ? bestGrade + "등급" : "-"} color={C.su} />
+                  <StatCard label="평균 등급" value={avgGrade != null ? avgGrade + "등급" : "-"} color={C.ts} />
+                </div>
+                <div style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 14, padding: 20 }}>
+                  <div style={{ height: 200 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={gradeEntries.map(x => ({ date: x.date, grade: x.grade, label: x.label }))} margin={{ top: 5, right: 10, bottom: 5, left: -20 }}>
+                        <defs><linearGradient id="gg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#8B5CF6" stopOpacity={.15} /><stop offset="100%" stopColor="#8B5CF6" stopOpacity={0} /></linearGradient></defs>
+                        <XAxis dataKey="date" tick={{ fontSize: 10, fill: C.tt }} axisLine={false} tickLine={false} />
+                        <YAxis domain={[1, 9]} reversed tick={{ fontSize: 10, fill: C.tt }} axisLine={false} tickLine={false} tickFormatter={v => v + "등급"} />
+                        <Tooltip content={({ active, payload }) => {
+                          if (!active || !payload?.length) return null;
+                          const d = payload[0].payload;
+                          return (<div style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 10, padding: "10px 14px", boxShadow: "0 4px 12px rgba(0,0,0,.08)" }}><div style={{ fontSize: 12, color: C.tt, marginBottom: 4 }}>{d.label || d.date}</div><div style={{ fontSize: 16, fontWeight: 700, color: "#8B5CF6" }}>{d.grade}등급</div></div>);
+                        }} />
+                        <Area type="monotone" dataKey="grade" stroke="#8B5CF6" strokeWidth={2} fill="url(#gg)" dot={{ r: 4, fill: "#8B5CF6", stroke: "#fff", strokeWidth: 2 }} activeDot={{ r: 6 }} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </>)
+            ) : (
+              <>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 16 }}>
+                  <StatCard label="최근" value={latestScore + "점"} color={C.ac} />
+                  <StatCard label="최고" value={bestScore + "점"} color={C.su} />
+                  <StatCard label="평균" value={avgScore + "점"} color={C.ts} />
+                </div>
+                <div style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 14, padding: 20 }}>
+                  <div style={{ height: 200 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={scoreData} margin={{ top: 5, right: 10, bottom: 5, left: -20 }}>
+                        <defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={C.ac} stopOpacity={.15} /><stop offset="100%" stopColor={C.ac} stopOpacity={0} /></linearGradient></defs>
+                        <XAxis dataKey="date" tick={{ fontSize: 10, fill: C.tt }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fontSize: 10, fill: C.tt }} axisLine={false} tickLine={false} domain={['dataMin-5', 'dataMax+5']} />
+                        <Tooltip content={<ScoreTooltip />} />
+                        <Area type="monotone" dataKey="score" stroke={C.ac} strokeWidth={2} fill="url(#sg)" dot={{ r: 4, fill: C.ac, stroke: "#fff", strokeWidth: 2 }} activeDot={{ r: 6 }} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </>
+            )}
+          </>)}
         </div>)}
 
         {/* === 자료실 === */}
