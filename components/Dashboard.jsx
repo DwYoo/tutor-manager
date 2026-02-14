@@ -11,8 +11,8 @@ const DKS=["월","화","수","목","금","토","일"];
 const p2=n=>String(n).padStart(2,"0");
 const fd=d=>`${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`;
 const gwd=base=>{const d=new Date(base),dy=d.getDay(),df=dy===0?-6:1-dy,m=new Date(d);m.setDate(d.getDate()+df);return Array.from({length:7},(_,i)=>{const t=new Date(m);t.setDate(m.getDate()+i);return t;});};
-const BN={prep:"다음 수업 준비",upcoming:"다가오는 수업",unrecorded:"기록 미완료",alerts:"주의 학생",weekChart:"주간 수업",studentList:"학생 현황",tuition:"수업료 요약"};
-const DFL={left:["prep","upcoming"],right:["unrecorded","alerts","weekChart","studentList","tuition"],hidden:[]};
+const BN={prep:"다음 수업 준비",upcoming:"다가오는 수업",unrecorded:"기록 미완료",alerts:"주의 학생",weekChart:"주간 수업",studentList:"학생 근황",tuition:"수업료 요약"};
+const DFL={left:["prep","upcoming","studentList"],right:["unrecorded","alerts","weekChart","tuition"],hidden:[]};
 
 export default function Dashboard({onNav,onDetail,menuBtn}){
   const tog=menuBtn;
@@ -178,7 +178,7 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
         <h3 style={{fontSize:15,fontWeight:600,color:C.tp,marginBottom:12}}>기록 미완료 <span style={{fontSize:12,fontWeight:500,color:C.wn,marginLeft:4}}>{unrecorded.length}건</span></h3>
         <div style={{display:"flex",flexDirection:"column",gap:6}}>
           {unrecorded.slice(0,5).map(l=>{const stu=getStu(l.student_id);const co=getCol(l.student_id);const ld=(l.date||"").slice(5,10).replace("-","/");return(
-            <div key={l.id} onClick={()=>stu&&onDetail(stu)} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",borderRadius:8,border:`1px solid ${C.bl}`,cursor:"pointer"}} className="hcard">
+            <div key={l.id} onClick={()=>setDLes(mkLes(l))} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",borderRadius:8,border:`1px solid ${C.bl}`,cursor:"pointer"}} className="hcard">
               <div style={{width:22,height:22,borderRadius:6,background:co.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:co.t}}>{(stu?.name||"?")[0]}</div>
               <div style={{flex:1}}>
                 <div style={{fontSize:12,fontWeight:600,color:C.tp}}>{stu?.name||"-"}</div>
@@ -228,22 +228,49 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
             </div>);})}
         </div>
       </div>);
-    case 'studentList': return(
+    case 'studentList': {
+      const stuStat=activeStudents.map(s=>{
+        const hw=lessons.filter(l=>l.student_id===s.id).flatMap(l=>l.homework||[]).slice(-5);
+        const hwR=hw.length>0?Math.round(hw.filter(h=>(h.completion_pct||0)>=100).length/hw.length*100):null;
+        const sc=scores.filter(x=>x.student_id===s.id).sort((a,b)=>(a.date||"").localeCompare(b.date||""));
+        const ls=sc.length>0?sc[sc.length-1]:null;
+        let tr=null;if(sc.length>=2){const c=sc[sc.length-1].score,pr=sc[sc.length-2].score;tr=c>pr?"up":c<pr?"down":"same";}
+        const mr=monthRecs.find(r=>r.student.id===s.id);
+        const nc=getNextClass(s.id);
+        return{s,hwR,ls,tr,mr,nc};
+      });
+      return(
       <div style={{background:C.sf,border:`1px solid ${C.bd}`,borderRadius:14,padding:20}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-          <h3 style={{fontSize:15,fontWeight:600,color:C.tp}}>학생 현황</h3>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+          <h3 style={{fontSize:15,fontWeight:600,color:C.tp}}>학생 근황</h3>
           <button onClick={()=>onNav("students")} style={{fontSize:11,color:C.ac,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>전체보기 →</button>
         </div>
-        <div style={{maxHeight:320,overflow:"auto"}}>
-          {activeStudents.map((s,i)=>{const col=SC[(s.color_index||0)%8];const nc=getNextClass(s.id);return(
-            <div key={s.id} onClick={()=>onDetail(s)} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 4px",borderBottom:i<activeStudents.length-1?`1px solid ${C.bl}`:"none",cursor:"pointer",borderRadius:6}} className="hcard">
-              <div style={{width:28,height:28,borderRadius:7,background:col.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:col.t}}>{(s.name||"?")[0]}</div>
-              <div style={{flex:1}}><div style={{fontSize:13,fontWeight:500,color:C.tp}}>{s.name}</div><div style={{fontSize:11,color:C.tt}}>{s.subject} · {s.grade}</div></div>
-              <span style={{fontSize:11,color:C.tt}}>{nc}</span>
+        {stuStat.length>0?(
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          {stuStat.map(({s,hwR,ls,tr,mr,nc})=>{const co=SC[(s.color_index||0)%8];
+            const hwC=hwR==null?{c:C.tt,b:C.bg}:hwR>=80?{c:C.su,b:C.sb}:hwR>=50?{c:C.wn,b:C.wb}:{c:C.dn,b:C.db};
+            const scC=tr==="up"?{c:C.su,b:C.sb}:tr==="down"?{c:C.dn,b:C.db}:{c:C.tt,b:C.bg};
+            const ps=mr?.status;const pC=ps==="paid"?{c:C.su,b:C.sb}:ps==="partial"?{c:C.wn,b:C.wb}:ps==="unpaid"?{c:C.dn,b:C.db}:{c:C.tt,b:C.bg};
+            const pL=ps==="paid"?"납완":ps==="partial"?"일부":"미납";
+            return(
+            <div key={s.id} onClick={()=>onDetail(s)} style={{padding:12,borderRadius:10,border:`1px solid ${C.bl}`,cursor:"pointer"}} className="hcard">
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                <div style={{width:28,height:28,borderRadius:7,background:co.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:co.t}}>{(s.name||"?")[0]}</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:13,fontWeight:600,color:C.tp,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.name}</div>
+                  <div style={{fontSize:11,color:C.tt}}>{s.subject} · {nc}</div>
+                </div>
+              </div>
+              <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                <span style={{fontSize:9,color:hwC.c,background:hwC.b,padding:"2px 6px",borderRadius:4,fontWeight:600}}>숙제 {hwR!=null?`${hwR}%`:"-"}</span>
+                <span style={{fontSize:9,color:scC.c,background:scC.b,padding:"2px 6px",borderRadius:4,fontWeight:600}}>{ls?`${ls.score}점${tr==="up"?"↑":tr==="down"?"↓":"→"}`:"-"}</span>
+                <span style={{fontSize:9,color:pC.c,background:pC.b,padding:"2px 6px",borderRadius:4,fontWeight:600}}>{pL}</span>
+              </div>
             </div>);})}
-          {activeStudents.length===0&&<div style={{textAlign:"center",padding:20,color:C.tt,fontSize:13}}>학생을 추가해보세요</div>}
-        </div>
-      </div>);
+        </div>):(
+        <div style={{textAlign:"center",padding:20,color:C.tt,fontSize:13}}>학생을 추가해보세요</div>
+        )}
+      </div>);}
     case 'tuition': return(
       <div onClick={()=>onNav("tuition")} style={{background:C.sf,border:`1px solid ${C.bd}`,borderRadius:14,padding:"14px 20px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}} className="hcard">
         <div><span style={{fontSize:11,color:C.tt}}>월 수입</span><span style={{fontSize:13,fontWeight:600,color:C.tp,marginLeft:8}}>{totalFee>0?`₩${totalFee.toLocaleString()}`:"₩0"}</span></div>
