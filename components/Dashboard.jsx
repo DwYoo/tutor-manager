@@ -12,7 +12,7 @@ const p2=n=>String(n).padStart(2,"0");
 const fd=d=>`${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`;
 const gwd=base=>{const d=new Date(base),dy=d.getDay(),df=dy===0?-6:1-dy,m=new Date(d);m.setDate(d.getDate()+df);return Array.from({length:7},(_,i)=>{const t=new Date(m);t.setDate(m.getDate()+i);return t;});};
 const BN={prep:"다음 수업 준비",upcoming:"다가오는 수업",unrecorded:"기록 미완료",alerts:"주의 학생",weekChart:"주간 수업",studentList:"학생 근황",tuition:"수업료 요약"};
-const DFL={left:["prep","upcoming","studentList"],right:["unrecorded","alerts","weekChart","tuition"],hidden:[]};
+const DFL={left:["prep","upcoming"],right:["unrecorded","alerts","weekChart","tuition"],bottom:["studentList"],hidden:[]};
 
 export default function Dashboard({onNav,onDetail,menuBtn}){
   const tog=menuBtn;
@@ -42,14 +42,14 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
 
   /* ── Layout persistence ── */
   useEffect(()=>{
-    try{const s=localStorage.getItem('dash-layout');if(s){const p=JSON.parse(s);const all=new Set(Object.keys(BN));const has=new Set([...(p.left||[]),...(p.right||[]),...(p.hidden||[])]);
+    try{const s=localStorage.getItem('dash-layout');if(s){const p=JSON.parse(s);const all=new Set(Object.keys(BN));const has=new Set([...(p.left||[]),...(p.right||[]),...(p.bottom||[]),...(p.hidden||[])]);
     const miss=[...all].filter(b=>!has.has(b));if(miss.length)p.right=[...(p.right||[]),...miss];
-    p.left=(p.left||[]).filter(b=>all.has(b));p.right=(p.right||[]).filter(b=>all.has(b));p.hidden=(p.hidden||[]).filter(b=>all.has(b));setLayout(p);}}catch{}
+    p.left=(p.left||[]).filter(b=>all.has(b));p.right=(p.right||[]).filter(b=>all.has(b));p.bottom=(p.bottom||[]).filter(b=>all.has(b));p.hidden=(p.hidden||[]).filter(b=>all.has(b));setLayout(p);}}catch{}
   },[]);
   const saveLay=l=>{setLayout(l);try{localStorage.setItem('dash-layout',JSON.stringify(l));}catch{}};
-  const hideBlock=id=>{saveLay({left:layout.left.filter(b=>b!==id),right:layout.right.filter(b=>b!==id),hidden:[...(layout.hidden||[]),id]});};
+  const hideBlock=id=>{saveLay({left:layout.left.filter(b=>b!==id),right:layout.right.filter(b=>b!==id),bottom:(layout.bottom||[]).filter(b=>b!==id),hidden:[...(layout.hidden||[]),id]});};
   const restoreBlock=id=>{saveLay({...layout,right:[...layout.right,id],hidden:(layout.hidden||[]).filter(b=>b!==id)});};
-  const doDrop=()=>{if(!dragId||!dropTgt)return;const nl={left:[...layout.left],right:[...layout.right],hidden:[...(layout.hidden||[])]};nl.left=nl.left.filter(b=>b!==dragId);nl.right=nl.right.filter(b=>b!==dragId);nl.hidden=nl.hidden.filter(b=>b!==dragId);nl[dropTgt.col].splice(dropTgt.idx,0,dragId);saveLay(nl);setDragId(null);setDropTgt(null);};
+  const doDrop=()=>{if(!dragId||!dropTgt)return;const nl={left:[...layout.left],right:[...layout.right],bottom:[...(layout.bottom||[])],hidden:[...(layout.hidden||[])]};nl.left=nl.left.filter(b=>b!==dragId);nl.right=nl.right.filter(b=>b!==dragId);nl.bottom=nl.bottom.filter(b=>b!==dragId);nl.hidden=nl.hidden.filter(b=>b!==dragId);nl[dropTgt.col].splice(dropTgt.idx,0,dragId);saveLay(nl);setDragId(null);setDropTgt(null);};
 
   const mkLes=l=>({...l,sh:l.start_hour,sm:l.start_min,dur:l.duration,sub:l.subject,top:l.topic,rep:l.is_recurring,tMemo:l.private_memo||"",hw:l.homework||[],files:l.files||[]});
   const updDetail=async(id,data)=>{
@@ -100,7 +100,7 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
   const getStu=sid=>students.find(x=>x.id===sid);
   const getCol=sid=>{const s=getStu(sid);return SC[(s?.color_index||0)%8];};
 
-  const getNextClass=(sid)=>{for(let offset=0;offset<14;offset++){const d=new Date(today);d.setDate(today.getDate()+offset);const sLessons=lessons.filter(l=>l.student_id===sid&&lessonOnDate(l,d));for(const l of sLessons){const lesMin=l.start_hour*60+l.start_min;if(offset===0&&lesMin<=today.getHours()*60+today.getMinutes())continue;return`${DK[d.getDay()]} ${p2(l.start_hour)}:${p2(l.start_min)}`;}}return"-";};
+  const getNextClass=(sid)=>{for(let offset=0;offset<14;offset++){const d=new Date(today);d.setDate(today.getDate()+offset);const sLessons=lessons.filter(l=>l.student_id===sid&&lessonOnDate(l,d));for(const l of sLessons){const lesMin=l.start_hour*60+l.start_min;if(offset===0&&lesMin<=today.getHours()*60+today.getMinutes())continue;return`${p2(d.getMonth()+1)}/${p2(d.getDate())}(${DK[d.getDay()]}) ${p2(l.start_hour)}:${p2(l.start_min)}`;}}return"-";};
 
   const getNextLessonPrep=()=>{for(let offset=0;offset<7;offset++){const d=new Date(today);d.setDate(today.getDate()+offset);const dayLessons=lessons.filter(l=>lessonOnDate(l,d)).sort((a,b)=>(a.start_hour*60+a.start_min)-(b.start_hour*60+b.start_min));for(const l of dayLessons){const lesMin=l.start_hour*60+l.start_min;if(offset===0&&lesMin<=today.getHours()*60+today.getMinutes())continue;const stu=getStu(l.student_id);if(!stu||stu.archived)continue;const pastLessons=lessons.filter(pl=>pl.student_id===l.student_id&&pl.id!==l.id&&(pl.date||"")<fd(d)).sort((a,b)=>(b.date||"").localeCompare(a.date||""));const last=pastLessons[0]||null;const lastHw=last?.homework||[];const hwTotal=lastHw.length;const hwDone=lastHw.filter(h=>(h.completion_pct||0)>=100).length;const stuScores=scores.filter(sc=>sc.student_id===l.student_id).sort((a,b)=>(a.date||"").localeCompare(b.date||""));let scoreTrend=null,lastScore=null;if(stuScores.length>=2){const cur=stuScores[stuScores.length-1].score,prev=stuScores[stuScores.length-2].score;scoreTrend=cur>prev?"up":cur<prev?"down":"same";}if(stuScores.length>0)lastScore=stuScores[stuScores.length-1];const dayLabel=offset===0?"오늘":offset===1?"내일":`${DK[d.getDay()]}요일`;return{lesson:l,student:stu,dayLabel,dateStr:`${p2(d.getMonth()+1)}/${p2(d.getDate())}`,last,hwTotal,hwDone,scoreTrend,lastScore};}}return null;};
   const nextPrep=getNextLessonPrep();
@@ -230,11 +230,11 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
       </div>);
     case 'studentList': {
       const stuStat=activeStudents.map(s=>{
-        const hw=lessons.filter(l=>l.student_id===s.id).flatMap(l=>l.homework||[]).slice(-5);
-        const hwR=hw.length>0?Math.round(hw.filter(h=>(h.completion_pct||0)>=100).length/hw.length*100):null;
+        const allHw=lessons.filter(l=>l.student_id===s.id).flatMap(l=>l.homework||[]);
+        const hwInc=allHw.filter(h=>(h.completion_pct||0)<100).length;
         const recent=lessons.filter(l=>l.student_id===s.id).sort((a,b)=>(b.date||"").localeCompare(a.date||""))[0];
         const nc=getNextClass(s.id);
-        return{s,hwR,recent,nc};
+        return{s,hwInc,recent,nc};
       });
       return(
       <div style={{background:C.sf,border:`1px solid ${C.bd}`,borderRadius:14,padding:20}}>
@@ -243,9 +243,8 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
           <button onClick={()=>onNav("students")} style={{fontSize:11,color:C.ac,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>전체보기 →</button>
         </div>
         {stuStat.length>0?(
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-          {stuStat.map(({s,hwR,recent,nc})=>{const co=SC[(s.color_index||0)%8];
-            const hwC=hwR==null?{c:C.tt,b:C.bg}:hwR>=80?{c:C.su,b:C.sb}:hwR>=50?{c:C.wn,b:C.wb}:{c:C.dn,b:C.db};
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:10}}>
+          {stuStat.map(({s,hwInc,recent,nc})=>{const co=SC[(s.color_index||0)%8];
             return(
             <div key={s.id} onClick={()=>onDetail(s)} style={{padding:12,borderRadius:10,border:`1px solid ${C.bl}`,cursor:"pointer"}} className="hcard">
               <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
@@ -255,10 +254,8 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
                   <div style={{fontSize:11,color:C.tt}}>{s.subject} · {nc}</div>
                 </div>
               </div>
-              {recent&&<div style={{fontSize:11,color:C.ts,marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{recent.title||"제목 없음"}</div>}
-              <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-                <span style={{fontSize:9,color:hwC.c,background:hwC.b,padding:"2px 6px",borderRadius:4,fontWeight:600}}>숙제 {hwR!=null?`${hwR}%`:"-"}</span>
-              </div>
+              {recent&&<div style={{fontSize:11,color:C.ts,marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{recent.topic||recent.subject||"-"}</div>}
+              {hwInc>0&&<span style={{fontSize:9,color:C.wn,background:C.wb,padding:"2px 6px",borderRadius:4,fontWeight:600}}>미완 숙제 {hwInc}건</span>}
             </div>);})}
         </div>):(
         <div style={{textAlign:"center",padding:20,color:C.tt,fontSize:13}}>학생을 추가해보세요</div>
@@ -340,6 +337,16 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
           );
         })}
       </div>
+      {/* Bottom full-width */}
+      {(layout.bottom||[]).length>0&&(
+        <div
+          onDragOver={e=>{e.preventDefault();if(editMode&&!e.target.closest('[draggable]'))setDropTgt({col:'bottom',idx:(layout.bottom||[]).length});}}
+          onDrop={e=>{e.preventDefault();doDrop();}}
+          style={{marginTop:20,display:"flex",flexDirection:"column",gap:16,minHeight:editMode?60:'auto'}}>
+          {(layout.bottom||[]).map((id,idx)=>renderBlock(id,'bottom',idx))}
+          {editMode&&dropTgt&&dropTgt.col==='bottom'&&dropTgt.idx>=(layout.bottom||[]).length&&<div style={{height:3,background:C.ac,borderRadius:2}}/>}
+        </div>
+      )}
       {dLes&&<LessonDetailModal les={dLes} student={getStu(dLes.student_id)} onUpdate={updDetail} onClose={()=>setDLes(null)}/>}
     </div>
   );
