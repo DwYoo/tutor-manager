@@ -403,8 +403,9 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
                             <span style={{fontSize:10,background:pb,color:pc,padding:"2px 8px",borderRadius:5,fontWeight:600}}>{sl}</span>
                           </div>
                           <div style={{display:"flex",alignItems:"center",gap:10}}>
-                            <div onMouseDown={barDrag} style={{flex:1,height:10,background:C.bl,borderRadius:5,overflow:"hidden",cursor:isParent?"default":"pointer",position:"relative"}}>
+                            <div onMouseDown={barDrag} style={{flex:1,height:10,background:C.bl,borderRadius:5,cursor:isParent?"default":"pointer",position:"relative"}}>
                               <div style={{height:"100%",width:pct+"%",background:pc,borderRadius:5,transition:"width .15s",pointerEvents:"none"}}/>
+                              <div style={{position:"absolute",top:"50%",left:pct+"%",transform:"translate(-50%,-50%)",width:18,height:18,borderRadius:"50%",background:"#fff",border:"3px solid "+pc,boxShadow:"0 1px 4px rgba(0,0,0,.15)",pointerEvents:"none",transition:"left .15s"}}/>
                             </div>
                             <span style={{fontSize:13,fontWeight:700,color:pc,minWidth:36,textAlign:"right"}}>{pct}%</span>
                           </div>

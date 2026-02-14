@@ -126,7 +126,10 @@ export default function LessonDetailModal({ les, student, onUpdate, onClose }) {
                             <span style={{ fontSize: 12, color: C.tt }}>완성도</span>
                             <span style={{ fontSize: 13, fontWeight: 700, color: pc, background: pbg, padding: "2px 8px", borderRadius: 6 }}>{(h.completion_pct||0)}%</span>
                           </div>
-                          <input type="range" min="0" max="100" step="5" value={(h.completion_pct||0)} onChange={e => updHw(h.id, "completion_pct", +e.target.value)} style={{ width: "100%", accentColor: pc, cursor: "pointer" }} />
+                          <div onMouseDown={e=>{e.preventDefault();const bar=e.currentTarget;const calc=ev=>{const r=bar.getBoundingClientRect();const v=Math.max(0,Math.min(100,Math.round((ev.clientX-r.left)/r.width*20)*5));updHw(h.id,"completion_pct",v);};calc(e);const mv=ev=>calc(ev);const up=()=>{window.removeEventListener("mousemove",mv);window.removeEventListener("mouseup",up);};window.addEventListener("mousemove",mv);window.addEventListener("mouseup",up);}} style={{ width: "100%", height: 10, background: C.bl, borderRadius: 5, cursor: "pointer", position: "relative" }}>
+                            <div style={{ height: "100%", width: (h.completion_pct||0)+"%", background: pc, borderRadius: 5, transition: "width .15s", pointerEvents: "none" }}/>
+                            <div style={{ position: "absolute", top: "50%", left: (h.completion_pct||0)+"%", transform: "translate(-50%,-50%)", width: 18, height: 18, borderRadius: "50%", background: "#fff", border: "3px solid "+pc, boxShadow: "0 1px 4px rgba(0,0,0,.15)", pointerEvents: "none", transition: "left .15s" }}/>
+                          </div>
                         </div>
                         <div>
                           <label style={{ fontSize: 11, color: C.tt, display: "block", marginBottom: 4 }}>메모</label>
