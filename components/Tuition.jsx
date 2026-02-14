@@ -43,16 +43,20 @@ export default function Tuition({menuBtn}){
     const dim=new Date(yr,mo,0).getDate();
     let cnt=0;
     for(let d=1;d<=dim;d++){
-      const dt=new Date(yr,mo-1,d);
       const ds=yr+"-"+p2(mo)+"-"+p2(d);
-      const dw=dt.getDay()===0?7:dt.getDay();
+      const dw=new Date(yr,mo-1,d).getDay();
+      const dwN=dw===0?7:dw;
       cnt+=lessons.filter(l=>{
         if(l.student_id!==sid)return false;
         if(l.status==='cancelled')return false;
         const ld=(l.date||"").slice(0,10);
         if(l.is_recurring&&l.recurring_exceptions&&l.recurring_exceptions.includes(ds))return false;
         if(ld===ds)return true;
-        if(l.is_recurring&&+l.recurring_day===dw){if(ds<ld)return false;if(l.recurring_end_date&&ds>=(l.recurring_end_date+"").slice(0,10))return false;return true;}
+        if(l.is_recurring&&+l.recurring_day===dwN){
+          if(ds<ld)return false;
+          if(l.recurring_end_date&&ds>=(l.recurring_end_date+"").slice(0,10))return false;
+          return true;
+        }
         return false;
       }).length;
     }
