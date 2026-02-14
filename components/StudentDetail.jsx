@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, BarChart, Bar, Cell } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, BarChart, Bar, Cell, ReferenceLine } from 'recharts';
 import LessonDetailModal from './student/LessonDetailModal';
 
 const C={bg:"#FAFAF9",sf:"#FFFFFF",sfh:"#F5F5F4",bd:"#E7E5E4",bl:"#F0EFED",pr:"#1A1A1A",ac:"#2563EB",al:"#DBEAFE",as:"#EFF6FF",tp:"#1A1A1A",ts:"#78716C",tt:"#A8A29E",su:"#16A34A",sb:"#F0FDF4",dn:"#DC2626",db:"#FEF2F2",wn:"#F59E0B",wb:"#FFFBEB"};
@@ -53,6 +53,7 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
   const [planComment,setPlanComment]=useState("");
   const [planComments,setPlanComments]=useState([]);
   const [planSaving,setPlanSaving]=useState(false);
+  const [scoreGoal,setScoreGoal]=useState(s.score_goal||"");
   const [editingComment,setEditingComment]=useState(null);
   const [editCommentText,setEditCommentText]=useState("");
   const [fileDrag,setFileDrag]=useState(false);
@@ -129,6 +130,8 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
   const addScore=async()=>{if(!scoreForm.score)return;const{data,error}=await supabase.from('scores').insert({student_id:s.id,date:scoreForm.date,score:parseInt(scoreForm.score),label:scoreForm.label,user_id:user.id}).select().single();if(!error&&data){setScores(p=>[...p,data]);setScoreForm({date:"",score:"",label:""});setShowAddScore(false);}};
   const openEditScore=(sc)=>{setEditScore(sc);setEditScoreForm({date:sc.date||"",score:String(sc.score),label:sc.label||""});};
   const saveEditScore=async()=>{if(!editScore||!editScoreForm.score)return;const{error}=await supabase.from('scores').update({date:editScoreForm.date,score:parseInt(editScoreForm.score),label:editScoreForm.label}).eq('id',editScore.id);if(!error){setScores(p=>p.map(x=>x.id===editScore.id?{...x,date:editScoreForm.date,score:parseInt(editScoreForm.score),label:editScoreForm.label}:x));setEditScore(null);}};
+  const delScore=async(id)=>{await supabase.from('scores').delete().eq('id',id);setScores(p=>p.filter(x=>x.id!==id));setEditScore(null);};
+  const saveScoreGoal=async(val)=>{const v=val===""?null:parseInt(val);setScoreGoal(val);await supabase.from('students').update({score_goal:v}).eq('id',s.id);};
   const savePlanFields=async()=>{setPlanSaving(true);await supabase.from('students').update({plan_strategy:planStrategy,plan_strength:planStrength,plan_weakness:planWeakness}).eq('id',s.id);setPlanSaving(false);};
   const addPlanComment=async()=>{if(!planComment.trim())return;const{data,error}=await supabase.from('reports').insert({student_id:s.id,title:"",body:planComment,type:"plan",date:fd(new Date()),user_id:user.id}).select().single();if(!error&&data){setPlanComments(p=>[data,...p]);setPlanComment("");}};
   const updatePlanComment=async(id)=>{if(!editCommentText.trim())return;await supabase.from('reports').update({body:editCommentText}).eq('id',id);setPlanComments(p=>p.map(c=>c.id===id?{...c,body:editCommentText}:c));setEditingComment(null);setEditCommentText("");};
@@ -565,7 +568,7 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
           const trendDiff=sorted.length>=2?sorted[sorted.length-1].score-sorted[0].score:0;
           const trendMonths=sorted.length>=2?(()=>{const f=new Date(sorted[0].date),l=new Date(sorted[sorted.length-1].date);return Math.max(1,Math.round((l-f)/(1000*60*60*24*30)));})():0;
           const minY=sorted.length?Math.max(0,Math.floor((Math.min(...sorted.map(x=>x.score))-10)/10)*10):0;
-          const delScore=async(id)=>{await supabase.from('scores').delete().eq('id',id);setScores(p=>p.filter(x=>x.id!==id));};
+          const goalNum=scoreGoal!==""?parseInt(scoreGoal):null;
           return(<div>
           {/* Header */}
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
@@ -600,6 +603,14 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
             </div>
             {/* Chart */}
             <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:20,marginBottom:16}}>
+              {!isParent&&<div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",gap:6,marginBottom:12}}>
+                <span style={{fontSize:11,color:C.tt}}>목표</span>
+                <input type="number" value={scoreGoal} onChange={e=>saveScoreGoal(e.target.value)} style={{width:52,padding:"4px 8px",borderRadius:6,border:"1px solid "+C.bd,fontSize:12,color:C.tp,textAlign:"center",outline:"none",background:C.sf,fontFamily:"inherit"}} placeholder="—"/>
+                <span style={{fontSize:11,color:C.tt}}>점</span>
+              </div>}
+              {isParent&&goalNum&&<div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",gap:4,marginBottom:12}}>
+                <span style={{fontSize:11,color:C.wn}}>목표 {goalNum}점</span>
+              </div>}
               <ResponsiveContainer width="100%" height={220}>
                 <AreaChart data={chartData} margin={{top:10,right:10,left:-10,bottom:0}}>
                   <defs><linearGradient id="scoreGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor={C.ac} stopOpacity={0.15}/><stop offset="95%" stopColor={C.ac} stopOpacity={0}/></linearGradient></defs>
@@ -607,6 +618,7 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
                   <XAxis dataKey="monthLabel" tick={{fontSize:10,fill:C.tt}} axisLine={false} tickLine={false}/>
                   <YAxis domain={[minY,100]} tick={{fontSize:10,fill:C.tt}} axisLine={false} tickLine={false}/>
                   <Tooltip content={<CustomTooltip/>}/>
+                  {goalNum&&<ReferenceLine y={goalNum} stroke={C.wn} strokeDasharray="6 4" strokeWidth={1.5} label={{value:`목표 ${goalNum}`,position:"insideTopRight",fontSize:10,fill:C.wn,fontWeight:600}}/>}
                   <Area type="monotone" dataKey="score" stroke={C.ac} fill="url(#scoreGrad)" strokeWidth={2.5} dot={{r:5,fill:C.ac,stroke:"#fff",strokeWidth:2}}/>
                 </AreaChart>
               </ResponsiveContainer>
@@ -641,9 +653,12 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
                 <div><label style={ls}>시험명</label><input value={editScoreForm.label} onChange={e=>setEditScoreForm(p=>({...p,label:e.target.value}))} style={is} placeholder="예: 3월 모의고사"/></div>
                 <div><label style={ls}>점수</label><input type="number" value={editScoreForm.score} onChange={e=>setEditScoreForm(p=>({...p,score:e.target.value}))} style={is} placeholder="100"/></div>
               </div>
-              <div style={{display:"flex",gap:10,marginTop:20,justifyContent:"flex-end"}}>
-                <button onClick={()=>setEditScore(null)} style={{background:C.sfh,color:C.ts,border:`1px solid ${C.bd}`,borderRadius:8,padding:"10px 20px",fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>취소</button>
-                <button onClick={saveEditScore} style={{background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"10px 24px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>저장</button>
+              <div style={{display:"flex",gap:10,marginTop:20,justifyContent:"space-between"}}>
+                <button onClick={()=>delScore(editScore.id)} style={{background:C.db,color:C.dn,border:"none",borderRadius:8,padding:"10px 16px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>삭제</button>
+                <div style={{display:"flex",gap:10}}>
+                  <button onClick={()=>setEditScore(null)} style={{background:C.sfh,color:C.ts,border:`1px solid ${C.bd}`,borderRadius:8,padding:"10px 20px",fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>취소</button>
+                  <button onClick={saveEditScore} style={{background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"10px 24px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>저장</button>
+                </div>
               </div>
             </div>
           </div>)}
