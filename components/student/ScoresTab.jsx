@@ -21,7 +21,8 @@ export default function ScoresTab({ scores, studentId, onRefresh }) {
   const [form, setForm] = useState({ date: '', score: '', label: '', grade: '' })
   const [editScore, setEditScore] = useState(null)
   const [editForm, setEditForm] = useState({ date: '', score: '', label: '', grade: '' })
-  const [chartMode, setChartMode] = useState('score')
+  const [chartMode, _setChartMode] = useState(() => { try { return localStorage.getItem('scoreChartMode') || 'score' } catch { return 'score' } })
+  const setChartMode = (m) => { _setChartMode(m); try { localStorage.setItem('scoreChartMode', m) } catch {} }
 
   useEffect(() => {
     if (!editScore) return
