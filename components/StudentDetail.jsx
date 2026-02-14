@@ -15,7 +15,7 @@ const bk=(e,val,set,df)=>{if(e.nativeEvent?.isComposing||e.isComposing)return;co
 const ls={display:"block",fontSize:12,fontWeight:500,color:C.tt,marginBottom:6};
 const is={width:"100%",padding:"9px 12px",borderRadius:8,border:"1px solid "+C.bd,fontSize:14,color:C.tp,background:C.sf,outline:"none",fontFamily:"inherit"};
 const IcBack=()=>(<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>);
-const CustomTooltip=({active,payload})=>{if(!active||!payload?.length)return null;const d=payload[0].payload;return(<div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:10,padding:"10px 14px",boxShadow:"0 4px 12px rgba(0,0,0,.08)"}}><div style={{fontSize:12,color:C.tt,marginBottom:4}}>{d.label||d.date}</div><div style={{fontSize:16,fontWeight:700,color:C.ac}}>{d.score}점</div></div>);};
+const CustomTooltip=({active,payload})=>{if(!active||!payload?.length)return null;const d=payload[0].payload;return(<div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:10,padding:"10px 14px",boxShadow:"0 4px 12px rgba(0,0,0,.08)"}}><div style={{fontSize:12,color:C.tt,marginBottom:4}}>{d.label||d.date}</div>{d.score!=null&&<div style={{fontSize:16,fontWeight:700,color:C.ac}}>{d.score}점</div>}{d.grade!=null&&<div style={{fontSize:d.score!=null?13:16,fontWeight:700,color:"#8B5CF6"}}>{d.grade}등급</div>}</div>);};
 const ReasonTooltip=({active,payload})=>{if(!active||!payload?.length)return null;const d=payload[0].payload;return(<div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:10,padding:"8px 12px",boxShadow:"0 4px 12px rgba(0,0,0,.08)"}}><div style={{fontSize:11,color:C.tt,marginBottom:2}}>{d.name}</div><div style={{fontSize:14,fontWeight:700,color:d.fill||C.ac}}>{d.count}문항</div></div>);};
 
 export default function StudentDetail({ student, onBack, menuBtn }) {
@@ -41,9 +41,10 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
   const [wFilter,setWFilter]=useState("");const [wPage,setWPage]=useState(0);const [wExpanded,setWExpanded]=useState({});
   const PER_PAGE=20;
   const [showAddScore,setShowAddScore]=useState(false);
-  const [scoreForm,setScoreForm]=useState({date:"",score:"",label:""});
+  const [scoreForm,setScoreForm]=useState({date:"",score:"",label:"",grade:""});
+  const [scoreChartMode,setScoreChartMode]=useState("score");
   const [editScore,setEditScore]=useState(null);
-  const [editScoreForm,setEditScoreForm]=useState({date:"",score:"",label:""});
+  const [editScoreForm,setEditScoreForm]=useState({date:"",score:"",label:"",grade:""});
   useEffect(()=>{if(!editScore)return;const h=e=>{if(e.key==="Escape")setEditScore(null);};window.addEventListener("keydown",h);return()=>window.removeEventListener("keydown",h);},[editScore]);
   const [reasonBook,setReasonBook]=useState("");
   const [chapterBook,setChapterBook]=useState("");
@@ -127,9 +128,9 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
   const wTimers=useRef({});
   const updWrong=(id,key,val)=>{setWrongs(p=>p.map(w=>w.id===id?{...w,[key]:val}:w));const tk=id+key;clearTimeout(wTimers.current[tk]);wTimers.current[tk]=setTimeout(()=>{supabase.from('wrong_answers').update({[key]:val}).eq('id',id);},500);};
   const addRp=async()=>{if(!nT.trim())return;const{data,error}=await supabase.from('reports').insert({student_id:s.id,title:nT,body:nB,is_shared:nS,date:fd(new Date()),user_id:user.id}).select().single();if(!error&&data){setReports(p=>[data,...p]);setNT("");setNB("");setNS(false);setShowNew(false);}};
-  const addScore=async()=>{if(!scoreForm.score)return;const{data,error}=await supabase.from('scores').insert({student_id:s.id,date:scoreForm.date,score:parseInt(scoreForm.score),label:scoreForm.label,user_id:user.id}).select().single();if(!error&&data){setScores(p=>[...p,data]);setScoreForm({date:"",score:"",label:""});setShowAddScore(false);}};
-  const openEditScore=(sc)=>{setEditScore(sc);setEditScoreForm({date:sc.date||"",score:String(sc.score),label:sc.label||""});};
-  const saveEditScore=async()=>{if(!editScore||!editScoreForm.score)return;const{error}=await supabase.from('scores').update({date:editScoreForm.date,score:parseInt(editScoreForm.score),label:editScoreForm.label}).eq('id',editScore.id);if(!error){setScores(p=>p.map(x=>x.id===editScore.id?{...x,date:editScoreForm.date,score:parseInt(editScoreForm.score),label:editScoreForm.label}:x));setEditScore(null);}};
+  const addScore=async()=>{if(!scoreForm.score&&!scoreForm.grade)return;const ins={student_id:s.id,date:scoreForm.date,label:scoreForm.label,user_id:user.id};if(scoreForm.score)ins.score=parseInt(scoreForm.score);if(scoreForm.grade)ins.grade=parseInt(scoreForm.grade);const{data,error}=await supabase.from('scores').insert(ins).select().single();if(!error&&data){setScores(p=>[...p,data]);setScoreForm({date:"",score:"",label:"",grade:""});setShowAddScore(false);}};
+  const openEditScore=(sc)=>{setEditScore(sc);setEditScoreForm({date:sc.date||"",score:sc.score!=null?String(sc.score):"",label:sc.label||"",grade:sc.grade!=null?String(sc.grade):""});};
+  const saveEditScore=async()=>{if(!editScore||(!editScoreForm.score&&!editScoreForm.grade))return;const upd={date:editScoreForm.date,label:editScoreForm.label,score:editScoreForm.score?parseInt(editScoreForm.score):null,grade:editScoreForm.grade?parseInt(editScoreForm.grade):null};const{error}=await supabase.from('scores').update(upd).eq('id',editScore.id);if(!error){setScores(p=>p.map(x=>x.id===editScore.id?{...x,...upd}:x));setEditScore(null);}};
   const delScore=async(id)=>{await supabase.from('scores').delete().eq('id',id);setScores(p=>p.filter(x=>x.id!==id));setEditScore(null);};
   const saveScoreGoal=async(val)=>{const v=val===""?null:parseInt(val);setScoreGoal(val);await supabase.from('students').update({score_goal:v}).eq('id',s.id);};
   const savePlanFields=async()=>{setPlanSaving(true);await supabase.from('students').update({plan_strategy:planStrategy,plan_strength:planStrength,plan_weakness:planWeakness}).eq('id',s.id);setPlanSaving(false);};
@@ -559,22 +560,35 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
         {/* SCORES */}
         {subTab==="scores"&&(()=>{
           const sorted=[...scores].sort((a,b)=>(a.date||"").localeCompare(b.date||""));
-          const chartData=sorted.map(sc=>{const d=sc.date?new Date(sc.date):null;return{...sc,monthLabel:d?`${d.getMonth()+1}월`:sc.label};});
-          const recent=sorted.length?sorted[sorted.length-1].score:0;
-          const maxSc=sorted.length?Math.max(...sorted.map(x=>x.score)):0;
+          const chartData=sorted.filter(x=>x.score!=null).map(sc=>{const d=sc.date?new Date(sc.date):null;return{...sc,monthLabel:d?`${d.getMonth()+1}월`:sc.label};});
+          // Score stats
+          const scoreEntries=sorted.filter(x=>x.score!=null);
+          const recent=scoreEntries.length?scoreEntries[scoreEntries.length-1].score:0;
+          const maxSc=scoreEntries.length?Math.max(...scoreEntries.map(x=>x.score)):0;
           const oneYearAgo=new Date();oneYearAgo.setFullYear(oneYearAgo.getFullYear()-1);
-          const yearScores=sorted.filter(sc=>sc.date&&new Date(sc.date)>=oneYearAgo);
+          const yearScores=scoreEntries.filter(sc=>sc.date&&new Date(sc.date)>=oneYearAgo);
           const avgSc=yearScores.length?Math.round(yearScores.reduce((a,x)=>a+x.score,0)/yearScores.length):0;
-          const trendDiff=sorted.length>=2?sorted[sorted.length-1].score-sorted[0].score:0;
-          const trendMonths=sorted.length>=2?(()=>{const f=new Date(sorted[0].date),l=new Date(sorted[sorted.length-1].date);return Math.max(1,Math.round((l-f)/(1000*60*60*24*30)));})():0;
-          const minY=sorted.length?Math.max(0,Math.floor((Math.min(...sorted.map(x=>x.score))-10)/10)*10):0;
+          const trendDiff=scoreEntries.length>=2?scoreEntries[scoreEntries.length-1].score-scoreEntries[0].score:0;
+          const trendMonths=scoreEntries.length>=2?(()=>{const f=new Date(scoreEntries[0].date),l=new Date(scoreEntries[scoreEntries.length-1].date);return Math.max(1,Math.round((l-f)/(1000*60*60*24*30)));})():0;
+          const minY=scoreEntries.length?Math.max(0,Math.floor((Math.min(...scoreEntries.map(x=>x.score))-10)/10)*10):0;
           const goalNum=scoreGoal!==""?parseInt(scoreGoal):null;
+          // Grade stats
+          const gradeEntries=sorted.filter(x=>x.grade!=null);
+          const gradeChartData=gradeEntries.map(sc=>{const d=sc.date?new Date(sc.date):null;return{...sc,monthLabel:d?`${d.getMonth()+1}월`:sc.label};});
+          const recentGrade=gradeEntries.length?gradeEntries[gradeEntries.length-1].grade:null;
+          const bestGrade=gradeEntries.length?Math.min(...gradeEntries.map(x=>x.grade)):null;
+          const avgGrade=gradeEntries.length?(gradeEntries.reduce((a,x)=>a+x.grade,0)/gradeEntries.length).toFixed(1):null;
+          const gradeTrendDiff=gradeEntries.length>=2?gradeEntries[gradeEntries.length-1].grade-gradeEntries[0].grade:0;
+          const gradeColor=g=>g<=2?"#16A34A":g<=4?"#2563EB":g<=6?"#F59E0B":"#DC2626";
+          const hasGrades=gradeEntries.length>0;
+          const isGradeMode=scoreChartMode==="grade";
           return(<div>
           {/* Header */}
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
             <div style={{display:"flex",alignItems:"center",gap:10}}>
               <h3 style={{fontSize:16,fontWeight:700,color:C.tp,margin:0}}>성적 추이</h3>
-              {sorted.length>=2&&<span style={{fontSize:11,fontWeight:600,color:trendDiff>=0?C.su:C.dn,background:trendDiff>=0?C.sb:C.db,padding:"3px 10px",borderRadius:6}}>{trendDiff>=0?"+":""}{trendDiff}점 ({trendMonths}개월)</span>}
+              {!isGradeMode&&scoreEntries.length>=2&&<span style={{fontSize:11,fontWeight:600,color:trendDiff>=0?C.su:C.dn,background:trendDiff>=0?C.sb:C.db,padding:"3px 10px",borderRadius:6}}>{trendDiff>=0?"+":""}{trendDiff}점 ({trendMonths}개월)</span>}
+              {isGradeMode&&gradeEntries.length>=2&&<span style={{fontSize:11,fontWeight:600,color:gradeTrendDiff<=0?C.su:C.dn,background:gradeTrendDiff<=0?C.sb:C.db,padding:"3px 10px",borderRadius:6}}>{gradeTrendDiff>0?"+":""}{gradeTrendDiff}등급</span>}
             </div>
             {!isParent&&<button onClick={()=>setShowAddScore(!showAddScore)} style={{background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"8px 16px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>+ 성적 추가</button>}
           </div>
@@ -582,12 +596,18 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
           {showAddScore&&!isParent&&(<div style={{background:C.sf,border:"2px solid "+C.ac,borderRadius:14,padding:16,marginBottom:16,display:"flex",gap:8,flexWrap:"wrap",alignItems:"flex-end"}}>
             <div><label style={ls}>날짜</label><input type="date" value={scoreForm.date} onChange={e=>setScoreForm(p=>({...p,date:e.target.value}))} style={{...is,fontSize:12,padding:"6px 10px",width:140}}/></div>
             <div><label style={ls}>시험명</label><input value={scoreForm.label} onChange={e=>setScoreForm(p=>({...p,label:e.target.value}))} style={{...is,fontSize:12,padding:"6px 10px",width:140}} placeholder="예: 3월 모의고사"/></div>
-            <div><label style={ls}>점수</label><input type="number" value={scoreForm.score} onChange={e=>setScoreForm(p=>({...p,score:e.target.value}))} style={{...is,fontSize:12,padding:"6px 10px",width:80}} placeholder="100"/></div>
+            <div><label style={ls}>점수</label><input type="number" value={scoreForm.score} onChange={e=>setScoreForm(p=>({...p,score:e.target.value}))} style={{...is,fontSize:12,padding:"6px 10px",width:80}} placeholder="100" min="0" max="100"/></div>
+            <div><label style={ls}>등급</label><input type="number" value={scoreForm.grade} onChange={e=>setScoreForm(p=>({...p,grade:e.target.value}))} style={{...is,fontSize:12,padding:"6px 10px",width:60}} placeholder="1~9" min="1" max="9"/></div>
             <button onClick={addScore} style={{background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"6px 16px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>저장</button>
           </div>)}
           {scores.length===0?(<div style={{textAlign:"center",padding:40,color:C.tt,background:C.sf,border:"1px solid "+C.bd,borderRadius:14}}><div style={{fontSize:14}}>성적 데이터가 없습니다</div></div>):(<>
+            {/* Chart mode tabs */}
+            <div style={{display:"flex",gap:4,marginBottom:12}}>
+              <button onClick={()=>setScoreChartMode("score")} style={{padding:"6px 14px",borderRadius:8,border:"1px solid "+(!isGradeMode?C.ac:C.bd),background:!isGradeMode?C.as:"transparent",fontSize:11,fontWeight:!isGradeMode?600:400,color:!isGradeMode?C.ac:C.ts,cursor:"pointer",fontFamily:"inherit"}}>점수</button>
+              <button onClick={()=>setScoreChartMode("grade")} style={{padding:"6px 14px",borderRadius:8,border:"1px solid "+(isGradeMode?"#8B5CF6":C.bd),background:isGradeMode?"#EDE9FE":"transparent",fontSize:11,fontWeight:isGradeMode?600:400,color:isGradeMode?"#8B5CF6":C.ts,cursor:"pointer",fontFamily:"inherit"}}>등급</button>
+            </div>
             {/* Summary cards */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
+            {!isGradeMode?(<div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
               <div style={{background:"#EFF6FF",borderRadius:12,padding:"16px 12px",textAlign:"center"}}>
                 <div style={{fontSize:11,color:C.tt,marginBottom:4}}>최근 점수</div>
                 <div style={{fontSize:22,fontWeight:700,color:C.ac}}>{recent}점</div>
@@ -600,28 +620,54 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
                 <div style={{fontSize:11,color:C.tt,marginBottom:4}}>평균 점수 <span style={{fontSize:10,color:C.tt}}>(1년)</span></div>
                 <div style={{fontSize:22,fontWeight:700,color:C.ts}}>{avgSc}점</div>
               </div>
-            </div>
+            </div>):(<div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
+              <div style={{background:"#EDE9FE",borderRadius:12,padding:"16px 12px",textAlign:"center"}}>
+                <div style={{fontSize:11,color:C.tt,marginBottom:4}}>최근 등급</div>
+                <div style={{fontSize:22,fontWeight:700,color:"#8B5CF6"}}>{recentGrade!=null?recentGrade+"등급":"-"}</div>
+              </div>
+              <div style={{background:"#F0FDF4",borderRadius:12,padding:"16px 12px",textAlign:"center"}}>
+                <div style={{fontSize:11,color:C.tt,marginBottom:4}}>최고 등급</div>
+                <div style={{fontSize:22,fontWeight:700,color:C.su}}>{bestGrade!=null?bestGrade+"등급":"-"}</div>
+              </div>
+              <div style={{background:"#F5F5F4",borderRadius:12,padding:"16px 12px",textAlign:"center"}}>
+                <div style={{fontSize:11,color:C.tt,marginBottom:4}}>평균 등급</div>
+                <div style={{fontSize:22,fontWeight:700,color:C.ts}}>{avgGrade!=null?avgGrade+"등급":"-"}</div>
+              </div>
+            </div>)}
             {/* Chart */}
             <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:20,marginBottom:16}}>
-              {!isParent&&<div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",gap:6,marginBottom:12}}>
-                <span style={{fontSize:11,color:C.tt}}>목표</span>
-                <input type="number" value={scoreGoal} onChange={e=>saveScoreGoal(e.target.value)} style={{width:52,padding:"4px 8px",borderRadius:6,border:"1px solid "+C.bd,fontSize:12,color:C.tp,textAlign:"center",outline:"none",background:C.sf,fontFamily:"inherit"}} placeholder="—"/>
-                <span style={{fontSize:11,color:C.tt}}>점</span>
-              </div>}
-              {isParent&&goalNum&&<div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",gap:4,marginBottom:12}}>
-                <span style={{fontSize:11,color:C.wn}}>목표 {goalNum}점</span>
-              </div>}
-              <ResponsiveContainer width="100%" height={220}>
-                <AreaChart data={chartData} margin={{top:10,right:10,left:-10,bottom:0}}>
-                  <defs><linearGradient id="scoreGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor={C.ac} stopOpacity={0.15}/><stop offset="95%" stopColor={C.ac} stopOpacity={0}/></linearGradient></defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke={C.bl} vertical={false}/>
-                  <XAxis dataKey="monthLabel" tick={{fontSize:10,fill:C.tt}} axisLine={false} tickLine={false}/>
-                  <YAxis domain={[minY,100]} tick={{fontSize:10,fill:C.tt}} axisLine={false} tickLine={false}/>
-                  <Tooltip content={<CustomTooltip/>}/>
-                  {goalNum&&<ReferenceLine y={goalNum} stroke={C.wn} strokeDasharray="6 4" strokeWidth={1.5} label={{value:`목표 ${goalNum}`,position:"insideTopRight",fontSize:10,fill:C.wn,fontWeight:600}}/>}
-                  <Area type="monotone" dataKey="score" stroke={C.ac} fill="url(#scoreGrad)" strokeWidth={2.5} dot={{r:5,fill:C.ac,stroke:"#fff",strokeWidth:2}}/>
-                </AreaChart>
-              </ResponsiveContainer>
+              {!isGradeMode?(<>
+                {!isParent&&<div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",gap:6,marginBottom:12}}>
+                  <span style={{fontSize:11,color:C.tt}}>목표</span>
+                  <input type="number" value={scoreGoal} onChange={e=>saveScoreGoal(e.target.value)} style={{width:52,padding:"4px 8px",borderRadius:6,border:"1px solid "+C.bd,fontSize:12,color:C.tp,textAlign:"center",outline:"none",background:C.sf,fontFamily:"inherit"}} placeholder="—"/>
+                  <span style={{fontSize:11,color:C.tt}}>점</span>
+                </div>}
+                {isParent&&goalNum&&<div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",gap:4,marginBottom:12}}>
+                  <span style={{fontSize:11,color:C.wn}}>목표 {goalNum}점</span>
+                </div>}
+                {chartData.length>0?<ResponsiveContainer width="100%" height={220}>
+                  <AreaChart data={chartData} margin={{top:10,right:10,left:-10,bottom:0}}>
+                    <defs><linearGradient id="scoreGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor={C.ac} stopOpacity={0.15}/><stop offset="95%" stopColor={C.ac} stopOpacity={0}/></linearGradient></defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke={C.bl} vertical={false}/>
+                    <XAxis dataKey="monthLabel" tick={{fontSize:10,fill:C.tt}} axisLine={false} tickLine={false}/>
+                    <YAxis domain={[minY,100]} tick={{fontSize:10,fill:C.tt}} axisLine={false} tickLine={false}/>
+                    <Tooltip content={<CustomTooltip/>}/>
+                    {goalNum&&<ReferenceLine y={goalNum} stroke={C.wn} strokeDasharray="6 4" strokeWidth={1.5} label={{value:`목표 ${goalNum}`,position:"insideTopRight",fontSize:10,fill:C.wn,fontWeight:600}}/>}
+                    <Area type="monotone" dataKey="score" stroke={C.ac} fill="url(#scoreGrad)" strokeWidth={2.5} dot={{r:5,fill:C.ac,stroke:"#fff",strokeWidth:2}}/>
+                  </AreaChart>
+                </ResponsiveContainer>:<div style={{textAlign:"center",padding:30,color:C.tt,fontSize:13}}>점수 데이터가 없습니다</div>}
+              </>):(<>
+                {gradeChartData.length>0?<ResponsiveContainer width="100%" height={220}>
+                  <AreaChart data={gradeChartData} margin={{top:10,right:10,left:-10,bottom:0}}>
+                    <defs><linearGradient id="gradeGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.15}/><stop offset="95%" stopColor="#8B5CF6" stopOpacity={0}/></linearGradient></defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke={C.bl} vertical={false}/>
+                    <XAxis dataKey="monthLabel" tick={{fontSize:10,fill:C.tt}} axisLine={false} tickLine={false}/>
+                    <YAxis domain={[1,9]} reversed tick={{fontSize:10,fill:C.tt}} axisLine={false} tickLine={false} tickFormatter={v=>v+"등급"}/>
+                    <Tooltip content={<CustomTooltip/>}/>
+                    <Area type="monotone" dataKey="grade" stroke="#8B5CF6" fill="url(#gradeGrad)" strokeWidth={2.5} dot={{r:5,fill:"#8B5CF6",stroke:"#fff",strokeWidth:2}}/>
+                  </AreaChart>
+                </ResponsiveContainer>:<div style={{textAlign:"center",padding:30,color:C.tt,fontSize:13}}>등급 데이터가 없습니다</div>}
+              </>)}
             </div>
             {/* Test records */}
             <div>
@@ -629,17 +675,19 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
               {[...sorted].reverse().map((sc,i)=>{
                 const d=sc.date?new Date(sc.date):null;
                 const mLabel=d?`${d.getMonth()+1}월`:"";
-                const barColor=sc.score>=85?C.su:sc.score>=70?C.wn:C.dn;
+                const scoreBarColor=sc.score!=null?(sc.score>=85?C.su:sc.score>=70?C.wn:C.dn):C.tt;
+                const grBarColor=sc.grade!=null?gradeColor(sc.grade):C.tt;
                 return(<div key={sc.id} style={{display:"flex",alignItems:"center",padding:"10px 4px",cursor:isParent?undefined:"pointer",borderRadius:8,transition:"background .15s"}} onClick={()=>{if(!isParent)openEditScore(sc);}} onMouseEnter={e=>{if(!isParent)e.currentTarget.style.background=C.sfh;}} onMouseLeave={e=>{e.currentTarget.style.background="transparent";}}>
                   <div style={{display:"flex",alignItems:"baseline",gap:8,minWidth:80,flexShrink:0}}>
                     <span style={{fontSize:14,fontWeight:700,color:C.tp}}>{i===0?"최근":(sc.label||`${sorted.length-i}차`)}</span>
                     <span style={{fontSize:12,color:C.tt}}>{mLabel}</span>
                   </div>
                   <div style={{flex:1}}/>
-                  <div style={{width:160,height:4,background:C.bl,borderRadius:2,overflow:"hidden",flexShrink:0,marginRight:12}}>
-                    <div style={{height:"100%",width:`${sc.score}%`,background:barColor,borderRadius:2}}/>
+                  {sc.score!=null&&<><div style={{width:120,height:4,background:C.bl,borderRadius:2,overflow:"hidden",flexShrink:0,marginRight:8}}>
+                    <div style={{height:"100%",width:`${sc.score}%`,background:scoreBarColor,borderRadius:2}}/>
                   </div>
-                  <div style={{minWidth:36,textAlign:"right",fontSize:16,fontWeight:700,color:barColor}}>{sc.score}</div>
+                  <div style={{minWidth:36,textAlign:"right",fontSize:16,fontWeight:700,color:scoreBarColor}}>{sc.score}</div></>}
+                  {sc.grade!=null&&<div style={{minWidth:44,textAlign:"right",fontSize:14,fontWeight:700,color:grBarColor,marginLeft:sc.score!=null?8:0}}>{sc.grade}등급</div>}
                 </div>);
               })}
             </div>
@@ -651,7 +699,10 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
               <div style={{display:"flex",flexDirection:"column",gap:12}}>
                 <div><label style={ls}>날짜</label><input type="date" value={editScoreForm.date} onChange={e=>setEditScoreForm(p=>({...p,date:e.target.value}))} style={is}/></div>
                 <div><label style={ls}>시험명</label><input value={editScoreForm.label} onChange={e=>setEditScoreForm(p=>({...p,label:e.target.value}))} style={is} placeholder="예: 3월 모의고사"/></div>
-                <div><label style={ls}>점수</label><input type="number" value={editScoreForm.score} onChange={e=>setEditScoreForm(p=>({...p,score:e.target.value}))} style={is} placeholder="100"/></div>
+                <div style={{display:"flex",gap:12}}>
+                  <div style={{flex:1}}><label style={ls}>점수</label><input type="number" value={editScoreForm.score} onChange={e=>setEditScoreForm(p=>({...p,score:e.target.value}))} style={is} placeholder="0~100" min="0" max="100"/></div>
+                  <div style={{flex:1}}><label style={ls}>등급</label><input type="number" value={editScoreForm.grade} onChange={e=>setEditScoreForm(p=>({...p,grade:e.target.value}))} style={is} placeholder="1~9" min="1" max="9"/></div>
+                </div>
               </div>
               <div style={{display:"flex",gap:10,marginTop:20,justifyContent:"space-between"}}>
                 <button onClick={()=>delScore(editScore.id)} style={{background:C.db,color:C.dn,border:"none",borderRadius:8,padding:"10px 16px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>삭제</button>
