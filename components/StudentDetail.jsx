@@ -536,32 +536,90 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
         </div>)}
 
         {/* SCORES */}
-        {subTab==="scores"&&(<div>
+        {subTab==="scores"&&(()=>{
+          const sorted=[...scores].sort((a,b)=>(a.date||"").localeCompare(b.date||""));
+          const chartData=sorted.map(sc=>{const d=sc.date?new Date(sc.date):null;return{...sc,monthLabel:d?`${d.getMonth()+1}월`:sc.label};});
+          const recent=sorted.length?sorted[sorted.length-1].score:0;
+          const maxSc=sorted.length?Math.max(...sorted.map(x=>x.score)):0;
+          const oneYearAgo=new Date();oneYearAgo.setFullYear(oneYearAgo.getFullYear()-1);
+          const yearScores=sorted.filter(sc=>sc.date&&new Date(sc.date)>=oneYearAgo);
+          const avgSc=yearScores.length?Math.round(yearScores.reduce((a,x)=>a+x.score,0)/yearScores.length):0;
+          const trendDiff=sorted.length>=2?sorted[sorted.length-1].score-sorted[0].score:0;
+          const trendMonths=sorted.length>=2?(()=>{const f=new Date(sorted[0].date),l=new Date(sorted[sorted.length-1].date);return Math.max(1,Math.round((l-f)/(1000*60*60*24*30)));})():0;
+          const minY=sorted.length?Math.max(0,Math.floor((Math.min(...sorted.map(x=>x.score))-10)/10)*10):0;
+          const delScore=async(id)=>{await supabase.from('scores').delete().eq('id',id);setScores(p=>p.filter(x=>x.id!==id));};
+          return(<div>
+          {/* Header */}
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-            <h3 style={{fontSize:16,fontWeight:700,color:C.tp}}>성적 추이</h3>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <h3 style={{fontSize:16,fontWeight:700,color:C.tp,margin:0}}>성적 추이</h3>
+              {sorted.length>=2&&<span style={{fontSize:11,fontWeight:600,color:trendDiff>=0?C.su:C.dn,background:trendDiff>=0?C.sb:C.db,padding:"3px 10px",borderRadius:6}}>{trendDiff>=0?"+":""}{trendDiff}점 ({trendMonths}개월)</span>}
+            </div>
             {!isParent&&<button onClick={()=>setShowAddScore(!showAddScore)} style={{background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"8px 16px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>+ 성적 추가</button>}
           </div>
+          {/* Add form */}
           {showAddScore&&!isParent&&(<div style={{background:C.sf,border:"2px solid "+C.ac,borderRadius:14,padding:16,marginBottom:16,display:"flex",gap:8,flexWrap:"wrap",alignItems:"flex-end"}}>
             <div><label style={ls}>날짜</label><input type="date" value={scoreForm.date} onChange={e=>setScoreForm(p=>({...p,date:e.target.value}))} style={{...is,fontSize:12,padding:"6px 10px",width:140}}/></div>
             <div><label style={ls}>시험명</label><input value={scoreForm.label} onChange={e=>setScoreForm(p=>({...p,label:e.target.value}))} style={{...is,fontSize:12,padding:"6px 10px",width:140}} placeholder="예: 3월 모의고사"/></div>
             <div><label style={ls}>점수</label><input type="number" value={scoreForm.score} onChange={e=>setScoreForm(p=>({...p,score:e.target.value}))} style={{...is,fontSize:12,padding:"6px 10px",width:80}} placeholder="100"/></div>
             <button onClick={addScore} style={{background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"6px 16px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>저장</button>
           </div>)}
-          {scores.length===0?(<div style={{textAlign:"center",padding:40,color:C.tt,background:C.sf,border:"1px solid "+C.bd,borderRadius:14}}><div style={{fontSize:14}}>성적 데이터가 없습니다</div></div>):(
-            <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:20}}>
+          {scores.length===0?(<div style={{textAlign:"center",padding:40,color:C.tt,background:C.sf,border:"1px solid "+C.bd,borderRadius:14}}><div style={{fontSize:14}}>성적 데이터가 없습니다</div></div>):(<>
+            {/* Chart */}
+            <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:20,marginBottom:16}}>
               <ResponsiveContainer width="100%" height={220}>
-                <AreaChart data={scores} margin={{top:10,right:10,left:-10,bottom:0}}>
+                <AreaChart data={chartData} margin={{top:10,right:10,left:-10,bottom:0}}>
                   <defs><linearGradient id="scoreGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor={C.ac} stopOpacity={0.15}/><stop offset="95%" stopColor={C.ac} stopOpacity={0}/></linearGradient></defs>
                   <CartesianGrid strokeDasharray="3 3" stroke={C.bl} vertical={false}/>
-                  <XAxis dataKey="label" tick={{fontSize:10,fill:C.tt}} axisLine={false} tickLine={false}/>
-                  <YAxis domain={[0,100]} tick={{fontSize:10,fill:C.tt}} axisLine={false} tickLine={false}/>
+                  <XAxis dataKey="monthLabel" tick={{fontSize:10,fill:C.tt}} axisLine={false} tickLine={false}/>
+                  <YAxis domain={[minY,100]} tick={{fontSize:10,fill:C.tt}} axisLine={false} tickLine={false}/>
                   <Tooltip content={<CustomTooltip/>}/>
-                  <Area type="monotone" dataKey="score" stroke={C.ac} fill="url(#scoreGrad)" strokeWidth={2.5} dot={{r:4,fill:C.ac}}/>
+                  <Area type="monotone" dataKey="score" stroke={C.ac} fill="url(#scoreGrad)" strokeWidth={2.5} dot={{r:5,fill:C.ac,stroke:"#fff",strokeWidth:2}}/>
                 </AreaChart>
               </ResponsiveContainer>
             </div>
-          )}
-        </div>)}
+            {/* Summary cards */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:16}}>
+              <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:"18px 20px",borderLeft:"4px solid "+C.ac}}>
+                <div style={{fontSize:11,color:C.tt,marginBottom:6}}>최근 점수</div>
+                <div style={{fontSize:24,fontWeight:700,color:C.tp}}>{recent}<span style={{fontSize:13,fontWeight:500,color:C.tt}}>점</span></div>
+              </div>
+              <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:"18px 20px",borderLeft:"4px solid "+C.wn}}>
+                <div style={{fontSize:11,color:C.tt,marginBottom:6}}>최고 점수</div>
+                <div style={{fontSize:24,fontWeight:700,color:C.tp}}>{maxSc}<span style={{fontSize:13,fontWeight:500,color:C.tt}}>점</span></div>
+              </div>
+              <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:"18px 20px",borderLeft:"4px solid "+C.ts}}>
+                <div style={{fontSize:11,color:C.tt,marginBottom:6}}>평균 점수 <span style={{fontSize:10,color:C.tt}}>(1년)</span></div>
+                <div style={{fontSize:24,fontWeight:700,color:C.tp}}>{avgSc}<span style={{fontSize:13,fontWeight:500,color:C.tt}}>점</span></div>
+              </div>
+            </div>
+            {/* Test records */}
+            <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:20}}>
+              <h4 style={{fontSize:14,fontWeight:600,color:C.tp,marginBottom:14}}>시험 기록</h4>
+              <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                {[...sorted].reverse().map((sc,i)=>{
+                  const d=sc.date?new Date(sc.date):null;
+                  const mLabel=d?`${d.getMonth()+1}월`:"";
+                  const barColor=sc.score>=85?C.su:sc.score>=70?C.wn:C.dn;
+                  const barBg=sc.score>=85?C.sb:sc.score>=70?C.wb:C.db;
+                  return(<div key={sc.id} style={{display:"flex",alignItems:"center",gap:12}}>
+                    <div style={{minWidth:70,flexShrink:0}}>
+                      <div style={{fontSize:13,fontWeight:600,color:C.tp}}>{i===0?"최근":sc.label||`${sorted.length-i}차`}</div>
+                      <div style={{fontSize:10,color:C.tt}}>{mLabel}</div>
+                    </div>
+                    <div style={{flex:1,height:28,background:C.bl,borderRadius:6,overflow:"hidden",position:"relative"}}>
+                      <div style={{height:"100%",width:`${sc.score}%`,background:barBg,borderRadius:6,position:"relative"}}>
+                        <div style={{position:"absolute",inset:0,background:barColor,opacity:.25,borderRadius:6}}/>
+                      </div>
+                    </div>
+                    <div style={{minWidth:44,textAlign:"right",fontSize:15,fontWeight:700,color:barColor}}>{sc.score}<span style={{fontSize:11,fontWeight:500}}>점</span></div>
+                    {!isParent&&<button onClick={()=>delScore(sc.id)} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,fontSize:12,padding:4,flexShrink:0,opacity:.5}} title="삭제">x</button>}
+                  </div>);
+                })}
+              </div>
+            </div>
+          </>)}
+        </div>);})()}
 
         {/* PLAN */}
         {subTab==="plan"&&(<div>
