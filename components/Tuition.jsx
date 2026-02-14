@@ -189,7 +189,7 @@ export default function Tuition({menuBtn}){
                     <td style={{padding:"10px 12px",fontWeight:500,color:C.tp}}>₩{r.autoFee.toLocaleString()}</td>
                     <td style={{padding:"10px 12px"}}>
                       {isEditing?<input type="number" value={editForm.carryover} onChange={e=>setEditForm(p=>({...p,carryover:e.target.value}))} style={{...eis,width:80}}/>:
-                      r.carryover!==0?<><span style={{color:r.carryover>0?C.dn:C.ac,fontWeight:600}}>{r.carryover>0?"+":"−"}₩{Math.abs(r.carryover).toLocaleString()}</span><div style={{fontSize:9,color:r.carryover>0?C.dn:C.ac}}>{r.carryover>0?"미납이월":"결석공제"}</div></>:<span style={{color:C.tt}}>-</span>}
+                      r.carryover!==0?<><span style={{color:r.carryover>0?C.dn:C.ac,fontWeight:600}}>{r.carryover>0?"+":"−"}₩{Math.abs(r.carryover).toLocaleString()}</span><div style={{fontSize:9,color:r.carryover>0?C.dn:C.ac}}>{r.carryover>0?"미납이월":"선납공제"}</div></>:<span style={{color:C.tt}}>-</span>}
                     </td>
                     <td style={{padding:"10px 12px"}}>
                       {isEditing?(
