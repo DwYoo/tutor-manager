@@ -322,18 +322,16 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
                       const pc=pct>=100?C.su:pct>=50?C.wn:C.dn;
                       const pb=pct>=100?C.sb:pct>=50?C.wb:C.db;
                       const sl=pct>=100?"완료":pct>0?"진행중":"미시작";
+                      const barDrag=e=>{if(isParent)return;e.preventDefault();const bar=e.currentTarget;const calc=ev=>{const r=bar.getBoundingClientRect();const v=Math.max(0,Math.min(100,Math.round((ev.clientX-r.left)/r.width*10)*10));updHw(h.id,"completion_pct",v);};calc(e);const mv=ev=>calc(ev);const up=()=>{window.removeEventListener("mousemove",mv);window.removeEventListener("mouseup",up);};window.addEventListener("mousemove",mv);window.addEventListener("mouseup",up);};
                       return(
                         <div key={h.id} style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:12,padding:"14px 18px"}}>
                           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
                             <span style={{fontSize:14,fontWeight:600,color:C.tp}}>{h.title||"숙제"}</span>
-                            <div style={{display:"flex",alignItems:"center",gap:8}}>
-                              <span style={{fontSize:10,background:pb,color:pc,padding:"2px 8px",borderRadius:5,fontWeight:600}}>{sl}</span>
-                              {!isParent&&<input type="range" min="0" max="100" step="10" value={pct} onChange={e=>updHw(h.id,"completion_pct",parseInt(e.target.value))} style={{width:80,accentColor:pc,cursor:"pointer"}}/>}
-                            </div>
+                            <span style={{fontSize:10,background:pb,color:pc,padding:"2px 8px",borderRadius:5,fontWeight:600}}>{sl}</span>
                           </div>
                           <div style={{display:"flex",alignItems:"center",gap:10}}>
-                            <div style={{flex:1,height:6,background:C.bl,borderRadius:3,overflow:"hidden"}}>
-                              <div style={{height:"100%",width:pct+"%",background:pc,borderRadius:3,transition:"width .3s"}}/>
+                            <div onMouseDown={barDrag} style={{flex:1,height:10,background:C.bl,borderRadius:5,overflow:"hidden",cursor:isParent?"default":"pointer",position:"relative"}}>
+                              <div style={{height:"100%",width:pct+"%",background:pc,borderRadius:5,transition:"width .15s",pointerEvents:"none"}}/>
                             </div>
                             <span style={{fontSize:13,fontWeight:700,color:pc,minWidth:36,textAlign:"right"}}>{pct}%</span>
                           </div>
@@ -486,16 +484,16 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
           {/* Editable plan fields */}
           <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:20,marginBottom:16}}>
             <div style={{fontSize:13,fontWeight:600,color:C.ac,marginBottom:10}}>🧭 학업 전략</div>
-            <textarea value={planStrategy} onChange={e=>setPlanStrategy(e.target.value)} onKeyDown={e=>bk(e,planStrategy,setPlanStrategy)} style={{...is,height:80,resize:"vertical",fontSize:13,lineHeight:1.7}} placeholder="학생의 전반적인 학습 방향과 전략을 작성하세요..." disabled={isParent}/>
+            <textarea value={planStrategy} onChange={e=>{setPlanStrategy(e.target.value);e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px';}} onKeyDown={e=>bk(e,planStrategy,setPlanStrategy)} ref={el=>{if(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}}} style={{...is,minHeight:80,resize:"none",fontSize:13,lineHeight:1.7,overflow:"hidden"}} placeholder="학생의 전반적인 학습 방향과 전략을 작성하세요..." disabled={isParent}/>
           </div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
             <div style={{background:C.sb,border:"1px solid #BBF7D0",borderRadius:14,padding:16}}>
               <div style={{fontSize:13,fontWeight:600,color:C.su,marginBottom:8}}>💪 강점</div>
-              <textarea value={planStrength} onChange={e=>setPlanStrength(e.target.value)} onKeyDown={e=>bk(e,planStrength,setPlanStrength)} style={{...is,height:60,resize:"vertical",fontSize:12,background:"transparent",border:"1px solid #BBF7D0"}} placeholder="강점 기록..." disabled={isParent}/>
+              <textarea value={planStrength} onChange={e=>{setPlanStrength(e.target.value);e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px';}} onKeyDown={e=>bk(e,planStrength,setPlanStrength)} ref={el=>{if(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}}} style={{...is,minHeight:60,resize:"none",fontSize:12,background:"transparent",border:"1px solid #BBF7D0",overflow:"hidden"}} placeholder="강점 기록..." disabled={isParent}/>
             </div>
             <div style={{background:C.db,border:"1px solid #FECACA",borderRadius:14,padding:16}}>
               <div style={{fontSize:13,fontWeight:600,color:C.dn,marginBottom:8}}>🔧 보완점</div>
-              <textarea value={planWeakness} onChange={e=>setPlanWeakness(e.target.value)} onKeyDown={e=>bk(e,planWeakness,setPlanWeakness)} style={{...is,height:60,resize:"vertical",fontSize:12,background:"transparent",border:"1px solid #FECACA"}} placeholder="보완점 기록..." disabled={isParent}/>
+              <textarea value={planWeakness} onChange={e=>{setPlanWeakness(e.target.value);e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px';}} onKeyDown={e=>bk(e,planWeakness,setPlanWeakness)} ref={el=>{if(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}}} style={{...is,minHeight:60,resize:"none",fontSize:12,background:"transparent",border:"1px solid #FECACA",overflow:"hidden"}} placeholder="보완점 기록..." disabled={isParent}/>
             </div>
           </div>
           {!isParent&&<div style={{textAlign:"right",marginBottom:20}}>
