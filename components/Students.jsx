@@ -22,7 +22,7 @@ export default function Students({onDetail,menuBtn}){
   const[lessons,setLessons]=useState([]);
   const[showArchived,setShowArchived]=useState(false);
   const[dragId,setDragId]=useState(null);
-  const[dragOverId,setDragOverId]=useState(null);
+  const[dropIdx,setDropIdx]=useState(null);
   const[search,setSearch]=useState('');
   const[loading,setLoading]=useState(true);
   const[showAdd,setShowAdd]=useState(false);
@@ -62,10 +62,12 @@ export default function Students({onDetail,menuBtn}){
   const filtered=(showArchived?archivedStudents:activeStudents).filter(s=>(s.name||'').includes(search)||(s.subject||'').includes(search)||(s.school||'').includes(search));
 
   const canDrag=!showArchived&&!search;
+  const dragFi=dragId?filtered.findIndex(x=>x.id===dragId):-1;
+  const noDrop=dropIdx!=null&&(dropIdx===dragFi||dropIdx===dragFi+1);
   const onDS=(e,id)=>{setDragId(id);e.dataTransfer.effectAllowed='move';};
-  const onDO=(e,id)=>{e.preventDefault();if(id!==dragId&&id!==dragOverId)setDragOverId(id);};
-  const onDR=async(e)=>{e.preventDefault();const fid=dragId,tid=dragOverId;setDragId(null);setDragOverId(null);if(!fid||!tid||fid===tid)return;const list=[...activeStudents];const fi=list.findIndex(s=>s.id===fid);const ti=list.findIndex(s=>s.id===tid);if(fi<0||ti<0)return;const[mv]=list.splice(fi,1);list.splice(ti,0,mv);const reordered=list.map((s,i)=>({...s,sort_order:i}));setStudents(prev=>[...reordered,...prev.filter(s=>!!s.archived)]);for(let i=0;i<reordered.length;i++)supabase.from('students').update({sort_order:i}).eq('id',reordered[i].id);};
-  const onDE=()=>{setDragId(null);setDragOverId(null);};
+  const onDO=(e,idx)=>{e.preventDefault();const r=e.currentTarget.getBoundingClientRect();const ni=e.clientX<r.left+r.width/2?idx:idx+1;if(ni!==dropIdx)setDropIdx(ni);};
+  const onDR=async(e)=>{e.preventDefault();const fid=dragId,di=dropIdx;setDragId(null);setDropIdx(null);if(!fid||di==null)return;const list=[...activeStudents];const fi=list.findIndex(s=>s.id===fid);if(fi<0)return;const[mv]=list.splice(fi,1);const ai=di>fi?di-1:di;list.splice(ai,0,mv);if(list.every((s,i)=>s.id===activeStudents[i].id))return;const reordered=list.map((s,i)=>({...s,sort_order:i}));setStudents(prev=>[...reordered,...prev.filter(s=>!!s.archived)]);for(let i=0;i<reordered.length;i++)supabase.from('students').update({sort_order:i}).eq('id',reordered[i].id);};
+  const onDE=()=>{setDragId(null);setDropIdx(null);};
 
   if(loading)return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:C.tt,fontSize:14}}>불러오는 중...</div></div>);
 
@@ -91,10 +93,15 @@ export default function Students({onDetail,menuBtn}){
 
       {/* Student cards */}
       <div className="stu-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:14}}>
-        {filtered.map(s=>{
+        {filtered.map((s,idx)=>{
           const col=SC[(s.color_index||0)%8];
+          const isDrag=dragId===s.id;
+          const showL=canDrag&&dragId&&!isDrag&&dropIdx===idx&&!noDrop;
+          const showR=canDrag&&dragId&&!isDrag&&idx===filtered.length-1&&dropIdx===filtered.length&&!noDrop;
           return(
-            <div key={s.id} onClick={()=>onDetail(s)} draggable={canDrag} onDragStart={e=>onDS(e,s.id)} onDragOver={e=>onDO(e,s.id)} onDrop={onDR} onDragEnd={onDE} style={{background:C.sf,border:dragOverId===s.id?`2px solid ${C.ac}`:`1px solid ${C.bd}`,borderRadius:14,padding:20,cursor:canDrag?"grab":"pointer",borderTop:`3px solid ${col.b}`,opacity:dragId===s.id?.4:1,transition:"opacity .15s, border .15s"}} className="hcard">
+            <div key={s.id} onClick={()=>onDetail(s)} draggable={canDrag} onDragStart={e=>onDS(e,s.id)} onDragOver={e=>onDO(e,idx)} onDrop={onDR} onDragEnd={onDE} style={{position:"relative",background:C.sf,border:`1px solid ${C.bd}`,borderRadius:14,padding:20,cursor:canDrag?"grab":"pointer",borderTop:`3px solid ${col.b}`,opacity:isDrag?.4:1,transition:"opacity .15s"}} className="hcard">
+              {showL&&<div style={{position:"absolute",left:-9,top:4,bottom:4,width:3,borderRadius:2,background:C.ac,boxShadow:`0 0 8px ${C.ac}`,zIndex:5}}/>}
+              {showR&&<div style={{position:"absolute",right:-9,top:4,bottom:4,width:3,borderRadius:2,background:C.ac,boxShadow:`0 0 8px ${C.ac}`,zIndex:5}}/>}
               <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14}}>
                 <div style={{width:40,height:40,borderRadius:10,background:col.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:700,color:col.t}}>{(s.name||"?")[0]}</div>
                 <div style={{flex:1}}>
