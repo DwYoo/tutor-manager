@@ -63,7 +63,8 @@ export default function Schedule({menuBtn}){
   const[students,setStudents]=useState([]);
   const[loading,setLoading]=useState(true);
   const[mOpen,setMO]=useState(false);const[eLes,setEL]=useState(null);const[dLes,setDL]=useState(null);
-  const[stH,setStH]=useState(9);const[enH,setEnH]=useState(22);
+  const[stH,setStH]=useState(()=>{try{const v=localStorage.getItem('sch_stH');return v?+v:9;}catch{return 9;}});
+  const[enH,setEnH]=useState(()=>{try{const v=localStorage.getItem('sch_enH');return v?+v:22;}catch{return 22;}});
   const[dcState,setDC]=useState(null);
   const gridRef=useRef(null);const dragRef=useRef(null);const movedRef=useRef(false);
   const today=new Date();const wk=gwd(cur);
@@ -204,9 +205,9 @@ export default function Schedule({menuBtn}){
           {students.slice(0,6).map(st=>{const c=SC[(st.color_index||0)%8];return(<div key={st.id} style={{display:"flex",alignItems:"center",gap:6,padding:"3px 8px",borderRadius:6,background:c.bg,fontSize:11,fontWeight:500,color:c.t}}><div style={{width:7,height:7,borderRadius:"50%",background:c.b}}/>{st.name}</div>);})}
           <span style={{fontSize:10,color:C.tt,background:C.sfh,padding:"3px 8px",borderRadius:4}}>좌클릭: 상세 · 우클릭: 수정 · 드래그: 이동/생성</span>
           <div style={{display:"flex",alignItems:"center",gap:4,marginLeft:"auto",fontSize:11,color:C.ts}}>
-            <select value={stH} onChange={e=>{const v=+e.target.value;setStH(v);if(v>=enH)setEnH(v+1);}} style={{padding:"2px 4px",borderRadius:4,border:`1px solid ${C.bd}`,fontSize:11,color:C.ts,background:C.sf,fontFamily:"inherit",cursor:"pointer"}}>{Array.from({length:24},(_,i)=>i).map(h=><option key={h} value={h}>{p2(h)}:00</option>)}</select>
+            <select value={stH} onChange={e=>{const v=+e.target.value;setStH(v);localStorage.setItem('sch_stH',v);if(v>=enH){setEnH(v+1);localStorage.setItem('sch_enH',v+1);}}} style={{padding:"2px 4px",borderRadius:4,border:`1px solid ${C.bd}`,fontSize:11,color:C.ts,background:C.sf,fontFamily:"inherit",cursor:"pointer"}}>{Array.from({length:24},(_,i)=>i).map(h=><option key={h} value={h}>{p2(h)}:00</option>)}</select>
             <span>~</span>
-            <select value={enH} onChange={e=>setEnH(+e.target.value)} style={{padding:"2px 4px",borderRadius:4,border:`1px solid ${C.bd}`,fontSize:11,color:C.ts,background:C.sf,fontFamily:"inherit",cursor:"pointer"}}>{Array.from({length:24-stH},(_,i)=>i+stH+1).map(h=><option key={h} value={h}>{p2(h)}:00</option>)}</select>
+            <select value={enH} onChange={e=>{const v=+e.target.value;setEnH(v);localStorage.setItem('sch_enH',v);}} style={{padding:"2px 4px",borderRadius:4,border:`1px solid ${C.bd}`,fontSize:11,color:C.ts,background:C.sf,fontFamily:"inherit",cursor:"pointer"}}>{Array.from({length:24-stH},(_,i)=>i+stH+1).map(h=><option key={h} value={h}>{p2(h)}:00</option>)}</select>
           </div>
         </div>
       </div>
