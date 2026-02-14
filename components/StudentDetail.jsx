@@ -47,7 +47,8 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
   const PER_PAGE=20;
   const [showAddScore,setShowAddScore]=useState(false);
   const [scoreForm,setScoreForm]=useState({date:"",score:"",label:"",grade:""});
-  const [scoreChartMode,setScoreChartMode]=useState("score");
+  const [scoreChartMode,setScoreChartMode]=useState(()=>{try{return localStorage.getItem("scoreChartMode")||"score";}catch{return"score";}});
+  const setChartMode=(m)=>{setScoreChartMode(m);try{localStorage.setItem("scoreChartMode",m);}catch{}};
   const [editScore,setEditScore]=useState(null);
   const [editScoreForm,setEditScoreForm]=useState({date:"",score:"",label:"",grade:""});
   useEffect(()=>{if(!editScore)return;const h=e=>{if(e.key==="Escape")setEditScore(null);};window.addEventListener("keydown",h);return()=>window.removeEventListener("keydown",h);},[editScore]);
@@ -689,8 +690,8 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
           {scores.length===0?(<div style={{textAlign:"center",padding:40,color:C.tt,background:C.sf,border:"1px solid "+C.bd,borderRadius:14}}><div style={{fontSize:14}}>성적 데이터가 없습니다</div></div>):(<>
             {/* Chart mode tabs */}
             <div style={{display:"flex",gap:4,marginBottom:12}}>
-              <button onClick={()=>setScoreChartMode("score")} style={{padding:"6px 14px",borderRadius:8,border:"1px solid "+(!isGradeMode?C.ac:C.bd),background:!isGradeMode?C.as:"transparent",fontSize:11,fontWeight:!isGradeMode?600:400,color:!isGradeMode?C.ac:C.ts,cursor:"pointer",fontFamily:"inherit"}}>점수</button>
-              <button onClick={()=>setScoreChartMode("grade")} style={{padding:"6px 14px",borderRadius:8,border:"1px solid "+(isGradeMode?"#8B5CF6":C.bd),background:isGradeMode?"#EDE9FE":"transparent",fontSize:11,fontWeight:isGradeMode?600:400,color:isGradeMode?"#8B5CF6":C.ts,cursor:"pointer",fontFamily:"inherit"}}>등급</button>
+              <button onClick={()=>setChartMode("score")} style={{padding:"6px 14px",borderRadius:8,border:"1px solid "+(!isGradeMode?C.ac:C.bd),background:!isGradeMode?C.as:"transparent",fontSize:11,fontWeight:!isGradeMode?600:400,color:!isGradeMode?C.ac:C.ts,cursor:"pointer",fontFamily:"inherit"}}>점수</button>
+              <button onClick={()=>setChartMode("grade")} style={{padding:"6px 14px",borderRadius:8,border:"1px solid "+(isGradeMode?"#8B5CF6":C.bd),background:isGradeMode?"#EDE9FE":"transparent",fontSize:11,fontWeight:isGradeMode?600:400,color:isGradeMode?"#8B5CF6":C.ts,cursor:"pointer",fontFamily:"inherit"}}>등급</button>
             </div>
             {/* Summary cards */}
             {!isGradeMode?(<div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
