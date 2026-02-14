@@ -77,7 +77,7 @@ export default function Schedule({menuBtn}){
       supabase.from('students').select('*').order('created_at'),
       supabase.from('lessons').select('*, homework(*), files(*)').order('date'),
     ]);
-    setStudents(sRes.data||[]);
+    setStudents((sRes.data||[]).filter(s=>!s.is_archived));
     setLessons(lRes.data||[]);
     setLoading(false);
   },[]);

@@ -1,11 +1,10 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/components/AuthProvider';
 import { supabase } from '@/lib/supabase';
 
 const C={bg:"#FAFAF9",sf:"#FFFFFF",sfh:"#F5F5F4",bd:"#E7E5E4",bl:"#F0EFED",pr:"#1A1A1A",ac:"#2563EB",al:"#DBEAFE",as:"#EFF6FF",tp:"#1A1A1A",ts:"#78716C",tt:"#A8A29E",su:"#16A34A",sb:"#F0FDF4",dn:"#DC2626",db:"#FEF2F2",wn:"#F59E0B",wb:"#FFFBEB"};
 const SC=[{bg:"#DBEAFE",t:"#1E40AF",b:"#93C5FD"},{bg:"#FCE7F3",t:"#9D174D",b:"#F9A8D4"},{bg:"#D1FAE5",t:"#065F46",b:"#6EE7B7"},{bg:"#FEF3C7",t:"#92400E",b:"#FCD34D"},{bg:"#EDE9FE",t:"#5B21B6",b:"#C4B5FD"},{bg:"#FFE4E6",t:"#9F1239",b:"#FDA4AF"},{bg:"#CCFBF1",t:"#115E59",b:"#5EEAD4"},{bg:"#FEE2E2",t:"#991B1B",b:"#FCA5A5"}];
-const STATUS=[{id:"paid",l:"완납",c:C.su,bg:C.sb},{id:"partial",l:"일부납",c:C.wn,bg:C.wb},{id:"unpaid",l:"미납",c:C.dn,bg:C.db}];
 const DK=["일","월","화","수","목","금","토"];const p2=n=>String(n).padStart(2,"0");
 const fd=d=>`${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`;
 const ls={display:"block",fontSize:12,fontWeight:500,color:C.tt,marginBottom:6};
@@ -17,6 +16,7 @@ export default function Students({onDetail,menuBtn}){
   const tog=menuBtn;
   const{user}=useAuth();
   const[students,setStudents]=useState([]);
+  const[archivedStudents,setArchivedStudents]=useState([]);
   const[lessons,setLessons]=useState([]);
   const[search,setSearch]=useState('');
   const[loading,setLoading]=useState(true);
@@ -24,8 +24,15 @@ export default function Students({onDetail,menuBtn}){
   const[editStu,setEditStu]=useState(null);
   const[form,setForm]=useState({name:'',grade:'',subject:'',school:'',phone:'',parent_phone:'',fee:'',fee_per_class:''});
 
-  useEffect(()=>{fetchStudents();},[]);
-  const fetchStudents=async()=>{const[sRes,lRes]=await Promise.all([supabase.from('students').select('*').order('created_at'),supabase.from('lessons').select('*').order('date')]);setStudents(sRes.data||[]);setLessons(lRes.data||[]);setLoading(false);};
+  const fetchStudents=useCallback(async()=>{
+    const[sRes,lRes]=await Promise.all([supabase.from('students').select('*').order('created_at'),supabase.from('lessons').select('*').order('date')]);
+    const allStudents=sRes.data||[];
+    setStudents(allStudents.filter(s=>!s.is_archived));
+    setArchivedStudents(allStudents.filter(s=>s.is_archived));
+    setLessons(lRes.data||[]);
+    setLoading(false);
+  },[]);
+  useEffect(()=>{fetchStudents();},[fetchStudents]);
 
   const lessonOnDate=(l,date)=>{const ds=fd(date),dw=date.getDay()===0?7:date.getDay();if(l.is_recurring&&l.recurring_exceptions&&l.recurring_exceptions.includes(ds))return false;if(l.date===ds)return true;if(l.is_recurring&&l.recurring_day===dw){if(ds<l.date)return false;if(l.recurring_end_date&&ds>=l.recurring_end_date)return false;return true;}return false;};
   const getNextClass=(sid)=>{const now=new Date();for(let offset=0;offset<14;offset++){const d=new Date(now);d.setDate(now.getDate()+offset);const sLessons=lessons.filter(l=>l.student_id===sid&&lessonOnDate(l,d));for(const l of sLessons){const lm=l.start_hour*60+l.start_min;if(offset===0&&lm<=now.getHours()*60+now.getMinutes())continue;return `${DK[d.getDay()]} ${p2(l.start_hour)}:${p2(l.start_min)}`;}}return null;};
@@ -35,20 +42,20 @@ export default function Students({onDetail,menuBtn}){
 
   const saveStudent=async()=>{
     if(!form.name.trim())return;
-    const payload={...form,fee:parseInt(form.fee)||0,fee_per_class:parseInt(form.fee_per_class)||0};
-    delete payload.fee;delete payload.fee_per_class;
     const full={...form,fee:parseInt(form.fee)||0,fee_per_class:parseInt(form.fee_per_class)||0};
     if(editStu){
       const{error}=await supabase.from('students').update(full).eq('id',editStu.id);
       if(!error)fetchStudents();
     }else{
-      const{error}=await supabase.from('students').insert({...full,color_index:students.length%8,fee_status:'unpaid',user_id:user.id});
+      const{error}=await supabase.from('students').insert({...full,color_index:(students.length+archivedStudents.length)%8,fee_status:'unpaid',user_id:user.id,is_archived:false});
       if(!error)fetchStudents();
     }
     setShowAdd(false);setEditStu(null);
   };
 
   const deleteStudent=async(id,e)=>{e.stopPropagation();if(!confirm('정말 삭제하시겠습니까?'))return;await supabase.from('students').delete().eq('id',id);fetchStudents();};
+  const archiveStudent=async(id,e)=>{e.stopPropagation();if(!confirm('학생을 보관하시겠습니까?\nStudents 목록에서 숨겨지고 나중에 복원할 수 있습니다.'))return;await supabase.from('students').update({is_archived:true}).eq('id',id);fetchStudents();};
+  const restoreStudent=async(id)=>{await supabase.from('students').update({is_archived:false}).eq('id',id);fetchStudents();};
 
   const filtered=students.filter(s=>(s.name||'').includes(search)||(s.subject||'').includes(search)||(s.school||'').includes(search));
 
@@ -64,7 +71,8 @@ export default function Students({onDetail,menuBtn}){
         <div style={{display:"flex",alignItems:"center",gap:12}}>
           {tog}
           <h1 style={{fontSize:20,fontWeight:700,color:C.tp}}>학생 관리</h1>
-          <span style={{background:C.sfh,color:C.ts,padding:"3px 10px",borderRadius:6,fontSize:12}}>{students.length}명</span>
+          <span style={{background:C.sfh,color:C.ts,padding:"3px 10px",borderRadius:6,fontSize:12}}>활성 {students.length}명</span>
+          {archivedStudents.length>0&&<span style={{background:C.db,color:C.dn,padding:"3px 10px",borderRadius:6,fontSize:12}}>보관 {archivedStudents.length}명</span>}
         </div>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <input value={search} onChange={e=>setSearch(e.target.value)} style={{padding:"8px 14px",borderRadius:8,border:`1px solid ${C.bd}`,fontSize:13,color:C.tp,outline:"none",width:200,fontFamily:"inherit"}} placeholder="검색..."/>
@@ -96,6 +104,7 @@ export default function Students({onDetail,menuBtn}){
               </div>}
               <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:8,paddingTop:8,borderTop:`1px solid ${C.bl}`}}>
                 <button onClick={e=>openEdit(s,e)} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,fontSize:11,fontFamily:"inherit"}}>수정</button>
+                <button onClick={e=>archiveStudent(s.id,e)} style={{background:"none",border:"none",cursor:"pointer",color:C.ac,fontSize:11,fontFamily:"inherit"}}>보관</button>
                 <button onClick={e=>deleteStudent(s.id,e)} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,fontSize:11,fontFamily:"inherit"}}>삭제</button>
               </div>
             </div>
@@ -108,6 +117,26 @@ export default function Students({onDetail,menuBtn}){
           <div style={{marginTop:8,fontSize:13}}>학생 추가</div>
         </div>
       </div>
+
+      {archivedStudents.length>0&&(
+        <div style={{marginTop:24,background:C.sf,border:`1px solid ${C.bd}`,borderRadius:14,padding:16}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+            <h3 style={{fontSize:14,fontWeight:700,color:C.tp,margin:0}}>보관된 학생</h3>
+            <span style={{fontSize:12,color:C.tt}}>{archivedStudents.length}명</span>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:8}}>
+            {archivedStudents.map(s=>(
+              <div key={s.id} style={{border:`1px solid ${C.bl}`,borderRadius:10,padding:"10px 12px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,background:C.sfh}}>
+                <div>
+                  <div style={{fontSize:13,fontWeight:600,color:C.tp}}>{s.name}</div>
+                  <div style={{fontSize:11,color:C.tt}}>{s.subject||'-'} · {s.grade||'-'}</div>
+                </div>
+                <button onClick={()=>restoreStudent(s.id)} style={{background:C.sf,color:C.ac,border:`1px solid ${C.ac}`,borderRadius:6,padding:"4px 8px",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>복원</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Add/Edit Modal */}
       {showAdd&&(
