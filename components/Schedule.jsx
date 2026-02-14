@@ -143,9 +143,9 @@ export default function Schedule({menuBtn}){
   const stopRec=async(id)=>{await supabase.from('lessons').update({is_recurring:false,recurring_day:null}).eq('id',id);setLessons(p=>p.map(l=>l.id===id?{...l,is_recurring:false,recurring_day:null}:l));setMO(false);setEL(null);};
 
   const onGD=(e,di)=>{
-    if(dragRef.current)return;const g=gridRef.current;if(!g)return;const r=g.getBoundingClientRect(),y=e.clientY-r.top+g.scrollTop;
-    const anc=s5(y2m(y));movedRef.current=false;dragRef.current={t:"c",di,anc};setDC({di,s:anc,e:anc+SMN});
-    const mv=ev=>{movedRef.current=true;const dc=dragRef.current;if(!dc||dc.t!=="c")return;const gy=ev.clientY-r.top+g.scrollTop,cm=s5(y2m(gy));setDC({di:dc.di,s:Math.min(dc.anc,cm),e:Math.max(dc.anc,cm)+SMN});};
+    if(dragRef.current)return;const g=gridRef.current;if(!g)return;const r=g.getBoundingClientRect(),hOff=e.currentTarget.getBoundingClientRect().top-r.top+g.scrollTop,y=e.clientY-r.top+g.scrollTop-hOff;
+    const anc=s5(y2m(y));movedRef.current=false;dragRef.current={t:"c",di,anc,hOff};setDC({di,s:anc,e:anc+SMN});
+    const mv=ev=>{movedRef.current=true;const dc=dragRef.current;if(!dc||dc.t!=="c")return;const gy=ev.clientY-r.top+g.scrollTop-dc.hOff,cm=s5(y2m(gy));setDC({di:dc.di,s:Math.min(dc.anc,cm),e:Math.max(dc.anc,cm)+SMN});};
     const up=()=>{const dc=dragRef.current;dragRef.current=null;window.removeEventListener("mousemove",mv);window.removeEventListener("mouseup",up);
       setDC(prev=>{const st=prev||{s:dc?.anc||0,e:(dc?.anc||0)+SMN};if(st.e-st.s>=SMN){const h=Math.floor(st.s/60),m=st.s%60,dur=st.e-st.s;setEL({date:fd(wk[dc.di]),start_hour:h,start_min:m,duration:dur,subject:"수학",topic:"",is_recurring:false});setMO(true);}return null;});
     };
@@ -194,6 +194,7 @@ export default function Schedule({menuBtn}){
           {/* Time column */}
           <div style={{borderRight:`1px solid ${C.bl}`}}>
             {hrs.map(h=>(<div key={h} style={{height:SHT*4,display:"flex",alignItems:"flex-start",justifyContent:"flex-end",padding:"2px 8px 0 0",fontSize:11,color:C.tt,fontWeight:500,borderBottom:`1px solid ${C.bl}`}}>{p2(h)}:00</div>))}
+            <div style={{display:"flex",alignItems:"flex-start",justifyContent:"flex-end",padding:"2px 8px 0 0",fontSize:11,color:C.tt,fontWeight:500}}>{p2(enH)}:00</div>
           </div>
 
           {/* Day columns */}
