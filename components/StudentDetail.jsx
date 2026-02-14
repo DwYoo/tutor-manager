@@ -223,7 +223,7 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
                 const hasSections=l.content||l.feedback||hwTotal>0||l.plan_shared;
                 return(
                   <div key={l.id} style={{position:"relative",marginBottom:16}}>
-                    <div style={{position:"absolute",left:-28+3,top:18,width:10,height:10,borderRadius:"50%",background:isFirstDone?col.b:!isDone?C.ac:C.bd,border:"2px solid "+C.sf,zIndex:1}}/>
+                    <div style={{position:"absolute",left:-28+3,top:18,width:10,height:10,borderRadius:"50%",background:isFirstDone?col.b:!isDone?C.sf:C.bd,border:!isDone?"2px solid "+C.bd:"2px solid "+C.sf,zIndex:1}}/>
                     <div onClick={()=>setLesDetailData(l)} style={{background:!isDone?C.as:C.sf,border:"1px solid "+(!isDone?C.al:C.bd),borderRadius:14,overflow:"hidden",cursor:"pointer",borderLeft:"3px solid "+(!isDone?C.ac:col.b)}} className="hcard">
                       {/* Header */}
                       <div style={{padding:"16px 20px "+(hasSections?"12px":"16px")}}>
@@ -583,6 +583,21 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
             <button onClick={addScore} style={{background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"6px 16px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>저장</button>
           </div>)}
           {scores.length===0?(<div style={{textAlign:"center",padding:40,color:C.tt,background:C.sf,border:"1px solid "+C.bd,borderRadius:14}}><div style={{fontSize:14}}>성적 데이터가 없습니다</div></div>):(<>
+            {/* Summary cards */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
+              <div style={{background:"#EFF6FF",borderRadius:12,padding:"16px 12px",textAlign:"center"}}>
+                <div style={{fontSize:11,color:C.tt,marginBottom:4}}>최근 점수</div>
+                <div style={{fontSize:22,fontWeight:700,color:C.ac}}>{recent}점</div>
+              </div>
+              <div style={{background:"#F0FDF4",borderRadius:12,padding:"16px 12px",textAlign:"center"}}>
+                <div style={{fontSize:11,color:C.tt,marginBottom:4}}>최고 점수</div>
+                <div style={{fontSize:22,fontWeight:700,color:C.su}}>{maxSc}점</div>
+              </div>
+              <div style={{background:"#F5F5F4",borderRadius:12,padding:"16px 12px",textAlign:"center"}}>
+                <div style={{fontSize:11,color:C.tt,marginBottom:4}}>평균 점수 <span style={{fontSize:10,color:C.tt}}>(1년)</span></div>
+                <div style={{fontSize:22,fontWeight:700,color:C.ts}}>{avgSc}점</div>
+              </div>
+            </div>
             {/* Chart */}
             <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:20,marginBottom:16}}>
               <ResponsiveContainer width="100%" height={220}>
@@ -595,21 +610,6 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
                   <Area type="monotone" dataKey="score" stroke={C.ac} fill="url(#scoreGrad)" strokeWidth={2.5} dot={{r:5,fill:C.ac,stroke:"#fff",strokeWidth:2}}/>
                 </AreaChart>
               </ResponsiveContainer>
-            </div>
-            {/* Summary cards */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:16}}>
-              <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:"18px 20px",borderLeft:"4px solid "+C.ac}}>
-                <div style={{fontSize:11,color:C.tt,marginBottom:6}}>최근 점수</div>
-                <div style={{fontSize:24,fontWeight:700,color:C.tp}}>{recent}<span style={{fontSize:13,fontWeight:500,color:C.tt}}>점</span></div>
-              </div>
-              <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:"18px 20px",borderLeft:"4px solid "+C.wn}}>
-                <div style={{fontSize:11,color:C.tt,marginBottom:6}}>최고 점수</div>
-                <div style={{fontSize:24,fontWeight:700,color:C.tp}}>{maxSc}<span style={{fontSize:13,fontWeight:500,color:C.tt}}>점</span></div>
-              </div>
-              <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:"18px 20px",borderLeft:"4px solid "+C.ts}}>
-                <div style={{fontSize:11,color:C.tt,marginBottom:6}}>평균 점수 <span style={{fontSize:10,color:C.tt}}>(1년)</span></div>
-                <div style={{fontSize:24,fontWeight:700,color:C.tp}}>{avgSc}<span style={{fontSize:13,fontWeight:500,color:C.tt}}>점</span></div>
-              </div>
             </div>
             {/* Test records */}
             <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:20}}>
