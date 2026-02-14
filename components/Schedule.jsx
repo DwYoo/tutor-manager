@@ -239,10 +239,11 @@ export default function Schedule({menuBtn}){
                   <div style={{position:"absolute",top:((dcState.s-stH*60)/SMN)*SHT,left:2,right:2,height:Math.max(((dcState.e-dcState.s)/SMN)*SHT,SHT),background:C.al,border:`2px dashed ${C.ac}`,borderRadius:8,opacity:.7,zIndex:8,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:C.ac,fontWeight:600,pointerEvents:"none",flexDirection:"column"}}><span>{m2s(dcState.s)} ~ {m2s(dcState.e)}</span><span>({dcState.e-dcState.s}분)</span></div>
                 )}
                 {dl.map(l=>{const co=gCo(l.student_id);const st=getStu(l.student_id);const tp=((l.start_hour*60+l.start_min)-stH*60)/SMN*SHT;const hp=Math.max(l.duration/SMN*SHT,SHT);
+                  const isOrig=!l.is_recurring||l.date===fd(date);
                   return(
                     <div key={l.id} className="lb" onMouseDown={e=>onLD(e,l,date)} onContextMenu={e=>onRC(e,l,date)} style={{position:"absolute",top:tp,left:3,right:3,height:hp-2,borderRadius:8,background:co.bg,borderLeft:`3px solid ${co.b}`,padding:"4px 8px",overflow:"hidden",zIndex:3}}>
-                      <div style={{display:"flex",alignItems:"center",gap:4}}><span style={{fontSize:11,fontWeight:600,color:co.t}}>{st?.name||""}</span>{(l.homework||[]).length>0&&<span style={{fontSize:9,background:co.t,color:co.bg,borderRadius:4,padding:"0 4px",fontWeight:600}}>{(l.homework||[]).length}</span>}</div>
-                      {hp>32&&<div style={{fontSize:10,color:co.t,opacity:.7,marginTop:1}}>{l.topic||""}</div>}
+                      <div style={{display:"flex",alignItems:"center",gap:4}}><span style={{fontSize:11,fontWeight:600,color:co.t}}>{st?.name||""}</span>{isOrig&&(l.homework||[]).length>0&&<span style={{fontSize:9,background:co.t,color:co.bg,borderRadius:4,padding:"0 4px",fontWeight:600}}>{(l.homework||[]).length}</span>}</div>
+                      {hp>32&&<div style={{fontSize:10,color:co.t,opacity:.7,marginTop:1}}>{isOrig?(l.topic||""):(l.subject||"")}</div>}
                       {hp>48&&<div style={{fontSize:10,color:co.t,opacity:.6,marginTop:1}}>{p2(l.start_hour)}:{p2(l.start_min)} · {l.duration}분</div>}
                     </div>
                   );
