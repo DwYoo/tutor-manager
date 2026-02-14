@@ -13,15 +13,17 @@ const IcLock=()=><svg width="13" height="13" viewBox="0 0 24 24" fill="none" str
 
 export default function LessonDetailModal({ les, student, onUpdate, onClose }) {
   const col = SC[(student?.color_index ?? 0) % 8];
-  const em = les.sh * 60 + les.sm + les.dur;
+  const sh = les.sh ?? les.start_hour ?? 0, sm = les.sm ?? les.start_min ?? 0, dur = les.dur ?? les.duration ?? 0;
+  const sub = les.sub ?? les.subject ?? "", rep = les.rep ?? les.is_recurring ?? false;
+  const em = sh * 60 + sm + dur;
   const [tab, setTab] = useState("content");
-  const [topic, setTopic] = useState(les.top || "");
+  const [topic, setTopic] = useState(les.top ?? les.topic ?? "");
   const [content, setContent] = useState(les.content || "");
   const [feedback, setFeedback] = useState(les.feedback || "");
-  const [tMemo, setTMemo] = useState(les.tMemo || "");
-  const [hw, setHw] = useState((les.hw || []).map((h, i) => h.id ? h : { ...h, id: h.id || Date.now() + i, note: h.note || "" }));
-  const [planShared, setPlanShared] = useState(les.planShared || "");
-  const [planPrivate, setPlanPrivate] = useState(les.planPrivate || "");
+  const [tMemo, setTMemo] = useState(les.tMemo ?? les.private_memo ?? "");
+  const [hw, setHw] = useState((les.hw ?? les.homework ?? []).map((h, i) => h.id ? h : { ...h, id: h.id || Date.now() + i, note: h.note || "" }));
+  const [planShared, setPlanShared] = useState(les.planShared ?? les.plan_shared ?? "");
+  const [planPrivate, setPlanPrivate] = useState(les.planPrivate ?? les.plan_private ?? "");
   const [files, setFiles] = useState(les.files || []);
   const [newFileName, setNewFileName] = useState("");
   const [newHw, setNewHw] = useState("");
@@ -33,7 +35,7 @@ export default function LessonDetailModal({ les, student, onUpdate, onClose }) {
   const updHw = (id, k, v) => { setHw(p => p.map(h => h.id === id ? { ...h, [k]: v } : h)); markDirty(); };
   const addFile = () => { if (!newFileName.trim()) return; setFiles(p => [...p, { id: Date.now(), name: newFileName, type: newFileName.split(".").pop() || "file" }]); setNewFileName(""); markDirty(); };
   const delFile = id => { setFiles(p => p.filter(f => f.id !== id)); markDirty(); };
-  const doSave = () => { onUpdate(les.id, { top: topic, content, feedback, tMemo, hw, planPrivate, planShared, files }); setDirty(false); };
+  const doSave = async () => { await onUpdate(les.id, { top: topic, content, feedback, tMemo, hw, planPrivate, planShared, files }); setDirty(false); onClose(); };
 
   const tabs = [{ id: "content", l: "수업 내용" }, { id: "feedback", l: "피드백" }, { id: "hw", l: "숙제" }, { id: "files", l: "자료" }, { id: "plan", l: "계획" }];
 
@@ -47,15 +49,15 @@ export default function LessonDetailModal({ les, student, onUpdate, onClose }) {
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
                 <div style={{ width: 12, height: 12, borderRadius: "50%", background: col.b }} />
                 <h2 style={{ fontSize: 18, fontWeight: 700, color: C.tp }}>{student?.name}</h2>
-                <span style={{ background: col.bg, color: col.t, padding: "3px 10px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}>{les.sub}</span>
+                <span style={{ background: col.bg, color: col.t, padding: "3px 10px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}>{sub}</span>
               </div>
               <input value={topic} onChange={e => { setTopic(e.target.value); markDirty(); }} style={{ border: "none", outline: "none", fontSize: 14, fontWeight: 500, color: C.tp, background: "transparent", padding: "2px 0", width: "100%", borderBottom: "1px dashed " + C.bd, fontFamily: "inherit" }} placeholder="수업 주제 입력..." />
             </div>
             <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: C.tt, display: "flex", marginLeft: 12, flexShrink: 0 }}><IcX /></button>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 13, color: C.ts, marginBottom: 16 }}>
-            <span>{m2s(les.sh * 60 + les.sm)} ~ {m2s(em)} ({les.dur}분)</span>
-            {les.rep && <span style={{ color: C.ac, fontSize: 12 }}>🔁 반복</span>}
+            <span>{m2s(sh * 60 + sm)} ~ {m2s(em)} ({dur}분)</span>
+            {rep && <span style={{ color: C.ac, fontSize: 12 }}>🔁 반복</span>}
           </div>
           {/* Tabs */}
           <div style={{ display: "flex", gap: 0, borderBottom: `1px solid ${C.bd}` }}>
