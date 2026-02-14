@@ -151,9 +151,9 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
   const wTimers=useRef({});
   const updWrong=(id,key,val)=>{setWrongs(p=>p.map(w=>w.id===id?{...w,[key]:val}:w));const tk=id+key;clearTimeout(wTimers.current[tk]);wTimers.current[tk]=setTimeout(async()=>{await supabase.from('wrong_answers').update({[key]:val}).eq('id',id);},500);};
   const addRp=async()=>{if(!nT.trim())return;const{data,error}=await supabase.from('reports').insert({student_id:s.id,title:nT,body:nB,is_shared:nS,date:fd(new Date()),user_id:user.id}).select().single();if(error){toast?.('레포트 저장에 실패했습니다','error');return;}if(data){setReports(p=>[data,...p]);setNT("");setNB("");setNS(false);setShowNew(false);toast?.('레포트가 등록되었습니다');}};
-  const addScore=async()=>{if(!scoreForm.score&&!scoreForm.grade)return;const ins={student_id:s.id,date:scoreForm.date,label:scoreForm.label,user_id:user.id};if(scoreForm.score)ins.score=parseInt(scoreForm.score);if(scoreForm.grade)ins.grade=parseInt(scoreForm.grade);const{data,error}=await supabase.from('scores').insert(ins).select().single();if(error){toast?.('성적 추가에 실패했습니다','error');return;}if(data){setScores(p=>[...p,data]);setScoreForm({date:"",score:"",label:"",grade:""});setShowAddScore(false);toast?.('성적이 추가되었습니다');}};
+  const addScore=async()=>{if(!scoreForm.score&&!scoreForm.grade)return;const ins={student_id:s.id,date:scoreForm.date,label:scoreForm.label,user_id:user.id};if(scoreForm.score)ins.score=parseInt(scoreForm.score);if(scoreForm.grade)ins.grade=parseInt(scoreForm.grade);let{data,error}=await supabase.from('scores').insert(ins).select().single();if(error&&scoreForm.grade){const{grade,...insNoGrade}=ins;({data,error}=await supabase.from('scores').insert(insNoGrade).select().single());}if(error){toast?.('성적 추가에 실패했습니다','error');return;}if(data){if(scoreForm.grade&&!data.grade)data.grade=parseInt(scoreForm.grade);setScores(p=>[...p,data]);setScoreForm({date:"",score:"",label:"",grade:""});setShowAddScore(false);toast?.('성적이 추가되었습니다');}};
   const openEditScore=(sc)=>{setEditScore(sc);setEditScoreForm({date:sc.date||"",score:sc.score!=null?String(sc.score):"",label:sc.label||"",grade:sc.grade!=null?String(sc.grade):""});};
-  const saveEditScore=async()=>{if(!editScore||(!editScoreForm.score&&!editScoreForm.grade))return;const upd={date:editScoreForm.date,label:editScoreForm.label,score:editScoreForm.score?parseInt(editScoreForm.score):null,grade:editScoreForm.grade?parseInt(editScoreForm.grade):null};const{error}=await supabase.from('scores').update(upd).eq('id',editScore.id);if(error){toast?.('성적 수정에 실패했습니다','error');return;}setScores(p=>p.map(x=>x.id===editScore.id?{...x,...upd}:x));setEditScore(null);toast?.('성적이 수정되었습니다');};
+  const saveEditScore=async()=>{if(!editScore||(!editScoreForm.score&&!editScoreForm.grade))return;const upd={date:editScoreForm.date,label:editScoreForm.label,score:editScoreForm.score?parseInt(editScoreForm.score):null,grade:editScoreForm.grade?parseInt(editScoreForm.grade):null};let{error}=await supabase.from('scores').update(upd).eq('id',editScore.id);if(error&&upd.grade!==undefined){const{grade,...updNoGrade}=upd;({error}=await supabase.from('scores').update(updNoGrade).eq('id',editScore.id));}if(error){toast?.('성적 수정에 실패했습니다','error');return;}setScores(p=>p.map(x=>x.id===editScore.id?{...x,...upd}:x));setEditScore(null);toast?.('성적이 수정되었습니다');};
   const delScore=async(id)=>{await supabase.from('scores').delete().eq('id',id);setScores(p=>p.filter(x=>x.id!==id));setEditScore(null);};
   const saveScoreGoal=async(val)=>{const v=val===""?null:parseInt(val);setScoreGoal(val);await supabase.from('students').update({score_goal:v}).eq('id',s.id);};
   const savePlanFields=async()=>{
@@ -751,9 +751,12 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
                 const scoreBarColor=sc.score!=null?(sc.score>=85?C.su:sc.score>=70?C.wn:C.dn):C.tt;
                 const grBarColor=sc.grade!=null?gradeColor(sc.grade):C.tt;
                 return(<div key={sc.id} style={{display:"flex",alignItems:"center",padding:"10px 4px",cursor:isParent?undefined:"pointer",borderRadius:8,transition:"background .15s"}} onClick={()=>{if(!isParent)openEditScore(sc);}} onMouseEnter={e=>{if(!isParent)e.currentTarget.style.background=C.sfh;}} onMouseLeave={e=>{e.currentTarget.style.background="transparent";}}>
-                  <div style={{display:"flex",alignItems:"baseline",gap:8,minWidth:80,flexShrink:0}}>
-                    <span style={{fontSize:14,fontWeight:700,color:C.tp}}>{i===0?"최근":(sc.label||`${sorted.length-i}차`)}</span>
-                    <span style={{fontSize:12,color:C.tt}}>{mLabel}</span>
+                  <div style={{minWidth:80,flexShrink:0}}>
+                    {i===0&&<div style={{fontSize:10,fontWeight:600,color:C.ac,marginBottom:2}}>최근</div>}
+                    <div style={{display:"flex",alignItems:"baseline",gap:8}}>
+                      <span style={{fontSize:14,fontWeight:700,color:C.tp}}>{sc.label||`${sorted.length-i}차`}</span>
+                      <span style={{fontSize:12,color:C.tt}}>{mLabel}</span>
+                    </div>
                   </div>
                   <div style={{flex:1}}/>
                   {sc.score!=null&&<><div style={{width:120,height:4,background:C.bl,borderRadius:2,overflow:"hidden",flexShrink:0,marginRight:8}}>

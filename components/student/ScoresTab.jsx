@@ -35,7 +35,12 @@ export default function ScoresTab({ scores, studentId, onRefresh }) {
     const ins = { student_id: studentId, date: form.date, label: form.label }
     if (form.score) ins.score = parseInt(form.score)
     if (form.grade) ins.grade = parseInt(form.grade)
-    await supabase.from('scores').insert(ins)
+    let { error } = await supabase.from('scores').insert(ins)
+    if (error && form.grade) {
+      const { grade, ...insNoGrade } = ins
+      ;({ error } = await supabase.from('scores').insert(insNoGrade))
+    }
+    if (error) return
     setForm({ date: '', score: '', label: '', grade: '' })
     setShowAdd(false)
     onRefresh()
@@ -48,7 +53,12 @@ export default function ScoresTab({ scores, studentId, onRefresh }) {
   const saveEdit = async () => {
     if (!editScore || (!editForm.score && !editForm.grade)) return
     const upd = { date: editForm.date, label: editForm.label, score: editForm.score ? parseInt(editForm.score) : null, grade: editForm.grade ? parseInt(editForm.grade) : null }
-    await supabase.from('scores').update(upd).eq('id', editScore.id)
+    let { error } = await supabase.from('scores').update(upd).eq('id', editScore.id)
+    if (error && upd.grade !== undefined) {
+      const { grade, ...updNoGrade } = upd
+      ;({ error } = await supabase.from('scores').update(updNoGrade).eq('id', editScore.id))
+    }
+    if (error) return
     setEditScore(null)
     onRefresh()
   }
@@ -222,10 +232,12 @@ export default function ScoresTab({ scores, studentId, onRefresh }) {
             const grBarColor = x.grade != null ? gradeColor(x.grade) : '#A8A29E'
             return (
               <div key={i} className="flex items-center justify-between px-3.5 py-2.5 rounded-lg mb-1 hover:bg-sfh transition-colors cursor-pointer" onClick={() => openEdit(x)}>
-                <div className="flex items-center gap-2.5">
-                  {i === 0 && <span className="text-[9px] font-semibold text-ac">최근</span>}
-                  <span className="text-[13px] font-semibold text-tp">{x.label || '-'}</span>
-                  <span className="text-xs text-tt">{x.date}</span>
+                <div>
+                  {i === 0 && <div className="text-[10px] font-semibold text-ac mb-0.5">최근</div>}
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-[13px] font-semibold text-tp">{x.label || '-'}</span>
+                    <span className="text-xs text-tt">{x.date}</span>
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   {x.score != null && <>
