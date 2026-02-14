@@ -117,9 +117,8 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
     setLessons(p=>[...p.map(x=>x.id===l.id?{...x,recurring_exceptions:exc}:x),data]);
     return data;
   };
-  const openLesson=async(l,viewDate)=>{
-    if(l.is_recurring&&l.date!==viewDate){const d=await materialize(l,viewDate);if(d)setLesDetailData(d);}
-    else setLesDetailData(l);
+  const openLesson=(l,viewDate)=>{
+    setLesDetailData({...l,_viewDate:viewDate});
   };
   const addWrong=async()=>{if(!wForm.problem_num.trim())return;const{data,error}=await supabase.from('wrong_answers').insert({student_id:s.id,...wForm,user_id:user.id}).select().single();if(!error&&data){setWrongs(p=>[data,...p]);setWForm(f=>({...f,problem_num:"",reason:"",note:""}));setWPage(0);}};
   const delWrong=async(id)=>{await supabase.from('wrong_answers').delete().eq('id',id);setWrongs(p=>p.filter(w=>w.id!==id));};
@@ -147,10 +146,17 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
   };
   const delFile=async(id)=>{await supabase.from('files').delete().eq('id',id);setStandaloneFiles(p=>p.filter(f=>f.id!==id));};
   const updLesDetail=async(id,data)=>{
+    let targetId=id;
+    const srcLes=lessons.find(l=>l.id===id);
+    if(srcLes&&srcLes.is_recurring&&data._viewDate&&srcLes.date!==data._viewDate){
+      const mat=await materialize(srcLes,data._viewDate);
+      if(!mat)return;
+      targetId=mat.id;
+    }
     const u={};if(data.top!==undefined)u.topic=data.top;if(data.content!==undefined)u.content=data.content;if(data.feedback!==undefined)u.feedback=data.feedback;if(data.tMemo!==undefined)u.private_memo=data.tMemo;if(data.planShared!==undefined)u.plan_shared=data.planShared;if(data.planPrivate!==undefined)u.plan_private=data.planPrivate;
-    if(Object.keys(u).length)await supabase.from('lessons').update(u).eq('id',id);
+    if(Object.keys(u).length)await supabase.from('lessons').update(u).eq('id',targetId);
     // Sync homework to DB
-    const les=lessons.find(l=>l.id===id);
+    const les=lessons.find(l=>l.id===targetId)||srcLes;
     const oldHw=les?.homework||[],newHw=data.hw||[];
     const oldIds=new Set(oldHw.map(h=>h.id));
     const toDel=oldHw.filter(h=>!newHw.some(n=>n.id===h.id));
@@ -158,11 +164,11 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
     const toUpd=newHw.filter(h=>oldIds.has(h.id));
     if(toDel.length)await supabase.from('homework').delete().in('id',toDel.map(h=>h.id));
     let ins=[];
-    if(toIns.length){const{data:d}=await supabase.from('homework').insert(toIns.map(h=>({lesson_id:id,title:h.title,completion_pct:h.completion_pct||0,note:h.note||""}))).select();ins=d||[];}
+    if(toIns.length){const{data:d}=await supabase.from('homework').insert(toIns.map(h=>({lesson_id:targetId,title:h.title,completion_pct:h.completion_pct||0,note:h.note||""}))).select();ins=d||[];}
     for(const h of toUpd)await supabase.from('homework').update({title:h.title,completion_pct:h.completion_pct||0,note:h.note||""}).eq('id',h.id);
     const finalHw=[...toUpd,...ins];
     setLesDetailData(p=>p?{...p,...data,homework:finalHw}:p);
-    setLessons(p=>p.map(l=>l.id===id?{...l,...u,homework:finalHw,files:data.files||l.files}:l));
+    setLessons(p=>p.map(l=>l.id===targetId?{...l,...u,homework:finalHw,files:data.files||l.files}:l));
   };
 
   if(loading)return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:C.tt,fontSize:14}}>불러오는 중...</div></div>);
@@ -224,7 +230,7 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
                 return(
                   <div key={l.id} style={{position:"relative",marginBottom:16}}>
                     <div style={{position:"absolute",left:-28+3,top:18,width:10,height:10,borderRadius:"50%",background:isFirstDone?col.b:!isDone?C.ac:C.bd,border:"2px solid "+C.sf,zIndex:1}}/>
-                    <div onClick={()=>setLesDetailData(l)} style={{background:!isDone?C.as:C.sf,border:"1px solid "+(!isDone?C.al:C.bd),borderRadius:14,overflow:"hidden",cursor:"pointer",borderLeft:"3px solid "+(!isDone?C.ac:col.b)}} className="hcard">
+                    <div onClick={()=>setLesDetailData({...l,_viewDate:l.date})} style={{background:!isDone?C.as:C.sf,border:"1px solid "+(!isDone?C.al:C.bd),borderRadius:14,overflow:"hidden",cursor:"pointer",borderLeft:"3px solid "+(!isDone?C.ac:col.b)}} className="hcard">
                       {/* Header */}
                       <div style={{padding:"16px 20px "+(hasSections?"12px":"16px")}}>
                         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>

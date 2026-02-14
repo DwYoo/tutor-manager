@@ -26,7 +26,7 @@ const IcT=()=><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke
 /* ── Add/Edit Modal ── */
 function SchModal({les,students,onSave,onDel,onDelSingle,onDelFuture,onClose}){
   const ed=!!les?.id;
-  const[f,sF]=useState({student_id:les?.student_id||students[0]?.id||"",date:les?.date||fd(new Date()),start_hour:les?.start_hour??14,start_min:les?.start_min??0,duration:les?.duration||90,subject:les?.subject||students[0]?.subject||"수학",topic:les?.topic||"",is_recurring:les?.is_recurring||false});
+  const[f,sF]=useState({student_id:les?.student_id||students[0]?.id||"",date:les?._viewDate||les?.date||fd(new Date()),start_hour:les?.start_hour??14,start_min:les?.start_min??0,duration:les?.duration||90,subject:les?.subject||students[0]?.subject||"수학",topic:les?.topic||"",is_recurring:les?.is_recurring||false});
   const u=(k,v)=>sF(p=>({...p,[k]:v}));
   const go=()=>{const dw=new Date(f.date).getDay();onSave({...f,recurring_day:f.is_recurring?(dw===0?7:dw):null,id:les?.id||undefined});};
   useEffect(()=>{const h=e=>{if(e.key==="Escape")onClose();};window.addEventListener("keydown",h);return()=>window.removeEventListener("keydown",h);},[onClose]);
@@ -113,6 +113,13 @@ export default function Schedule({menuBtn}){
     setMO(false);setEL(null);
   };
   const updDetail=async(id,data)=>{
+    let targetId=id;
+    const srcLes=lessons.find(l=>l.id===id);
+    if(srcLes&&srcLes.is_recurring&&data._viewDate&&srcLes.date!==data._viewDate){
+      const mat=await materialize(srcLes,data._viewDate);
+      if(!mat)return;
+      targetId=mat.id;
+    }
     const u={};
     if(data.top!==undefined)u.topic=data.top;
     if(data.content!==undefined)u.content=data.content;
@@ -120,9 +127,9 @@ export default function Schedule({menuBtn}){
     if(data.tMemo!==undefined)u.private_memo=data.tMemo;
     if(data.planShared!==undefined)u.plan_shared=data.planShared;
     if(data.planPrivate!==undefined)u.plan_private=data.planPrivate;
-    if(Object.keys(u).length)await supabase.from('lessons').update(u).eq('id',id);
+    if(Object.keys(u).length)await supabase.from('lessons').update(u).eq('id',targetId);
     // Sync homework to DB
-    const les=lessons.find(l=>l.id===id);
+    const les=lessons.find(l=>l.id===targetId)||lessons.find(l=>l.id===id);
     const oldHw=les?.homework||[],newHw=data.hw||[];
     const oldIds=new Set(oldHw.map(h=>h.id));
     const toDel=oldHw.filter(h=>!newHw.some(n=>n.id===h.id));
@@ -130,10 +137,10 @@ export default function Schedule({menuBtn}){
     const toUpd=newHw.filter(h=>oldIds.has(h.id));
     if(toDel.length)await supabase.from('homework').delete().in('id',toDel.map(h=>h.id));
     let ins=[];
-    if(toIns.length){const{data:d}=await supabase.from('homework').insert(toIns.map(h=>({lesson_id:id,title:h.title,completion_pct:h.completion_pct||0,note:h.note||""}))).select();ins=d||[];}
+    if(toIns.length){const{data:d}=await supabase.from('homework').insert(toIns.map(h=>({lesson_id:targetId,title:h.title,completion_pct:h.completion_pct||0,note:h.note||""}))).select();ins=d||[];}
     for(const h of toUpd)await supabase.from('homework').update({title:h.title,completion_pct:h.completion_pct||0,note:h.note||""}).eq('id',h.id);
     const finalHw=[...toUpd,...ins];
-    setLessons(p=>p.map(l=>l.id===id?{...l,...u,homework:finalHw,files:data.files||l.files}:l));
+    setLessons(p=>p.map(l=>l.id===targetId?{...l,...u,homework:finalHw,files:data.files||l.files}:l));
   };
 
   /* Drag helpers */
@@ -150,9 +157,8 @@ export default function Schedule({menuBtn}){
     return data;
   };
   const openDetail=async(lesData,viewDate)=>{
-    let d=lesData;
-    if(lesData.is_recurring&&lesData.date!==viewDate){d=await materialize(lesData,viewDate);if(!d)return;}
-    setDL({...d,sh:d.start_hour,sm:d.start_min,dur:d.duration,sub:d.subject,top:d.topic,rep:d.is_recurring,tMemo:d.private_memo||"",hw:d.homework||[],files:d.files||[]});
+    const d=lesData;
+    setDL({...d,_viewDate:viewDate,sh:d.start_hour,sm:d.start_min,dur:d.duration,sub:d.subject,top:d.topic,rep:d.is_recurring,tMemo:d.private_memo||"",hw:d.homework||[],files:d.files||[]});
   };
   const onLD=(e,l,vd)=>{
     if(e.button!==0){e.stopPropagation();return;}e.preventDefault();e.stopPropagation();

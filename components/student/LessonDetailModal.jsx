@@ -38,7 +38,7 @@ export default function LessonDetailModal({ les, student, onUpdate, onClose }) {
   const updHw = (id, k, v) => { setHw(p => p.map(h => h.id === id ? { ...h, [k]: v } : h)); markDirty(); };
   const addFile = () => { if (!newFileName.trim()) return; setFiles(p => [...p, { id: Date.now(), name: newFileName, type: newFileName.split(".").pop() || "file" }]); setNewFileName(""); markDirty(); };
   const delFile = id => { setFiles(p => p.filter(f => f.id !== id)); markDirty(); };
-  const doSave = async () => { await onUpdate(les.id, { top: topic, content, feedback, tMemo, hw, planPrivate, planShared, files }); setDirty(false); onClose(); };
+  const doSave = async () => { await onUpdate(les.id, { top: topic, content, feedback, tMemo, hw, planPrivate, planShared, files, _viewDate: les._viewDate }); setDirty(false); onClose(); };
 
   const tabs = [{ id: "content", l: "수업 내용" }, { id: "feedback", l: "피드백" }, { id: "hw", l: "숙제" }, { id: "files", l: "자료" }, { id: "plan", l: "계획" }];
 
@@ -59,6 +59,7 @@ export default function LessonDetailModal({ les, student, onUpdate, onClose }) {
             <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: C.tt, display: "flex", marginLeft: 12, flexShrink: 0 }}><IcX /></button>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 13, color: C.ts, marginBottom: 16 }}>
+            <span style={{ fontWeight: 600, color: C.tp }}>{les._viewDate || les.date}</span>
             <span>{m2s(sh * 60 + sm)} ~ {m2s(em)} ({dur}분)</span>
             {rep && <span style={{ color: C.ac, fontSize: 12 }}>🔁 반복</span>}
           </div>
