@@ -6,6 +6,7 @@ import LessonDetailModal from './student/LessonDetailModal';
 
 const C={bg:"#FAFAF9",sf:"#FFFFFF",sfh:"#F5F5F4",bd:"#E7E5E4",bl:"#F0EFED",pr:"#1A1A1A",ac:"#2563EB",al:"#DBEAFE",as:"#EFF6FF",tp:"#1A1A1A",ts:"#78716C",tt:"#A8A29E",su:"#16A34A",sb:"#F0FDF4",dn:"#DC2626",db:"#FEF2F2",wn:"#F59E0B",wb:"#FFFBEB"};
 const SC=[{bg:"#DBEAFE",t:"#1E40AF",b:"#93C5FD"},{bg:"#FCE7F3",t:"#9D174D",b:"#F9A8D4"},{bg:"#D1FAE5",t:"#065F46",b:"#6EE7B7"},{bg:"#FEF3C7",t:"#92400E",b:"#FCD34D"},{bg:"#EDE9FE",t:"#5B21B6",b:"#C4B5FD"},{bg:"#FFE4E6",t:"#9F1239",b:"#FDA4AF"},{bg:"#CCFBF1",t:"#115E59",b:"#5EEAD4"},{bg:"#FEE2E2",t:"#991B1B",b:"#FCA5A5"}];
+const LSTATUS={scheduled:{l:"예정",c:"#78716C",bg:"#F5F5F4"},completed:{l:"완료",c:"#16A34A",bg:"#F0FDF4"},cancelled:{l:"취소",c:"#DC2626",bg:"#FEF2F2"},makeup:{l:"보강",c:"#2563EB",bg:"#DBEAFE"}};
 const DK=["월","화","수","목","금","토","일"];
 const p2=n=>String(n).padStart(2,"0");
 const fd=d=>`${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`;
@@ -24,15 +25,18 @@ const IcX=()=><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke
 const IcT=()=><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e25555" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>;
 
 /* ── Add/Edit Modal ── */
-function SchModal({les,students,onSave,onDel,onDelSingle,onDelFuture,onClose}){
+function SchModal({les,students,onSave,onDel,onDelSingle,onDelFuture,onClose,checkConflict}){
   const ed=!!les?.id;
+  const isCopy=les?._status==='makeup';
   const[f,sF]=useState({student_id:les?.student_id||students[0]?.id||"",date:les?.date||fd(new Date()),start_hour:les?.start_hour??14,start_min:les?.start_min??0,duration:les?.duration||90,subject:les?.subject||students[0]?.subject||"수학",topic:les?.topic||"",is_recurring:les?.is_recurring||false});
   const u=(k,v)=>sF(p=>({...p,[k]:v}));
   const go=()=>{const dw=new Date(f.date).getDay();onSave({...f,recurring_day:f.is_recurring?(dw===0?7:dw):null,id:les?.id||undefined});};
   useEffect(()=>{const h=e=>{if(e.key==="Escape")onClose();};window.addEventListener("keydown",h);return()=>window.removeEventListener("keydown",h);},[onClose]);
+  const conflict=checkConflict?.(f.date,f.start_hour,f.start_min,f.duration,les?.id);
+  const conflictStu=conflict?students.find(s=>s.id===conflict.student_id):null;
   return(<div style={{position:"fixed",inset:0,zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,.35)"}} onClick={onClose}>
     <div onClick={e=>e.stopPropagation()} style={{background:C.sf,borderRadius:16,width:"100%",maxWidth:440,padding:28,boxShadow:"0 20px 60px rgba(0,0,0,.15)"}}>
-      <div style={{display:"flex",justifyContent:"space-between",marginBottom:20}}><h2 style={{fontSize:18,fontWeight:700,color:C.tp}}>{ed?"수업 수정":"수업 추가"}</h2><button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,display:"flex"}}><IcX/></button></div>
+      <div style={{display:"flex",justifyContent:"space-between",marginBottom:20}}><h2 style={{fontSize:18,fontWeight:700,color:C.tp}}>{ed?"수업 수정":isCopy?"보강 추가":"수업 추가"}</h2><button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,display:"flex"}}><IcX/></button></div>
       <div style={{display:"flex",flexDirection:"column",gap:12}}>
         <div><label style={ls}>학생</label><select value={f.student_id} onChange={e=>{const st=students.find(x=>x.id===e.target.value);u("student_id",e.target.value);if(st)u("subject",st.subject);}} style={is}>{students.map(st=>(<option key={st.id} value={st.id}>{st.name} ({st.subject})</option>))}</select></div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
@@ -46,10 +50,14 @@ function SchModal({les,students,onSave,onDel,onDelSingle,onDelFuture,onClose}){
         </div>
         <div><label style={ls}>수업 주제</label><input value={f.topic} onChange={e=>u("topic",e.target.value)} style={is} placeholder="수업 주제..."/></div>
         <label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,color:C.ts,cursor:"pointer"}}><input type="checkbox" checked={f.is_recurring} onChange={e=>u("is_recurring",e.target.checked)}/>매주 반복</label>
+        {conflict&&<div style={{background:C.db,border:"1px solid #FECACA",borderRadius:8,padding:"8px 12px",fontSize:12,color:C.dn,fontWeight:500,display:"flex",alignItems:"center",gap:6}}>
+          <span style={{fontSize:14}}>&#9888;</span>
+          <span>{conflictStu?.name||"다른 수업"}과 시간이 겹칩니다 ({p2(conflict.start_hour)}:{p2(conflict.start_min)}~{m2s(conflict.start_hour*60+conflict.start_min+conflict.duration)})</span>
+        </div>}
       </div>
       <div style={{display:"flex",gap:10,marginTop:20,justifyContent:"space-between"}}>
         <div style={{display:"flex",gap:6}}>{ed&&!les.is_recurring&&<button onClick={()=>onDel(les.id)} style={{background:C.db,color:C.dn,border:"none",borderRadius:8,padding:"10px 16px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>삭제</button>}{ed&&les.is_recurring&&<button onClick={()=>onDelSingle(les.id,les._viewDate||les.date)} title="이 수업만 삭제" style={{background:"none",color:C.tt,border:`1px solid ${C.bd}`,borderRadius:8,padding:"8px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><IcT/></button>}{ed&&les.is_recurring&&<button onClick={()=>onDelFuture(les.id,les._viewDate||les.date)} style={{background:C.db,color:C.dn,border:"none",borderRadius:8,padding:"10px 12px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>이후 반복 삭제</button>}</div>
-        <div style={{display:"flex",gap:10}}><button onClick={onClose} style={{background:C.sfh,color:C.ts,border:`1px solid ${C.bd}`,borderRadius:8,padding:"10px 20px",fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>취소</button><button onClick={go} style={{background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"10px 24px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{ed?"저장":"추가"}</button></div>
+        <div style={{display:"flex",gap:10}}><button onClick={onClose} style={{background:C.sfh,color:C.ts,border:`1px solid ${C.bd}`,borderRadius:8,padding:"10px 20px",fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>취소</button><button onClick={go} style={{background:conflict?C.wn:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"10px 24px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{ed?"저장":isCopy?"보강 추가":"추가"}</button></div>
       </div>
     </div>
   </div>);
@@ -67,6 +75,7 @@ export default function Schedule({menuBtn}){
   const[stH,setStH]=useState(()=>{try{const v=localStorage.getItem('sch_stH');return v?+v:9;}catch{return 9;}});
   const[enH,setEnH]=useState(()=>{try{const v=localStorage.getItem('sch_enH');return v?+v:22;}catch{return 22;}});
   const[dcState,setDC]=useState(null);
+  const[ctxMenu,setCtx]=useState(null);
   const gridRef=useRef(null);const dragRef=useRef(null);const movedRef=useRef(false);
   const today=new Date();const wk=gwd(cur);
   const hrs=Array.from({length:enH-stH},(_,i)=>i+stH);const tH=(enH-stH)*4*SHT;
@@ -88,15 +97,54 @@ export default function Schedule({menuBtn}){
   const gCo=sid=>{const st=students.find(x=>x.id===sid);return SC[(st?.color_index||0)%8];};
   const getStu=sid=>students.find(x=>x.id===sid);
 
+  /* Conflict detection */
+  const checkConflict=(dateStr,sh,sm,dur,excludeId)=>{
+    const d=new Date(dateStr+'T00:00:00'),dw=d.getDay()===0?7:d.getDay();
+    const dl=lessons.filter(x=>{
+      if(x.id===excludeId||x.status==='cancelled')return false;
+      if(x.is_recurring&&x.recurring_exceptions&&x.recurring_exceptions.includes(dateStr))return false;
+      if(x.date===dateStr)return true;
+      if(x.is_recurring&&x.recurring_day===dw){if(dateStr<x.date)return false;if(x.recurring_end_date&&dateStr>=x.recurring_end_date)return false;return true;}
+      return false;
+    });
+    const s1=sh*60+sm,e1=s1+dur;
+    return dl.find(x=>{const s2=x.start_hour*60+x.start_min,e2=s2+x.duration;return s1<e2&&e1>s2;});
+  };
+
+  /* Status update */
+  const updStatus=async(status)=>{
+    if(!ctxMenu)return;
+    const{l,vd}=ctxMenu;
+    let targetId=l.id;
+    if(l.is_recurring&&l.date!==fd(vd)){
+      const mat=await materialize(l,fd(vd));
+      if(!mat)return;
+      targetId=mat.id;
+    }
+    await supabase.from('lessons').update({status}).eq('id',targetId);
+    setLessons(p=>p.map(x=>x.id===targetId?{...x,status}:x));
+    setCtx(null);
+  };
+
+  /* Copy lesson (makeup) */
+  const copyLesson=()=>{
+    if(!ctxMenu)return;
+    const l=ctxMenu.l;
+    setEL({student_id:l.student_id,date:fd(new Date()),start_hour:l.start_hour,start_min:l.start_min,duration:l.duration,subject:l.subject,topic:"",is_recurring:false,_status:'makeup'});
+    setMO(true);setCtx(null);
+  };
+
   /* CRUD */
   const save=async(f)=>{
+    const cf=checkConflict(f.date,f.start_hour,f.start_min,f.duration,eLes?.id);
+    if(cf){const sn=getStu(cf.student_id);if(!confirm((sn?.name||'다른 수업')+'과 시간이 겹칩니다. 계속하시겠습니까?'))return;}
     if(eLes?.id){
       // Update
       const{error}=await supabase.from('lessons').update({student_id:f.student_id,date:f.date,start_hour:f.start_hour,start_min:f.start_min,duration:f.duration,subject:f.subject,topic:f.topic,is_recurring:f.is_recurring,recurring_day:f.recurring_day}).eq('id',eLes.id);
       if(!error)setLessons(p=>p.map(l=>l.id===eLes.id?{...l,...f}:l));
     }else{
       // Insert
-      const{data,error}=await supabase.from('lessons').insert({student_id:f.student_id,date:f.date,start_hour:f.start_hour,start_min:f.start_min,duration:f.duration,subject:f.subject,topic:f.topic,is_recurring:f.is_recurring,recurring_day:f.recurring_day,user_id:user.id}).select('*, homework(*), files(*)').single();
+      const{data,error}=await supabase.from('lessons').insert({student_id:f.student_id,date:f.date,start_hour:f.start_hour,start_min:f.start_min,duration:f.duration,subject:f.subject,topic:f.topic,is_recurring:f.is_recurring,recurring_day:f.recurring_day,status:eLes?._status||'scheduled',user_id:user.id}).select('*, homework(*), files(*)').single();
       if(!error&&data)setLessons(p=>[...p,data]);
     }
     setMO(false);setEL(null);
@@ -104,12 +152,12 @@ export default function Schedule({menuBtn}){
   const del=async(id)=>{
     await supabase.from('lessons').delete().eq('id',id);
     setLessons(p=>p.filter(l=>l.id!==id));
-    setMO(false);setEL(null);
+    setMO(false);setEL(null);setCtx(null);
   };
   const delFuture=async(id,viewDate)=>{
     const les=lessons.find(l=>l.id===id);
-    if(!les||les.date===viewDate){setLessons(p=>p.filter(l=>l.id!==id));setMO(false);setEL(null);await supabase.from('lessons').delete().eq('id',id);}
-    else{setLessons(p=>p.map(l=>l.id===id?{...l,recurring_end_date:viewDate}:l));setMO(false);setEL(null);await supabase.from('lessons').update({recurring_end_date:viewDate}).eq('id',id);}
+    if(!les||les.date===viewDate){setLessons(p=>p.filter(l=>l.id!==id));setMO(false);setEL(null);setCtx(null);await supabase.from('lessons').delete().eq('id',id);}
+    else{setLessons(p=>p.map(l=>l.id===id?{...l,recurring_end_date:viewDate}:l));setMO(false);setEL(null);setCtx(null);await supabase.from('lessons').update({recurring_end_date:viewDate}).eq('id',id);}
   };
   const updDetail=async(id,data)=>{
     const u={};
@@ -158,6 +206,7 @@ export default function Schedule({menuBtn}){
     const cm=y2m(y),lm=l.start_hour*60+l.start_min,off=cm-lm;movedRef.current=false;
     const viewDate=fd(vd);
     dragRef.current={t:"m",id:l.id,off,r};let lastPos=null;
+    const origPos={date:l.date,start_hour:l.start_hour,start_min:l.start_min,recurring_day:l.recurring_day};
     const mv=ev=>{movedRef.current=true;const gy=ev.clientY-r.top+g.scrollTop,gx=ev.clientX-r.left;const raw=y2m(gy)-off,sn=s5(raw);const nh=Math.floor(sn/60),nm=sn%60;const di=x2d(gx,r),nd=fd(wk[di]),dw=wk[di].getDay();
       lastPos={start_hour:Math.max(0,Math.min(23,nh)),start_min:Math.max(0,nm),date:nd,recurring_day:l.is_recurring?(dw===0?7:dw):l.recurring_day};
       setLessons(p=>p.map(x=>x.id===l.id?{...x,...lastPos}:x));};
@@ -165,14 +214,16 @@ export default function Schedule({menuBtn}){
       if(!did){
         const lesData=lessons.find(x=>x.id===l.id);if(lesData)await openDetail(lesData,viewDate);
       }else if(lastPos){
+        const cf=checkConflict(lastPos.date,lastPos.start_hour,lastPos.start_min,l.duration,l.id);
+        if(cf){setLessons(p=>p.map(x=>x.id===l.id?{...x,...origPos}:x));return;}
         await supabase.from('lessons').update(lastPos).eq('id',l.id);
       }
     };
     window.addEventListener("mousemove",mv);window.addEventListener("mouseup",up);
   };
 
-  const onRC=(e,l,vd)=>{e.preventDefault();e.stopPropagation();setEL({...l,_viewDate:fd(vd)});setMO(true);};
-  const delSingle=async(id,viewDate)=>{const les=lessons.find(l=>l.id===id);if(!les){setMO(false);setEL(null);return;}const prev=Array.isArray(les.recurring_exceptions)?les.recurring_exceptions:[];const exc=[...prev,viewDate];setLessons(p=>p.map(l=>l.id===id?{...l,recurring_exceptions:exc}:l));setMO(false);setEL(null);await supabase.from('lessons').update({recurring_exceptions:exc}).eq('id',id);};
+  const onRC=(e,l,vd)=>{e.preventDefault();e.stopPropagation();setCtx({x:e.clientX,y:e.clientY,l,vd});};
+  const delSingle=async(id,viewDate)=>{const les=lessons.find(l=>l.id===id);if(!les){setMO(false);setEL(null);setCtx(null);return;}const prev=Array.isArray(les.recurring_exceptions)?les.recurring_exceptions:[];const exc=[...prev,viewDate];setLessons(p=>p.map(l=>l.id===id?{...l,recurring_exceptions:exc}:l));setMO(false);setEL(null);setCtx(null);await supabase.from('lessons').update({recurring_exceptions:exc}).eq('id',id);};
 
   const onGD=(e,di)=>{
     if(dragRef.current)return;const g=gridRef.current;if(!g)return;const r=g.getBoundingClientRect(),hOff=e.currentTarget.getBoundingClientRect().top-r.top+g.scrollTop,y=e.clientY-r.top+g.scrollTop-hOff;
@@ -186,9 +237,11 @@ export default function Schedule({menuBtn}){
 
   if(loading)return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:C.tt,fontSize:14}}>불러오는 중...</div></div>);
 
+  const cms={padding:"7px 12px",fontSize:12,cursor:"pointer",borderRadius:6,color:C.tp,background:"transparent",border:"none",width:"100%",textAlign:"left",fontFamily:"inherit"};
+
   return(
-    <div style={{minHeight:"100vh",background:C.bg}}>
-      <style>{`.lb{cursor:grab;transition:box-shadow .12s,transform .1s;}.lb:hover{box-shadow:0 4px 12px rgba(0,0,0,.12);transform:scale(1.02);}.nb{transition:all .1s;cursor:pointer;border:none;background:none;display:flex;align-items:center;justify-content:center;padding:8px;border-radius:8px;color:${C.ts};}.nb:hover{background:${C.sfh};}`}</style>
+    <div style={{minHeight:"100vh",background:C.bg}} onClick={()=>ctxMenu&&setCtx(null)}>
+      <style>{`.lb{cursor:grab;transition:box-shadow .12s,transform .1s;}.lb:hover{box-shadow:0 4px 12px rgba(0,0,0,.12);transform:scale(1.02);}.nb{transition:all .1s;cursor:pointer;border:none;background:none;display:flex;align-items:center;justify-content:center;padding:8px;border-radius:8px;color:${C.ts};}.nb:hover{background:${C.sfh};}.cm-i{transition:background .1s;}.cm-i:hover{background:${C.sfh};}`}</style>
 
       {/* Header */}
       <div style={{background:C.sf,borderBottom:`1px solid ${C.bd}`,padding:"16px 24px",position:"sticky",top:0,zIndex:20}}>
@@ -203,7 +256,7 @@ export default function Schedule({menuBtn}){
         </div>
         <div style={{display:"flex",gap:8,marginTop:10,flexWrap:"wrap",alignItems:"center"}}>
           {students.slice(0,6).map(st=>{const c=SC[(st.color_index||0)%8];return(<div key={st.id} style={{display:"flex",alignItems:"center",gap:6,padding:"3px 8px",borderRadius:6,background:c.bg,fontSize:11,fontWeight:500,color:c.t}}><div style={{width:7,height:7,borderRadius:"50%",background:c.b}}/>{st.name}</div>);})}
-          <span style={{fontSize:10,color:C.tt,background:C.sfh,padding:"3px 8px",borderRadius:4}}>좌클릭: 상세 · 우클릭: 수정 · 드래그: 이동/생성</span>
+          <span style={{fontSize:10,color:C.tt,background:C.sfh,padding:"3px 8px",borderRadius:4}}>좌클릭: 상세 · 우클릭: 메뉴 · 드래그: 이동/생성</span>
           <div style={{display:"flex",alignItems:"center",gap:4,marginLeft:"auto",fontSize:11,color:C.ts}}>
             <select value={stH} onChange={e=>{const v=+e.target.value;setStH(v);localStorage.setItem('sch_stH',v);if(v>=enH){setEnH(v+1);localStorage.setItem('sch_enH',v+1);}}} style={{padding:"2px 4px",borderRadius:4,border:`1px solid ${C.bd}`,fontSize:11,color:C.ts,background:C.sf,fontFamily:"inherit",cursor:"pointer"}}>{Array.from({length:24},(_,i)=>i).map(h=><option key={h} value={h}>{p2(h)}:00</option>)}</select>
             <span>~</span>
@@ -240,11 +293,16 @@ export default function Schedule({menuBtn}){
                 )}
                 {dl.map(l=>{const co=gCo(l.student_id);const st=getStu(l.student_id);const tp=((l.start_hour*60+l.start_min)-stH*60)/SMN*SHT;const hp=Math.max(l.duration/SMN*SHT,SHT);
                   const isOrig=!l.is_recurring||l.date===fd(date);
+                  const lSt=l.status||'scheduled';const isCan=lSt==='cancelled';
                   return(
-                    <div key={l.id} className="lb" onMouseDown={e=>onLD(e,l,date)} onContextMenu={e=>onRC(e,l,date)} style={{position:"absolute",top:tp,left:3,right:3,height:hp-2,borderRadius:8,background:co.bg,borderLeft:`3px solid ${co.b}`,padding:"4px 8px",overflow:"hidden",zIndex:3}}>
-                      <div style={{display:"flex",alignItems:"center",gap:4}}><span style={{fontSize:11,fontWeight:600,color:co.t}}>{st?.name||""}</span>{isOrig&&(l.homework||[]).length>0&&<span style={{fontSize:9,background:co.t,color:co.bg,borderRadius:4,padding:"0 4px",fontWeight:600}}>{(l.homework||[]).length}</span>}</div>
-                      {hp>32&&<div style={{fontSize:10,color:co.t,opacity:.7,marginTop:1}}>{isOrig?(l.topic||""):(l.subject||"")}</div>}
-                      {hp>48&&<div style={{fontSize:10,color:co.t,opacity:.6,marginTop:1}}>{p2(l.start_hour)}:{p2(l.start_min)} · {l.duration}분</div>}
+                    <div key={l.id} className="lb" onMouseDown={e=>onLD(e,l,date)} onContextMenu={e=>onRC(e,l,date)} style={{position:"absolute",top:tp,left:3,right:3,height:hp-2,borderRadius:8,background:isCan?C.sfh:co.bg,borderLeft:`3px solid ${isCan?C.bd:co.b}`,padding:"4px 8px",overflow:"hidden",zIndex:3,opacity:isCan?.45:1}}>
+                      <div style={{display:"flex",alignItems:"center",gap:4}}>
+                        <span style={{fontSize:11,fontWeight:600,color:isCan?C.tt:co.t,textDecoration:isCan?'line-through':'none'}}>{st?.name||""}</span>
+                        {lSt!=='scheduled'&&<span style={{fontSize:8,fontWeight:700,color:LSTATUS[lSt]?.c,background:LSTATUS[lSt]?.bg,borderRadius:3,padding:"1px 4px",lineHeight:"14px"}}>{LSTATUS[lSt]?.l}</span>}
+                        {isOrig&&(l.homework||[]).length>0&&<span style={{fontSize:9,background:co.t,color:co.bg,borderRadius:4,padding:"0 4px",fontWeight:600}}>{(l.homework||[]).length}</span>}
+                      </div>
+                      {hp>32&&<div style={{fontSize:10,color:isCan?C.tt:co.t,opacity:.7,marginTop:1,textDecoration:isCan?'line-through':'none'}}>{isOrig?(l.topic||""):(l.subject||"")}</div>}
+                      {hp>48&&<div style={{fontSize:10,color:isCan?C.tt:co.t,opacity:.6,marginTop:1}}>{p2(l.start_hour)}:{p2(l.start_min)} · {l.duration}분</div>}
                     </div>
                   );
                 })}
@@ -254,7 +312,39 @@ export default function Schedule({menuBtn}){
         </div>
       </div>
 
-      {mOpen&&<SchModal les={eLes} students={students} onSave={save} onDel={del} onDelSingle={delSingle} onDelFuture={delFuture} onClose={()=>{setMO(false);setEL(null);}}/>}
+      {/* Context Menu */}
+      {ctxMenu&&<>
+        <div style={{position:"fixed",inset:0,zIndex:50}} onClick={()=>setCtx(null)} onContextMenu={e=>{e.preventDefault();setCtx(null);}}/>
+        <div style={{position:"fixed",left:Math.min(ctxMenu.x,window.innerWidth-180),top:Math.min(ctxMenu.y,window.innerHeight-280),zIndex:51,background:C.sf,border:`1px solid ${C.bd}`,borderRadius:10,boxShadow:"0 8px 24px rgba(0,0,0,.12)",padding:6,minWidth:160}} onClick={e=>e.stopPropagation()}>
+          <button className="cm-i" style={cms} onClick={()=>{setEL({...ctxMenu.l,_viewDate:fd(ctxMenu.vd)});setMO(true);setCtx(null);}}>
+            <span style={{marginRight:8}}>&#9998;</span>수정
+          </button>
+          <button className="cm-i" style={cms} onClick={copyLesson}>
+            <span style={{marginRight:8}}>&#128203;</span>복사 (보강)
+          </button>
+          <div style={{height:1,background:C.bd,margin:"4px 0"}}/>
+          <div style={{padding:"6px 8px",fontSize:10,color:C.tt,fontWeight:600}}>상태 변경</div>
+          <div style={{display:"flex",gap:4,padding:"2px 8px 8px"}}>
+            {Object.entries(LSTATUS).map(([k,v])=>{
+              const cur=(ctxMenu.l.status||'scheduled')===k;
+              return(<button key={k} onClick={()=>updStatus(k)} style={{fontSize:10,fontWeight:cur?700:500,color:cur?v.c:C.ts,background:cur?v.bg:'transparent',border:`1px solid ${cur?v.c:C.bd}`,borderRadius:5,padding:"3px 7px",cursor:"pointer",fontFamily:"inherit"}}>{v.l}</button>);
+            })}
+          </div>
+          <div style={{height:1,background:C.bd,margin:"4px 0"}}/>
+          {ctxMenu.l.is_recurring?<>
+            <button className="cm-i" style={{...cms,color:C.dn}} onClick={()=>{delSingle(ctxMenu.l.id,fd(ctxMenu.vd));}}>
+              <span style={{marginRight:8}}>&#128465;</span>이 수업만 삭제
+            </button>
+            <button className="cm-i" style={{...cms,color:C.dn}} onClick={()=>{delFuture(ctxMenu.l.id,fd(ctxMenu.vd));}}>
+              <span style={{marginRight:8}}>&#128465;</span>이후 반복 삭제
+            </button>
+          </>:<button className="cm-i" style={{...cms,color:C.dn}} onClick={()=>{del(ctxMenu.l.id);}}>
+            <span style={{marginRight:8}}>&#128465;</span>삭제
+          </button>}
+        </div>
+      </>}
+
+      {mOpen&&<SchModal les={eLes} students={students} onSave={save} onDel={del} onDelSingle={delSingle} onDelFuture={delFuture} onClose={()=>{setMO(false);setEL(null);}} checkConflict={checkConflict}/>}
       {dLes&&<LessonDetailModal les={dLes} student={getStu(dLes.student_id)} onUpdate={updDetail} onClose={()=>setDL(null)}/>}
     </div>
   );
