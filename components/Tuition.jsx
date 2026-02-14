@@ -49,6 +49,7 @@ export default function Tuition({menuBtn}){
       const dwN=dw===0?7:dw;
       cnt+=lessons.filter(l=>{
         if(l.student_id!==sid)return false;
+        if(l.status==='cancelled')return false;
         const ld=(l.date||"").slice(0,10);
         if(l.is_recurring&&l.recurring_exceptions&&l.recurring_exceptions.includes(ds))return false;
         if(ld===ds)return true;
