@@ -79,7 +79,7 @@ export default function Schedule({menuBtn}){
   const[ctxMenu,setCtx]=useState(null);
   const[slideDir,setSlide]=useState(null);
   const[animKey,setAnim]=useState(0);
-  const[hiddenStu,setHidden]=useState(new Set());
+  const[activeStu,setActive]=useState(null);
   const gridRef=useRef(null);const dragRef=useRef(null);const movedRef=useRef(false);const swipeRef=useRef(null);
   const today=new Date();const wk=gwd(cur);
   const hrs=Array.from({length:enH-stH},(_,i)=>i+stH);const tH=(enH-stH)*4*SHT;
@@ -101,7 +101,7 @@ export default function Schedule({menuBtn}){
 
   const gCo=sid=>{const st=students.find(x=>x.id===sid);return SC[(st?.color_index||0)%8];};
   const getStu=sid=>students.find(x=>x.id===sid);
-  const toggleStu=sid=>setHidden(p=>{const n=new Set(p);n.has(sid)?n.delete(sid):n.add(sid);return n;});
+  const toggleStu=sid=>setActive(p=>p===sid?null:sid);
   const gMonthDays=()=>{const y=cur.getFullYear(),m=cur.getMonth();const first=new Date(y,m,1);const startDow=first.getDay()===0?6:first.getDay()-1;const dim=new Date(y,m+1,0).getDate();const days=[];for(let i=-startDow;i<42;i++){const d=new Date(y,m,1+i);days.push(d);if(i>=dim-1+startDow&&days.length%7===0)break;}return days;};
 
   /* Conflict detection */
@@ -273,9 +273,9 @@ export default function Schedule({menuBtn}){
           </div>
         </div>
         <div style={{display:"flex",gap:8,marginTop:10,flexWrap:"wrap",alignItems:"center"}}>
-          {students.map(st=>{const c=SC[(st.color_index||0)%8];const hide=hiddenStu.has(st.id);return(<div key={st.id} onClick={()=>toggleStu(st.id)} style={{display:"flex",alignItems:"center",gap:6,padding:"3px 8px",borderRadius:6,background:hide?C.sfh:c.bg,fontSize:11,fontWeight:500,color:hide?C.tt:c.t,cursor:"pointer",opacity:hide?.5:1,transition:"all .15s"}}><div style={{width:7,height:7,borderRadius:"50%",background:hide?C.tt:c.b}}/>{st.name}{hide&&<span style={{fontSize:9}}>✕</span>}</div>);})}
+          {students.map(st=>{const c=SC[(st.color_index||0)%8];const dim=activeStu&&activeStu!==st.id;const sel=activeStu===st.id;return(<div key={st.id} onClick={()=>toggleStu(st.id)} style={{display:"flex",alignItems:"center",gap:6,padding:"3px 8px",borderRadius:6,background:dim?C.sfh:c.bg,fontSize:11,fontWeight:sel?700:500,color:dim?C.tt:c.t,cursor:"pointer",opacity:dim?.4:1,transition:"all .15s",border:sel?`1.5px solid ${c.b}`:"1.5px solid transparent"}}><div style={{width:7,height:7,borderRadius:"50%",background:dim?C.tt:c.b}}/>{st.name}</div>);})}
           <span style={{fontSize:10,color:C.tt,background:C.sfh,padding:"3px 8px",borderRadius:4}}>{viewMode==='month'?'클릭: 해당 주간으로 이동':'좌클릭: 상세 · 우클릭: 메뉴 · 드래그: 이동/생성'}</span>
-          {hiddenStu.size>0&&<button onClick={()=>setHidden(new Set())} style={{fontSize:10,color:C.ac,background:C.al,border:`1px solid ${C.ac}`,borderRadius:5,padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>전체 보기</button>}
+          {activeStu&&<button onClick={()=>setActive(null)} style={{fontSize:10,color:C.ac,background:C.al,border:`1px solid ${C.ac}`,borderRadius:5,padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>전체 보기</button>}
           {viewMode==='week'&&<div style={{display:"flex",alignItems:"center",gap:4,marginLeft:"auto",fontSize:11,color:C.ts}}>
             <select value={stH} onChange={e=>{const v=+e.target.value;setStH(v);localStorage.setItem('sch_stH',v);if(v>=enH){setEnH(v+1);localStorage.setItem('sch_enH',v+1);}}} style={{padding:"2px 4px",borderRadius:4,border:`1px solid ${C.bd}`,fontSize:11,color:C.ts,background:C.sf,fontFamily:"inherit",cursor:"pointer"}}>{Array.from({length:24},(_,i)=>i).map(h=><option key={h} value={h}>{p2(h)}:00</option>)}</select>
             <span>~</span>
@@ -289,15 +289,15 @@ export default function Schedule({menuBtn}){
         <div key={animKey} className={slideDir==='r'?'wk-r':slideDir==='l'?'wk-l':''} style={{padding:"0 24px 24px"}} onTouchStart={onTS} onTouchEnd={onTE}>
           <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:0,border:`1px solid ${C.bd}`,borderRadius:12,overflow:"hidden",background:C.sf}}>
             {DK.map(d=><div key={d} style={{padding:"8px 0",textAlign:"center",fontSize:12,fontWeight:600,color:C.tt,background:C.sfh,borderBottom:`1px solid ${C.bd}`}}>{d}</div>)}
-            {mDays.map((d,i)=>{const isM=d.getMonth()===cm;const it=sdy(d,today);const dl=gL(d).filter(l=>!hiddenStu.has(l.student_id));const cnt=dl.filter(l=>l.status!=='cancelled').length;const canCnt=dl.filter(l=>l.status==='cancelled').length;
+            {mDays.map((d,i)=>{const isM=d.getMonth()===cm;const it=sdy(d,today);const dl=gL(d);const cnt=dl.filter(l=>l.status!=='cancelled'&&(!activeStu||l.student_id===activeStu)).length;
               return(<div key={i} onClick={()=>{setCur(d);setVM('week');}} style={{minHeight:90,padding:6,borderRight:(i%7<6)?`1px solid ${C.bl}`:"none",borderBottom:`1px solid ${C.bl}`,background:it?C.as:isM?"transparent":"#FAFAF8",cursor:"pointer",transition:"background .1s"}} onMouseEnter={e=>e.currentTarget.style.background=it?C.as:C.sfh} onMouseLeave={e=>e.currentTarget.style.background=it?C.as:isM?"transparent":"#FAFAF8"}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
                   <span style={{fontSize:13,fontWeight:it?700:isM?500:400,color:it?C.ac:isM?C.tp:C.tt,width:it?24:undefined,height:it?24:undefined,borderRadius:"50%",background:it?C.ac:"transparent",color:it?"#fff":isM?C.tp:C.tt,display:"inline-flex",alignItems:"center",justifyContent:"center"}}>{d.getDate()}</span>
                   {cnt>0&&<span style={{fontSize:10,fontWeight:600,color:C.ac,background:C.al,borderRadius:4,padding:"1px 5px"}}>{cnt}건</span>}
                 </div>
                 {isM&&<div style={{display:"flex",flexDirection:"column",gap:2}}>
-                  {dl.slice(0,3).map(l=>{const co=gCo(l.student_id);const st=getStu(l.student_id);const isCan=l.status==='cancelled';return(
-                    <div key={l.id} style={{fontSize:10,padding:"1px 4px",borderRadius:4,background:isCan?C.sfh:co.bg,color:isCan?C.tt:co.t,fontWeight:500,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",opacity:isCan?.5:1,textDecoration:isCan?'line-through':'none'}}>{p2(l.start_hour)}:{p2(l.start_min)} {st?.name||""}</div>);
+                  {dl.slice(0,3).map(l=>{const co=gCo(l.student_id);const st=getStu(l.student_id);const isCan=l.status==='cancelled';const dim=activeStu&&l.student_id!==activeStu;return(
+                    <div key={l.id} style={{fontSize:10,padding:"1px 4px",borderRadius:4,background:isCan||dim?C.sfh:co.bg,color:isCan||dim?C.tt:co.t,fontWeight:500,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",opacity:isCan?.5:dim?.3:1,textDecoration:isCan?'line-through':'none'}}>{p2(l.start_hour)}:{p2(l.start_min)} {st?.name||""}</div>);
                   })}
                   {dl.length>3&&<div style={{fontSize:9,color:C.tt,paddingLeft:4}}>+{dl.length-3}건</div>}
                 </div>}
@@ -326,7 +326,7 @@ export default function Schedule({menuBtn}){
 
           {/* Day columns */}
           {wk.map((date,di)=>{
-            const dl=gL(date).filter(l=>!hiddenStu.has(l.student_id)),it=sdy(date,today);
+            const dl=gL(date),it=sdy(date,today);
             return(
               <div key={di} style={{position:"relative",height:tH,borderRight:di<6?`1px solid ${C.bl}`:"none",background:it?"rgba(37,99,235,.015)":"transparent"}} onMouseDown={e=>onGD(e,di)}>
                 {hrs.map((h,i)=>(<div key={h} style={{position:"absolute",top:i*SHT*4,left:0,right:0,height:SHT*4,borderBottom:`1px solid ${C.bl}`}}><div style={{position:"absolute",top:SHT*2-1,left:0,right:0,height:1,background:C.bl,opacity:.5}}/></div>))}
@@ -335,9 +335,9 @@ export default function Schedule({menuBtn}){
                 )}
                 {dl.map(l=>{const co=gCo(l.student_id);const st=getStu(l.student_id);const tp=((l.start_hour*60+l.start_min)-stH*60)/SMN*SHT;const hp=Math.max(l.duration/SMN*SHT,SHT);
                   const isOrig=!l.is_recurring||l.date===fd(date);
-                  const lSt=l.status||'scheduled';const isCan=lSt==='cancelled';
+                  const lSt=l.status||'scheduled';const isCan=lSt==='cancelled';const dim=activeStu&&l.student_id!==activeStu;
                   return(
-                    <div key={l.id} className="lb" onMouseDown={e=>onLD(e,l,date)} onContextMenu={e=>onRC(e,l,date)} style={{position:"absolute",top:tp,left:3,right:3,height:hp-2,borderRadius:8,background:isCan?C.sfh:co.bg,borderLeft:`3px solid ${isCan?C.bd:co.b}`,padding:"4px 8px",overflow:"hidden",zIndex:3,opacity:isCan?.45:1}}>
+                    <div key={l.id} className="lb" onMouseDown={e=>onLD(e,l,date)} onContextMenu={e=>onRC(e,l,date)} style={{position:"absolute",top:tp,left:3,right:3,height:hp-2,borderRadius:8,background:isCan||dim?C.sfh:co.bg,borderLeft:`3px solid ${isCan||dim?C.bd:co.b}`,padding:"4px 8px",overflow:"hidden",zIndex:dim?1:3,opacity:isCan?.45:dim?.25:1,transition:"opacity .15s"}}>
                       <div style={{display:"flex",alignItems:"center",gap:4}}>
                         <span style={{fontSize:11,fontWeight:600,color:isCan?C.tt:co.t,textDecoration:isCan?'line-through':'none'}}>{st?.name||""}</span>
                         {lSt!=='scheduled'&&<span style={{fontSize:8,fontWeight:700,color:LSTATUS[lSt]?.c,background:LSTATUS[lSt]?.bg,borderRadius:3,padding:"1px 4px",lineHeight:"14px"}}>{LSTATUS[lSt]?.l}</span>}
