@@ -68,6 +68,8 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
   const [fileDrag,setFileDrag]=useState(false);
   const [uploading,setUploading]=useState(false);
   const [standaloneFiles,setStandaloneFiles]=useState([]);
+  const [shareToken,setShareToken]=useState(s.share_token||null);
+  const [shareCopied,setShareCopied]=useState(false);
 
   // Tabs: 리포트를 수업 안 "기록" 서브탭으로, 계획 제거, 분석에서 리포트 제거
   const mainTabs=[
@@ -189,6 +191,12 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
     setUploading(false);
   };
   const delFile=async(id)=>{await supabase.from('files').delete().eq('id',id);setStandaloneFiles(p=>p.filter(f=>f.id!==id));};
+  const copyShareLink=async()=>{
+    let tk=shareToken;
+    if(!tk){tk=crypto.randomUUID();const{error}=await supabase.from('students').update({share_token:tk}).eq('id',s.id);if(error){alert("공유 링크 생성 실패: "+error.message);return;}setShareToken(tk);}
+    const url=window.location.origin+"/share/"+tk;
+    try{await navigator.clipboard.writeText(url);setShareCopied(true);setTimeout(()=>setShareCopied(false),2000);}catch{prompt("링크를 복사하세요:",url);}
+  };
   const updLesDetail=async(id,data)=>{
     const u={};if(data.top!==undefined)u.topic=data.top;if(data.content!==undefined)u.content=data.content;if(data.feedback!==undefined)u.feedback=data.feedback;if(data.tMemo!==undefined)u.private_memo=data.tMemo;if(data.planShared!==undefined)u.plan_shared=data.planShared;if(data.planPrivate!==undefined)u.plan_private=data.planPrivate;
     if(Object.keys(u).length)await supabase.from('lessons').update(u).eq('id',id);
@@ -227,7 +235,10 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
             <div style={{fontSize:13,color:C.ts}}>{s.subject} · {s.grade}{s.school?" · "+s.school:""}</div>
           </div>
         </div>
-        <label style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:C.ts,cursor:"pointer"}}><input type="checkbox" checked={isParent} onChange={e=>setIsParent(e.target.checked)}/>학부모 뷰</label>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <button onClick={copyShareLink} style={{background:shareCopied?C.sb:C.as,color:shareCopied?C.su:C.ac,border:"1px solid "+(shareCopied?"#BBF7D0":C.al),borderRadius:8,padding:"6px 12px",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",transition:"all .2s"}}>{shareCopied?"링크 복사됨":"공유 링크"}</button>
+          <label style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:C.ts,cursor:"pointer",whiteSpace:"nowrap"}}><input type="checkbox" checked={isParent} onChange={e=>setIsParent(e.target.checked)}/>학부모 뷰</label>
+        </div>
       </div>
 
       {/* Main tabs */}
