@@ -133,44 +133,45 @@ export default function ShareView({ token }) {
         </div>
       </div>
 
-      {/* Recent Report (above tabs) */}
+      {/* Recent Report and Study Plan (above tabs) */}
       {(() => {
         const allReports = [...planComments, ...reports].filter(r => r.is_shared !== false).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
         const recentReport = allReports[0];
-        return recentReport ? (
-          <div style={{ background: C.sf, borderBottom: "1px solid " + C.bd, padding: "20px 0" }}>
-            <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 20px" }}>
-              <h3 style={{ fontSize: 14, fontWeight: 700, color: C.tp, marginBottom: 10 }}>학습 리포트</h3>
-              <div style={{ background: "linear-gradient(135deg, " + C.as + " 0%, " + C.sf + " 100%)", border: "2px solid " + C.ac, borderRadius: 14, padding: 16 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: C.tp }}>{recentReport.title || "리포트"}</span>
-                  <span style={{ fontSize: 11, color: C.tt }}>{recentReport.date}</span>
-                </div>
-                <div style={{ fontSize: 13, color: C.tp, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{recentReport.body}</div>
-              </div>
-            </div>
-          </div>
-        ) : null;
-      })()}
-
-      {/* Recent Study Plan (above tabs) */}
-      {(() => {
         const sharedPlans = studyPlans.filter(sp => sp.is_shared !== false).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
         const recentPlan = sharedPlans[0];
-        return recentPlan ? (
+
+        if (!recentReport && !recentPlan) return null;
+
+        return (
           <div style={{ background: C.sf, borderBottom: "1px solid " + C.bd, padding: "20px 0" }}>
-            <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 20px" }}>
-              <h3 style={{ fontSize: 14, fontWeight: 700, color: C.tp, marginBottom: 10 }}>학습 계획</h3>
-              <div style={{ background: "linear-gradient(135deg, #D1FAE5 0%, " + C.sf + " 100%)", border: "2px solid #16A34A", borderRadius: 14, padding: 16 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: C.tp }}>{recentPlan.title || "학습 계획"}</span>
-                  <span style={{ fontSize: 11, color: C.tt }}>{recentPlan.date}</span>
+            <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 20px", display: "flex", gap: 12 }}>
+              {recentReport && (
+                <div style={{ flex: 1 }}>
+                  <h3 style={{ fontSize: 14, fontWeight: 700, color: C.tp, marginBottom: 10 }}>학습 리포트</h3>
+                  <div style={{ background: "linear-gradient(135deg, " + C.as + " 0%, " + C.sf + " 100%)", border: "2px solid " + C.ac, borderRadius: 14, padding: 16 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: C.tp }}>{recentReport.title || "리포트"}</span>
+                      <span style={{ fontSize: 11, color: C.tt }}>{recentReport.date}</span>
+                    </div>
+                    <div style={{ fontSize: 13, color: C.tp, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{recentReport.body}</div>
+                  </div>
                 </div>
-                <div style={{ fontSize: 13, color: C.tp, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{recentPlan.body}</div>
-              </div>
+              )}
+              {recentPlan && (
+                <div style={{ flex: 1 }}>
+                  <h3 style={{ fontSize: 14, fontWeight: 700, color: C.tp, marginBottom: 10 }}>학습 계획</h3>
+                  <div style={{ background: "linear-gradient(135deg, #D1FAE5 0%, " + C.sf + " 100%)", border: "2px solid #16A34A", borderRadius: 14, padding: 16 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: C.tp }}>{recentPlan.title || "학습 계획"}</span>
+                      <span style={{ fontSize: 11, color: C.tt }}>{recentPlan.date}</span>
+                    </div>
+                    <div style={{ fontSize: 13, color: C.tp, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{recentPlan.body}</div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-        ) : null;
+        );
       })()}
 
       {/* Tabs */}
