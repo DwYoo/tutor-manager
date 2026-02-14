@@ -127,8 +127,8 @@ export default function TimelineTab({ lessons, isParent, onLessonClick, studentI
                   {l.homework && l.homework.length > 0 && (
                     <div className="mt-2 flex gap-1.5 flex-wrap">
                       {l.homework.map(h => {
-                        const pc = h.completion_pct >= 80 ? '#16A34A' : h.completion_pct >= 50 ? '#F59E0B' : '#A8A29E'
-                        const bg = h.completion_pct >= 80 ? '#F0FDF4' : h.completion_pct >= 50 ? '#FFFBEB' : '#F5F5F4'
+                        const pc = h.completion_pct >= 100 ? '#16A34A' : h.completion_pct > 30 ? '#F59E0B' : h.completion_pct > 0 ? '#EA580C' : '#DC2626'
+                        const bg = h.completion_pct >= 100 ? '#F0FDF4' : h.completion_pct > 30 ? '#FFFBEB' : h.completion_pct > 0 ? '#FFF7ED' : '#FEF2F2'
                         return (
                           <span key={h.id} className="text-[10px] font-semibold px-2 py-0.5 rounded-[5px]" style={{ background: bg, color: pc }}>
                             {h.title} {h.completion_pct}%

@@ -23,7 +23,7 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
     setLoading(true);
     const[sRes,lRes,tRes]=await Promise.all([
       supabase.from('students').select('*').order('created_at'),
-      supabase.from('lessons').select('*').order('date'),
+      supabase.from('lessons').select('*, homework(*)').order('date'),
       supabase.from('tuition').select('*'),
     ]);
     setStudents(sRes.data||[]);setLessons(lRes.data||[]);setTuitions(tRes.data||[]);setLoading(false);
@@ -31,8 +31,8 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
   useEffect(()=>{fetchData();},[fetchData]);
 
   /* ── Derived data ── */
-  const today=new Date();const todayStr=fd(today);
-  const todayDw=today.getDay()===0?7:today.getDay();
+  const activeStudents=students.filter(s=>!s.archived);
+  const today=new Date();
   const wkBase=new Date(today);wkBase.setDate(today.getDate()+weekOff*7);
   const wk=gwd(wkBase);
   const curMonth=`${today.getFullYear()}-${p2(today.getMonth()+1)}`;
@@ -41,14 +41,28 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
   // Helper: does this lesson occur on this date?
   const lessonOnDate=(l,date)=>{
     const ds=fd(date),dw=date.getDay()===0?7:date.getDay();
-    if(l.date===ds)return true;
-    if(l.is_recurring&&l.recurring_day===dw)return date>=new Date(l.date);
+    const ld=(l.date||"").slice(0,10);
+    if(l.is_recurring&&l.recurring_exceptions&&l.recurring_exceptions.includes(ds))return false;
+    if(ld===ds)return true;
+    if(l.is_recurring&&+l.recurring_day===dw){
+      if(ds<ld)return false;
+      if(l.recurring_end_date&&ds>=(l.recurring_end_date+"").slice(0,10))return false;
+      return true;
+    }
     return false;
   };
 
   // Today's classes
   const todayClasses=lessons.filter(l=>lessonOnDate(l,today))
     .sort((a,b)=>(a.start_hour*60+a.start_min)-(b.start_hour*60+b.start_min));
+
+  // Upcoming classes (next 3 days)
+  const upcomingDays=[];
+  for(let i=1;i<=3;i++){
+    const d=new Date(today);d.setDate(today.getDate()+i);
+    const cls=lessons.filter(l=>lessonOnDate(l,d)).sort((a,b)=>(a.start_hour*60+a.start_min)-(b.start_hour*60+b.start_min));
+    if(cls.length>0)upcomingDays.push({date:d,dayLabel:`${DK[d.getDay()]}요일 (${p2(d.getMonth()+1)}/${p2(d.getDate())})`,classes:cls});
+  }
 
   // Week classes by day
   const weekData=wk.map((d,i)=>{
@@ -59,7 +73,7 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
   const thisWeekTotal=weekOff===0?weekTotal:gwd(today).reduce((a,d)=>a+lessons.filter(l=>lessonOnDate(l,d)).length,0);
   const todayIdx=weekOff===0?(today.getDay()===0?6:today.getDay()-1):-1;
 
-  // ── Fee calculation: same as Tuition (fee_per_class × lessons this month) ──
+  // ── Fee calculation: match Tuition tab logic (with fee_override) ──
   const countMonthLessons=(sid)=>{
     const dim=new Date(year,month,0).getDate();
     let cnt=0;
@@ -70,31 +84,44 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
     return cnt;
   };
 
-  const monthRecs=students.map(s=>{
+  const autoStatus=(amt,due)=>amt>=due?"paid":amt>0?"partial":"unpaid";
+
+  const monthRecs=activeStudents.map(s=>{
     const rec=tuitions.find(t=>t.student_id===s.id&&t.month===curMonth);
     const lessonCnt=countMonthLessons(s.id);
-    const calcFee=(s.fee_per_class||0)*lessonCnt;
+    const autoFee=(s.fee_per_class||0)*lessonCnt;
     const carryover=rec?.carryover||0;
-    const totalDue=calcFee+carryover;
+    const autoTotalDue=autoFee+carryover;
+    // fee_override 반영 (Tuition 탭과 동일 로직)
+    const totalDue=(rec&&rec.fee_override!=null)?rec.fee_override:autoTotalDue;
     const paidAmount=rec?.amount||0;
-    const status=rec?.status||"unpaid";
+    const status=autoStatus(paidAmount,totalDue);
     return{student:s,totalDue,paidAmount,status};
   });
 
   const totalFee=monthRecs.reduce((a,r)=>a+r.totalDue,0);
-  const totalPaid=monthRecs.reduce((a,r)=>a+(r.status==="paid"?r.totalDue:r.paidAmount),0);
+  const totalPaid=monthRecs.reduce((a,r)=>a+r.paidAmount,0);
   const unpaidRecs=monthRecs.filter(r=>r.status!=="paid");
-  const unpaidAmount=Math.max(0,totalFee-totalPaid);
+  const unpaidAmount=monthRecs.reduce((a,r)=>r.status!=="paid"?a+Math.max(0,r.totalDue-r.paidAmount):a,0);
+
+  // ── Homework stats (최근 30일) ──
+  const allHomework=lessons.flatMap(l=>(l.homework||[]).map(h=>({...h,lesson:l})));
+  const recentHomework=allHomework.filter(h=>{
+    const ld=new Date((h.lesson.date||"").slice(0,10));
+    const diff=(today-ld)/(1000*60*60*24);
+    return diff<=30&&diff>=0;
+  });
+  const pendingHw=recentHomework.filter(h=>(h.completion_pct||0)<100);
+  const completedHw=recentHomework.filter(h=>(h.completion_pct||0)>=100);
+  const hwRate=recentHomework.length>0?Math.round(completedHw.length/recentHomework.length*100):0;
 
   // ── Next class per student (from actual lessons) ──
   const getNextClass=(sid)=>{
-    // Check today and next 14 days
     for(let offset=0;offset<14;offset++){
       const d=new Date(today);d.setDate(today.getDate()+offset);
       const sLessons=lessons.filter(l=>l.student_id===sid&&lessonOnDate(l,d));
       for(const l of sLessons){
         const lesMin=l.start_hour*60+l.start_min;
-        // If today, only future lessons
         if(offset===0&&lesMin<=today.getHours()*60+today.getMinutes())continue;
         const dayLabel=DK[d.getDay()];
         return `${dayLabel} ${p2(l.start_hour)}:${p2(l.start_min)}`;
@@ -106,8 +133,11 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
   const getStu=sid=>students.find(x=>x.id===sid);
   const getCol=sid=>{const s=getStu(sid);return SC[(s?.color_index||0)%8];};
 
+  // ── Today's date formatted ──
+  const todayLabel=`${today.getFullYear()}년 ${today.getMonth()+1}월 ${today.getDate()}일 ${DK[today.getDay()]}요일`;
+
   const stats=[
-    {l:"전체 학생",v:String(students.length),sub:"관리 중",c:C.ac,click:()=>onNav("students")},
+    {l:"전체 학생",v:String(activeStudents.length),sub:"관리 중",c:C.ac,click:()=>onNav("students")},
     {l:"이번 주 수업",v:String(thisWeekTotal),sub:`오늘 ${todayClasses.length}`,c:C.su,click:()=>onNav("schedule")},
     {l:"월 수입",v:totalFee>0?`₩${Math.round(totalFee/10000)}만`:"₩0",sub:"이번 달",c:C.wn,click:()=>onNav("tuition")},
     {l:"미수금",v:unpaidAmount>0?`₩${Math.round(unpaidAmount/10000)}만`:"₩0",sub:`${unpaidRecs.length}명`,c:C.dn,click:()=>onNav("tuition")},
@@ -126,7 +156,7 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
         {tog}
         <div>
           <h1 style={{fontSize:22,fontWeight:700,color:C.tp}}>안녕하세요, 선생님 👋</h1>
-          <p style={{fontSize:14,color:C.ts,marginTop:4}}>오늘의 수업과 학생 현황을 확인하세요.</p>
+          <p style={{fontSize:14,color:C.ts,marginTop:4}}>{todayLabel} · 오늘의 수업과 학생 현황을 확인하세요.</p>
         </div>
       </div>
 
@@ -142,22 +172,46 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
           {/* Today's classes */}
           <div style={{background:C.sf,border:`1px solid ${C.bd}`,borderRadius:14,padding:20}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-              <h3 style={{fontSize:15,fontWeight:600,color:C.tp}}>오늘 수업</h3>
+              <h3 style={{fontSize:15,fontWeight:600,color:C.tp}}>오늘 수업 <span style={{fontSize:12,fontWeight:500,color:C.ac,marginLeft:6}}>{todayClasses.length}건</span></h3>
               <button onClick={()=>onNav("schedule")} style={{fontSize:11,color:C.ac,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>전체 일정 →</button>
             </div>
             {todayClasses.length===0?(
               <div style={{textAlign:"center",padding:30,color:C.tt}}><div style={{fontSize:14}}>오늘 예정된 수업이 없습니다</div></div>
             ):(
               <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                {todayClasses.map(l=>{const stu=getStu(l.student_id);const co=getCol(l.student_id);const em=l.start_hour*60+l.start_min+l.duration;return(
+                {todayClasses.map(l=>{const stu=getStu(l.student_id);const co=getCol(l.student_id);const em=l.start_hour*60+l.start_min+l.duration;const hwAll=(l.homework||[]);const hwCnt=hwAll.length;const hwDone=hwAll.filter(h=>(h.completion_pct||0)>=100).length;return(
                   <div key={l.id} onClick={()=>stu&&onDetail(stu)} style={{display:"flex",alignItems:"center",gap:14,padding:"12px 14px",borderRadius:10,border:`1px solid ${C.bl}`,borderLeft:`4px solid ${co.b}`,cursor:"pointer"}} className="hcard">
                     <div style={{fontSize:13,color:C.tt,fontWeight:500,minWidth:100}}>{p2(l.start_hour)}:{p2(l.start_min)}~{p2(Math.floor(em/60))}:{p2(em%60)}</div>
                     <div style={{width:32,height:32,borderRadius:8,background:co.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:co.t}}>{(stu?.name||"?")[0]}</div>
-                    <div><div style={{fontSize:14,fontWeight:600,color:C.tp}}>{stu?.name||"-"}</div><div style={{fontSize:12,color:C.ts}}>{l.subject} · {l.topic||"-"}</div></div>
+                    <div style={{flex:1}}><div style={{fontSize:14,fontWeight:600,color:C.tp}}>{stu?.name||"-"}</div><div style={{fontSize:12,color:C.ts}}>{l.subject} · {l.topic||"-"}</div></div>
+                    {hwCnt>0&&<div style={{fontSize:10,color:hwDone===hwCnt?C.su:C.wn,background:hwDone===hwCnt?C.sb:C.wb,padding:"2px 6px",borderRadius:4,fontWeight:600}}>숙제 {hwDone}/{hwCnt}</div>}
                   </div>);})}
               </div>
             )}
           </div>
+
+          {/* Upcoming classes (next 3 days) */}
+          {upcomingDays.length>0&&(
+            <div style={{background:C.sf,border:`1px solid ${C.bd}`,borderRadius:14,padding:20}}>
+              <h3 style={{fontSize:15,fontWeight:600,color:C.tp,marginBottom:16}}>다가오는 수업</h3>
+              <div style={{display:"flex",flexDirection:"column",gap:14}}>
+                {upcomingDays.map((day,di)=>(
+                  <div key={di}>
+                    <div style={{fontSize:12,fontWeight:600,color:C.ts,marginBottom:8}}>{day.dayLabel}</div>
+                    <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                      {day.classes.map(l=>{const stu=getStu(l.student_id);const co=getCol(l.student_id);return(
+                        <div key={l.id} onClick={()=>stu&&onDetail(stu)} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderRadius:8,border:`1px solid ${C.bl}`,borderLeft:`3px solid ${co.b}`,cursor:"pointer"}} className="hcard">
+                          <div style={{fontSize:12,color:C.tt,fontWeight:500,minWidth:44}}>{p2(l.start_hour)}:{p2(l.start_min)}</div>
+                          <div style={{width:24,height:24,borderRadius:6,background:co.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:co.t}}>{(stu?.name||"?")[0]}</div>
+                          <div style={{fontSize:13,fontWeight:500,color:C.tp}}>{stu?.name||"-"}</div>
+                          <div style={{fontSize:11,color:C.ts}}>{l.subject}</div>
+                        </div>);})}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Quick actions */}
           <div style={{background:C.sf,border:`1px solid ${C.bd}`,borderRadius:14,padding:20}}>
@@ -191,6 +245,46 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
             </div>
           </div>
 
+          {/* Homework status */}
+          {recentHomework.length>0&&(
+            <div style={{background:C.sf,border:`1px solid ${C.bd}`,borderRadius:14,padding:20}}>
+              <h3 style={{fontSize:15,fontWeight:600,color:C.tp,marginBottom:12}}>숙제 현황 <span style={{fontSize:11,fontWeight:400,color:C.tt}}>최근 30일</span></h3>
+              <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
+                <div style={{flex:1,height:6,background:C.bl,borderRadius:3,overflow:"hidden"}}>
+                  <div style={{height:"100%",width:`${hwRate}%`,background:hwRate>=80?C.su:hwRate>=50?C.wn:C.dn,borderRadius:3,transition:"width .3s"}}/>
+                </div>
+                <span style={{fontSize:12,fontWeight:600,color:hwRate>=80?C.su:hwRate>=50?C.wn:C.dn}}>{hwRate}%</span>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,fontSize:11}}>
+                <div style={{textAlign:"center",padding:8,background:C.sb,borderRadius:8}}><div style={{fontWeight:700,color:C.su,fontSize:14}}>{completedHw.length}</div><div style={{color:C.ts,marginTop:2}}>완료</div></div>
+                <div style={{textAlign:"center",padding:8,background:C.wb,borderRadius:8}}><div style={{fontWeight:700,color:C.wn,fontSize:14}}>{pendingHw.filter(h=>(h.completion_pct||0)>0).length}</div><div style={{color:C.ts,marginTop:2}}>진행중</div></div>
+                <div style={{textAlign:"center",padding:8,background:C.db,borderRadius:8}}><div style={{fontWeight:700,color:C.dn,fontSize:14}}>{pendingHw.filter(h=>(h.completion_pct||0)===0).length}</div><div style={{color:C.ts,marginTop:2}}>미착수</div></div>
+              </div>
+            </div>
+          )}
+
+          {/* Unpaid status */}
+          {unpaidRecs.length>0&&(
+            <div style={{background:C.sf,border:`1px solid ${C.bd}`,borderRadius:14,padding:20}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                <h3 style={{fontSize:15,fontWeight:600,color:C.tp}}>미납 현황</h3>
+                <button onClick={()=>onNav("tuition")} style={{fontSize:11,color:C.ac,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>수업료 관리 →</button>
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                {unpaidRecs.slice(0,5).map(r=>{const owed=Math.max(0,r.totalDue-r.paidAmount);const col=SC[(r.student.color_index||0)%8];return(
+                  <div key={r.student.id} onClick={()=>onDetail(r.student)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 10px",borderRadius:8,border:`1px solid ${C.bl}`,cursor:"pointer"}} className="hcard">
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <div style={{width:24,height:24,borderRadius:6,background:col.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:col.t}}>{(r.student.name||"?")[0]}</div>
+                      <span style={{fontSize:12,fontWeight:600,color:C.tp}}>{r.student.name}</span>
+                      <span style={{fontSize:9,padding:"1px 5px",borderRadius:4,fontWeight:600,background:r.status==="partial"?C.wb:C.db,color:r.status==="partial"?C.wn:C.dn}}>{r.status==="partial"?"일부납":"미납"}</span>
+                    </div>
+                    <span style={{fontSize:12,fontWeight:600,color:C.dn}}>₩{owed.toLocaleString()}</span>
+                  </div>);})}
+                {unpaidRecs.length>5&&<div style={{fontSize:11,color:C.tt,textAlign:"center",paddingTop:4}}>외 {unpaidRecs.length-5}명</div>}
+              </div>
+            </div>
+          )}
+
           {/* Student list */}
           <div style={{background:C.sf,border:`1px solid ${C.bd}`,borderRadius:14,padding:20}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
@@ -198,13 +292,13 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
               <button onClick={()=>onNav("students")} style={{fontSize:11,color:C.ac,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>전체보기 →</button>
             </div>
             <div style={{maxHeight:320,overflow:"auto"}}>
-              {students.map((s,i)=>{const col=SC[(s.color_index||0)%8];const nc=getNextClass(s.id);return(
-                <div key={s.id} onClick={()=>onDetail(s)} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 4px",borderBottom:i<students.length-1?`1px solid ${C.bl}`:"none",cursor:"pointer",borderRadius:6}} className="hcard">
+              {activeStudents.map((s,i)=>{const col=SC[(s.color_index||0)%8];const nc=getNextClass(s.id);return(
+                <div key={s.id} onClick={()=>onDetail(s)} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 4px",borderBottom:i<activeStudents.length-1?`1px solid ${C.bl}`:"none",cursor:"pointer",borderRadius:6}} className="hcard">
                   <div style={{width:28,height:28,borderRadius:7,background:col.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:col.t}}>{(s.name||"?")[0]}</div>
                   <div style={{flex:1}}><div style={{fontSize:13,fontWeight:500,color:C.tp}}>{s.name}</div><div style={{fontSize:11,color:C.tt}}>{s.subject} · {s.grade}</div></div>
                   <span style={{fontSize:11,color:C.tt}}>{nc}</span>
                 </div>);})}
-              {students.length===0&&<div style={{textAlign:"center",padding:20,color:C.tt,fontSize:13}}>학생을 추가해보세요</div>}
+              {activeStudents.length===0&&<div style={{textAlign:"center",padding:20,color:C.tt,fontSize:13}}>학생을 추가해보세요</div>}
             </div>
           </div>
         </div>

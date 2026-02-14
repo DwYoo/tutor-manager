@@ -62,8 +62,8 @@ export default function HomeworkTab({ homework, lessons, onRefresh }) {
                 {l.date} · <span className="font-semibold text-tp">{l.topic || l.subject}</span>
               </div>
               {hwList.map(h => {
-                const pc = h.completion_pct >= 80 ? '#16A34A' : h.completion_pct >= 50 ? '#F59E0B' : h.completion_pct > 0 ? '#DC2626' : '#A8A29E'
-                const pcBg = h.completion_pct >= 80 ? '#F0FDF4' : h.completion_pct >= 50 ? '#FFFBEB' : h.completion_pct > 0 ? '#FEF2F2' : '#F5F5F4'
+                const pc = h.completion_pct >= 100 ? '#16A34A' : h.completion_pct > 30 ? '#F59E0B' : h.completion_pct > 0 ? '#EA580C' : '#DC2626'
+                const pcBg = h.completion_pct >= 100 ? '#F0FDF4' : h.completion_pct > 30 ? '#FFFBEB' : h.completion_pct > 0 ? '#FFF7ED' : '#FEF2F2'
                 return (
                   <div key={h.id} className="bg-sf border border-bd rounded-[10px] p-3.5 mb-2">
                     <div className="flex justify-between mb-2">
