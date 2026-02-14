@@ -25,8 +25,8 @@ export default function Tuition({menuBtn}){
   const[memoPopup,setMemoPopup]=useState(null);
 
   const year=+curMonth.split("-")[0],month=+curMonth.split("-")[1];
-  const prevM=()=>{const m=month===1?12:month-1;const y=month===1?year-1:year;setCurMonth(y+"-"+p2(m));};
-  const nextM=()=>{const m=month===12?1:month+1;const y=month===12?year+1:year;setCurMonth(y+"-"+p2(m));};
+  const prevM=()=>{const m=month===1?12:month-1;const y=month===1?year-1:year;setCurMonth(y+"-"+p2(m));setEditId(null);setEditForm({});};
+  const nextM=()=>{const m=month===12?1:month+1;const y=month===12?year+1:year;setCurMonth(y+"-"+p2(m));setEditId(null);setEditForm({});};
 
   const fetchData=useCallback(async()=>{
     setLoading(true);
@@ -66,8 +66,9 @@ export default function Tuition({menuBtn}){
   /* Auto status */
   const autoStatus=(amt,due)=>amt>=due?"paid":amt>0?"partial":"unpaid";
 
-  /* Build month records */
-  const monthRecs=students.map(s=>{
+  /* Build month records (archived 학생 제외) */
+  const activeStudents=students.filter(s=>!s.archived);
+  const monthRecs=activeStudents.map(s=>{
     const rec=tuitions.find(t=>t.student_id===s.id&&t.month===curMonth);
     const lessonCnt=countLessons(s.id,year,month);
     const autoFee=(s.fee_per_class||0)*lessonCnt;
@@ -90,7 +91,7 @@ export default function Tuition({menuBtn}){
   const monthlyChart=Array.from({length:6},(_,i)=>{
     const d=new Date(year,month-6+i,1);
     const mk=d.getFullYear()+"-"+p2(d.getMonth()+1);
-    const sum=tuitions.filter(t=>t.month===mk&&(t.status==="paid"||t.status==="partial")).reduce((a,t)=>a+(t.amount||0),0);
+    const sum=tuitions.filter(t=>t.month===mk).reduce((a,t)=>a+(t.amount||0),0);
     return{month:(d.getMonth()+1)+"월",income:sum};
   });
 
@@ -229,7 +230,7 @@ export default function Tuition({menuBtn}){
               })}
             </tbody>
           </table>
-          {students.length===0&&<div style={{textAlign:"center",padding:30,color:C.tt,fontSize:13}}>학생을 먼저 추가해주세요</div>}
+          {activeStudents.length===0&&<div style={{textAlign:"center",padding:30,color:C.tt,fontSize:13}}>학생을 먼저 추가해주세요</div>}
         </div>
 
         {/* Right sidebar */}
