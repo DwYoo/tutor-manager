@@ -56,8 +56,11 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
   const [planComments,setPlanComments]=useState([]);
   const [planSaving,setPlanSaving]=useState(false);
   const [planSaved,setPlanSaved]=useState(false);
+  const [planEditing,setPlanEditing]=useState(false);
   const [editingComment,setEditingComment]=useState(null);
   const [editCommentText,setEditCommentText]=useState("");
+  const [editCommentTitle,setEditCommentTitle]=useState("");
+  const [editCommentShared,setEditCommentShared]=useState(false);
   const [showPlanReport,setShowPlanReport]=useState(false);
   const [planRpTitle,setPlanRpTitle]=useState("");
   const [planRpBody,setPlanRpBody]=useState("");
@@ -153,7 +156,7 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
         const{error:e2}=await supabase.from('students').update({plan_strategy:planStrategy,plan_strength:planStrength,plan_weakness:planWeakness}).eq('id',s.id);
         if(e2){alert("저장 실패: "+e2.message);setPlanSaving(false);return;}
       }
-      setPlanSaved(true);setTimeout(()=>setPlanSaved(false),2000);
+      setPlanEditing(false);
     }catch(e){alert("저장 중 오류: "+e.message);}
     setPlanSaving(false);
   };
@@ -167,10 +170,10 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
     }catch(e){alert("리포트 저장 중 오류: "+e.message);}
   };
   const updatePlanComment=async(id)=>{
-    if(!editCommentText.trim())return;
-    const{error}=await supabase.from('reports').update({body:editCommentText}).eq('id',id);
+    if(!editCommentTitle.trim()){alert("제목을 입력해주세요.");return;}
+    const{error}=await supabase.from('reports').update({title:editCommentTitle,body:editCommentText,is_shared:editCommentShared}).eq('id',id);
     if(error){alert("수정 실패: "+error.message);return;}
-    setPlanComments(p=>p.map(c=>c.id===id?{...c,body:editCommentText}:c));setEditingComment(null);setEditCommentText("");
+    setPlanComments(p=>p.map(c=>c.id===id?{...c,title:editCommentTitle,body:editCommentText,is_shared:editCommentShared}:c));setEditingComment(null);setEditCommentText("");setEditCommentTitle("");
   };
   const handleFileDrop=async(e)=>{e.preventDefault();setFileDrag(false);const files=e.dataTransfer?e.dataTransfer.files:e.target.files;if(!files||!files.length)return;setUploading(true);
     for(const file of files){
@@ -692,34 +695,63 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
         {subTab==="plan"&&(<div>
           <h3 style={{fontSize:16,fontWeight:700,color:C.tp,marginBottom:16}}>학습 오버뷰</h3>
 
-          {/* 학업 전략 */}
-          <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:20,marginBottom:16}}>
-            <div style={{fontSize:13,fontWeight:600,color:C.ac,marginBottom:10}}>🧭 학업 전략</div>
-            <textarea value={planStrategy} onChange={e=>{setPlanStrategy(e.target.value);e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px';}} onKeyDown={e=>bk(e,planStrategy,setPlanStrategy)} ref={el=>{if(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}}} style={{...is,minHeight:80,resize:"none",fontSize:13,lineHeight:1.7,overflow:"hidden"}} placeholder="학생의 전반적인 학습 방향과 전략을 작성하세요..." disabled={isParent}/>
-          </div>
-
-          {/* SWOT 2x2 */}
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
-            <div style={{background:C.sb,border:"1px solid #BBF7D0",borderRadius:14,padding:16}}>
-              <div style={{fontSize:13,fontWeight:600,color:C.su,marginBottom:8}}>💪 강점 (S)</div>
-              <textarea value={planStrength} onChange={e=>{setPlanStrength(e.target.value);e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px';}} onKeyDown={e=>bk(e,planStrength,setPlanStrength)} ref={el=>{if(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}}} style={{...is,minHeight:60,resize:"none",fontSize:12,background:"transparent",border:"1px solid #BBF7D0",overflow:"hidden"}} placeholder="강점 기록..." disabled={isParent}/>
+          {/* 학업 전략 + SWOT */}
+          {planEditing?(<>
+            {/* 편집 모드 */}
+            <div style={{background:C.sf,border:"2px solid "+C.ac,borderRadius:14,padding:20,marginBottom:16}}>
+              <div style={{fontSize:13,fontWeight:600,color:C.ac,marginBottom:10}}>🧭 학업 전략</div>
+              <textarea value={planStrategy} onChange={e=>{setPlanStrategy(e.target.value);e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px';}} onKeyDown={e=>bk(e,planStrategy,setPlanStrategy)} ref={el=>{if(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}}} style={{...is,minHeight:80,resize:"none",fontSize:13,lineHeight:1.7,overflow:"hidden"}} placeholder="학생의 전반적인 학습 방향과 전략을 작성하세요..."/>
             </div>
-            <div style={{background:C.db,border:"1px solid #FECACA",borderRadius:14,padding:16}}>
-              <div style={{fontSize:13,fontWeight:600,color:C.dn,marginBottom:8}}>🔧 약점 (W)</div>
-              <textarea value={planWeakness} onChange={e=>{setPlanWeakness(e.target.value);e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px';}} onKeyDown={e=>bk(e,planWeakness,setPlanWeakness)} ref={el=>{if(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}}} style={{...is,minHeight:60,resize:"none",fontSize:12,background:"transparent",border:"1px solid #FECACA",overflow:"hidden"}} placeholder="약점 기록..." disabled={isParent}/>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+              <div style={{background:C.sb,border:"1px solid #BBF7D0",borderRadius:14,padding:16}}>
+                <div style={{fontSize:13,fontWeight:600,color:C.su,marginBottom:8}}>💪 강점 (S)</div>
+                <textarea value={planStrength} onChange={e=>{setPlanStrength(e.target.value);e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px';}} onKeyDown={e=>bk(e,planStrength,setPlanStrength)} ref={el=>{if(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}}} style={{...is,minHeight:60,resize:"none",fontSize:12,background:"transparent",border:"1px solid #BBF7D0",overflow:"hidden"}} placeholder="강점 기록..."/>
+              </div>
+              <div style={{background:C.db,border:"1px solid #FECACA",borderRadius:14,padding:16}}>
+                <div style={{fontSize:13,fontWeight:600,color:C.dn,marginBottom:8}}>🔧 약점 (W)</div>
+                <textarea value={planWeakness} onChange={e=>{setPlanWeakness(e.target.value);e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px';}} onKeyDown={e=>bk(e,planWeakness,setPlanWeakness)} ref={el=>{if(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}}} style={{...is,minHeight:60,resize:"none",fontSize:12,background:"transparent",border:"1px solid #FECACA",overflow:"hidden"}} placeholder="약점 기록..."/>
+              </div>
+              <div style={{background:"#EFF6FF",border:"1px solid #BFDBFE",borderRadius:14,padding:16}}>
+                <div style={{fontSize:13,fontWeight:600,color:C.ac,marginBottom:8}}>🚀 기회 (O)</div>
+                <textarea value={planOpportunity} onChange={e=>{setPlanOpportunity(e.target.value);e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px';}} onKeyDown={e=>bk(e,planOpportunity,setPlanOpportunity)} ref={el=>{if(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}}} style={{...is,minHeight:60,resize:"none",fontSize:12,background:"transparent",border:"1px solid #BFDBFE",overflow:"hidden"}} placeholder="기회 요인 기록..."/>
+              </div>
+              <div style={{background:C.wb,border:"1px solid #FDE68A",borderRadius:14,padding:16}}>
+                <div style={{fontSize:13,fontWeight:600,color:"#B45309",marginBottom:8}}>⚠️ 위협 (T)</div>
+                <textarea value={planThreat} onChange={e=>{setPlanThreat(e.target.value);e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px';}} onKeyDown={e=>bk(e,planThreat,setPlanThreat)} ref={el=>{if(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}}} style={{...is,minHeight:60,resize:"none",fontSize:12,background:"transparent",border:"1px solid #FDE68A",overflow:"hidden"}} placeholder="위협 요인 기록..."/>
+              </div>
             </div>
-            <div style={{background:"#EFF6FF",border:"1px solid #BFDBFE",borderRadius:14,padding:16}}>
-              <div style={{fontSize:13,fontWeight:600,color:C.ac,marginBottom:8}}>🚀 기회 (O)</div>
-              <textarea value={planOpportunity} onChange={e=>{setPlanOpportunity(e.target.value);e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px';}} onKeyDown={e=>bk(e,planOpportunity,setPlanOpportunity)} ref={el=>{if(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}}} style={{...is,minHeight:60,resize:"none",fontSize:12,background:"transparent",border:"1px solid #BFDBFE",overflow:"hidden"}} placeholder="기회 요인 기록..." disabled={isParent}/>
+            <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginBottom:20}}>
+              <button onClick={()=>setPlanEditing(false)} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:8,padding:"8px 16px",fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>취소</button>
+              <button onClick={savePlanFields} style={{background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"8px 20px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",opacity:planSaving?.6:1}}>{planSaving?"저장 중...":"저장"}</button>
             </div>
-            <div style={{background:C.wb,border:"1px solid #FDE68A",borderRadius:14,padding:16}}>
-              <div style={{fontSize:13,fontWeight:600,color:"#B45309",marginBottom:8}}>⚠️ 위협 (T)</div>
-              <textarea value={planThreat} onChange={e=>{setPlanThreat(e.target.value);e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px';}} onKeyDown={e=>bk(e,planThreat,setPlanThreat)} ref={el=>{if(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}}} style={{...is,minHeight:60,resize:"none",fontSize:12,background:"transparent",border:"1px solid #FDE68A",overflow:"hidden"}} placeholder="위협 요인 기록..." disabled={isParent}/>
+          </>):(<>
+            {/* 읽기 모드 */}
+            <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:20,marginBottom:16}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                <div style={{fontSize:13,fontWeight:600,color:C.ac}}>🧭 학업 전략</div>
+                {!isParent&&<button onClick={()=>setPlanEditing(true)} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:8,padding:"5px 14px",fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>수정</button>}
+              </div>
+              <div style={{fontSize:13,color:planStrategy?C.tp:C.tt,lineHeight:1.7,whiteSpace:"pre-wrap",minHeight:20}}>{planStrategy||"아직 작성된 전략이 없습니다"}</div>
             </div>
-          </div>
-          {!isParent&&<div style={{textAlign:"right",marginBottom:20}}>
-            <button onClick={savePlanFields} style={{background:planSaved?C.su:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"8px 20px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",opacity:planSaving?.6:1,transition:"background .2s"}}>{planSaving?"저장 중...":planSaved?"저장 완료":"저장"}</button>
-          </div>}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}>
+              <div style={{background:C.sb,border:"1px solid #BBF7D0",borderRadius:14,padding:16}}>
+                <div style={{fontSize:13,fontWeight:600,color:C.su,marginBottom:8}}>💪 강점 (S)</div>
+                <div style={{fontSize:12,color:planStrength?C.tp:C.tt,lineHeight:1.7,whiteSpace:"pre-wrap",minHeight:20}}>{planStrength||"미작성"}</div>
+              </div>
+              <div style={{background:C.db,border:"1px solid #FECACA",borderRadius:14,padding:16}}>
+                <div style={{fontSize:13,fontWeight:600,color:C.dn,marginBottom:8}}>🔧 약점 (W)</div>
+                <div style={{fontSize:12,color:planWeakness?C.tp:C.tt,lineHeight:1.7,whiteSpace:"pre-wrap",minHeight:20}}>{planWeakness||"미작성"}</div>
+              </div>
+              <div style={{background:"#EFF6FF",border:"1px solid #BFDBFE",borderRadius:14,padding:16}}>
+                <div style={{fontSize:13,fontWeight:600,color:C.ac,marginBottom:8}}>🚀 기회 (O)</div>
+                <div style={{fontSize:12,color:planOpportunity?C.tp:C.tt,lineHeight:1.7,whiteSpace:"pre-wrap",minHeight:20}}>{planOpportunity||"미작성"}</div>
+              </div>
+              <div style={{background:C.wb,border:"1px solid #FDE68A",borderRadius:14,padding:16}}>
+                <div style={{fontSize:13,fontWeight:600,color:"#B45309",marginBottom:8}}>⚠️ 위협 (T)</div>
+                <div style={{fontSize:12,color:planThreat?C.tp:C.tt,lineHeight:1.7,whiteSpace:"pre-wrap",minHeight:20}}>{planThreat||"미작성"}</div>
+              </div>
+            </div>
+          </>)}
 
           {/* 학습 리포트 */}
           <div style={{borderTop:"1px solid "+C.bd,paddingTop:20}}>
@@ -752,15 +784,19 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
                       <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
                         <span style={{fontSize:14,fontWeight:600,color:C.tp}}>{c.title||"리포트"}</span>
                         {c.is_shared?<span style={{background:C.as,color:C.ac,padding:"2px 8px",borderRadius:5,fontSize:10,fontWeight:600}}>공유됨</span>:<span style={{background:C.sfh,color:C.tt,padding:"2px 8px",borderRadius:5,fontSize:10}}>비공개</span>}
-                        {!isParent&&editingComment!==c.id&&<button onClick={()=>{setEditingComment(c.id);setEditCommentText(c.body);}} style={{background:"none",border:"none",fontSize:10,color:C.ac,cursor:"pointer",fontFamily:"inherit",padding:0}}>수정</button>}
+                        {!isParent&&editingComment!==c.id&&<button onClick={()=>{setEditingComment(c.id);setEditCommentTitle(c.title||"");setEditCommentText(c.body||"");setEditCommentShared(!!c.is_shared);}} style={{background:"none",border:"none",fontSize:10,color:C.ac,cursor:"pointer",fontFamily:"inherit",padding:0}}>수정</button>}
                       </div>
                       <span style={{fontSize:12,color:C.tt,flexShrink:0}}>{c.date}</span>
                     </div>
                     {editingComment===c.id?(<div>
-                      <textarea value={editCommentText} onChange={e=>setEditCommentText(e.target.value)} style={{...is,minHeight:80,resize:"vertical",fontSize:12,marginBottom:6}}/>
-                      <div style={{display:"flex",gap:6,justifyContent:"flex-end"}}>
-                        <button onClick={()=>setEditingComment(null)} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:6,padding:"4px 10px",fontSize:10,cursor:"pointer",fontFamily:"inherit"}}>취소</button>
-                        <button onClick={()=>updatePlanComment(c.id)} style={{background:C.pr,color:"#fff",border:"none",borderRadius:6,padding:"4px 10px",fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>저장</button>
+                      <div style={{marginBottom:8}}><label style={{...ls,marginBottom:4}}>제목</label><input value={editCommentTitle} onChange={e=>setEditCommentTitle(e.target.value)} style={{...is,fontSize:12}} placeholder="리포트 제목"/></div>
+                      <div style={{marginBottom:8}}><label style={{...ls,marginBottom:4}}>내용</label><textarea value={editCommentText} onChange={e=>setEditCommentText(e.target.value)} style={{...is,minHeight:80,resize:"vertical",fontSize:12}}/></div>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                        <label style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:C.ts,cursor:"pointer"}}><input type="checkbox" checked={editCommentShared} onChange={e=>setEditCommentShared(e.target.checked)}/>학부모 공유</label>
+                        <div style={{display:"flex",gap:6}}>
+                          <button onClick={()=>setEditingComment(null)} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:6,padding:"4px 10px",fontSize:10,cursor:"pointer",fontFamily:"inherit"}}>취소</button>
+                          <button onClick={()=>updatePlanComment(c.id)} style={{background:C.pr,color:"#fff",border:"none",borderRadius:6,padding:"4px 10px",fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>저장</button>
+                        </div>
                       </div>
                     </div>):(<div style={{fontSize:13,color:C.ts,lineHeight:1.7,whiteSpace:"pre-wrap"}}>{c.body}</div>)}
                   </div>
