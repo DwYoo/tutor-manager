@@ -35,7 +35,7 @@ export default function Tuition({menuBtn}){
       supabase.from('tuition').select('*'),
       supabase.from('lessons').select('*'),
     ]);
-    setStudents(sRes.data||[]);setTuitions(tRes.data||[]);setLessons(lRes.data||[]);setLoading(false);
+    setStudents((sRes.data||[]).filter(s=>!s.is_archived));setTuitions(tRes.data||[]);setLessons(lRes.data||[]);setLoading(false);
   },[]);
   useEffect(()=>{fetchData();},[fetchData]);
 

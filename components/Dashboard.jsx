@@ -26,7 +26,7 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
       supabase.from('lessons').select('*').order('date'),
       supabase.from('tuition').select('*'),
     ]);
-    setStudents(sRes.data||[]);setLessons(lRes.data||[]);setTuitions(tRes.data||[]);setLoading(false);
+    setStudents((sRes.data||[]).filter(s=>!s.is_archived));setLessons(lRes.data||[]);setTuitions(tRes.data||[]);setLoading(false);
   },[]);
   useEffect(()=>{fetchData();},[fetchData]);
 
