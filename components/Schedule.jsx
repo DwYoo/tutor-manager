@@ -306,7 +306,7 @@ export default function Schedule({menuBtn}){
                   {cnt>0&&<span style={{fontSize:10,fontWeight:600,color:C.ac,background:C.al,borderRadius:4,padding:"1px 5px"}}>{cnt}건</span>}
                 </div>
                 {isM&&<div style={{display:"flex",flexDirection:"column",gap:2}}>
-                  {dl.slice(0,3).map(l=>{const co=gCo(l.student_id);const st=getStu(l.student_id);const ls=effSt(l,ds);const isCan=ls==='cancelled';const dim=activeStu&&l.student_id!==activeStu;return(
+                  {dl.sort((a,b)=>(a.start_hour*60+a.start_min)-(b.start_hour*60+b.start_min)).slice(0,3).map(l=>{const co=gCo(l.student_id);const st=getStu(l.student_id);const ls=effSt(l,ds);const isCan=ls==='cancelled';const dim=activeStu&&l.student_id!==activeStu;return(
                     <div key={l.id} style={{fontSize:10,padding:"1px 4px",borderRadius:4,background:isCan||dim?C.sfh:co.bg,color:isCan||dim?C.tt:co.t,fontWeight:500,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",opacity:isCan?.5:dim?.3:1,textDecoration:isCan?'line-through':'none'}}>{p2(l.start_hour)}:{p2(l.start_min)} {st?.name||""}{ls==='completed'?' ✓':''}</div>);
                   })}
                   {dl.length>3&&<div style={{fontSize:9,color:C.tt,paddingLeft:4}}>+{dl.length-3}건</div>}
