@@ -46,7 +46,7 @@ function SchModal({les,students,onSave,onDel,onDelSingle,onDelFuture,onClose,che
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
           <div><label style={ls}>시작(시)</label><select value={f.start_hour} onChange={e=>u("start_hour",+e.target.value)} style={is}>{Array.from({length:24},(_,i)=>i).map(h=>(<option key={h} value={h}>{p2(h)}</option>))}</select></div>
           <div><label style={ls}>시작(분)</label><select value={f.start_min} onChange={e=>u("start_min",+e.target.value)} style={is}>{[0,5,10,15,20,25,30,35,40,45,50,55].map(m=>(<option key={m} value={m}>{p2(m)}</option>))}</select></div>
-          <div><label style={ls}>수업시간(분)</label><input type="number" value={f.duration} onChange={e=>u("duration",+e.target.value)} style={is} step="5"/></div>
+          <div><label style={ls}>수업시간(분)</label><input type="number" value={f.duration} onChange={e=>u("duration",+e.target.value)} style={is} step="5"/><div style={{display:"flex",gap:4,marginTop:4}}>{[60,90,120].map(v=><button key={v} type="button" onClick={()=>u("duration",v)} style={{flex:1,padding:"4px 0",borderRadius:6,border:`1px solid ${f.duration===v?C.ac:C.bd}`,background:f.duration===v?C.al:"transparent",color:f.duration===v?C.ac:C.ts,fontSize:11,fontWeight:f.duration===v?700:500,cursor:"pointer",fontFamily:"inherit"}}>{v}분</button>)}</div></div>
         </div>
         <div><label style={ls}>수업 주제</label><input value={f.topic} onChange={e=>u("topic",e.target.value)} style={is} placeholder="수업 주제..."/></div>
         <label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,color:C.ts,cursor:"pointer"}}><input type="checkbox" checked={f.is_recurring} onChange={e=>u("is_recurring",e.target.checked)}/>매주 반복</label>
@@ -68,6 +68,7 @@ export default function Schedule({menuBtn}){
   const tog=menuBtn;
   const{user}=useAuth();
   const[cur,setCur]=useState(new Date());
+  const[viewMode,setVM]=useState('week');
   const[lessons,setLessons]=useState([]);
   const[students,setStudents]=useState([]);
   const[loading,setLoading]=useState(true);
@@ -78,6 +79,7 @@ export default function Schedule({menuBtn}){
   const[ctxMenu,setCtx]=useState(null);
   const[slideDir,setSlide]=useState(null);
   const[animKey,setAnim]=useState(0);
+  const[hiddenStu,setHidden]=useState(new Set());
   const gridRef=useRef(null);const dragRef=useRef(null);const movedRef=useRef(false);const swipeRef=useRef(null);
   const today=new Date();const wk=gwd(cur);
   const hrs=Array.from({length:enH-stH},(_,i)=>i+stH);const tH=(enH-stH)*4*SHT;
@@ -94,11 +96,13 @@ export default function Schedule({menuBtn}){
   },[]);
   useEffect(()=>{fetchData();},[fetchData]);
 
-  const nW=d=>{setSlide(d>0?'r':'l');setAnim(k=>k+1);const t=new Date(cur);t.setDate(t.getDate()+d*7);setCur(t);};
+  const nW=d=>{setSlide(d>0?'r':'l');setAnim(k=>k+1);if(viewMode==='month'){const t=new Date(cur);t.setMonth(t.getMonth()+d);setCur(t);}else{const t=new Date(cur);t.setDate(t.getDate()+d*7);setCur(t);}};
   const gL=date=>{const ds=fd(date),dw=date.getDay()===0?7:date.getDay();return lessons.filter(l=>{const ld=(l.date||"").slice(0,10);if(l.is_recurring&&l.recurring_exceptions&&l.recurring_exceptions.includes(ds))return false;if(ld===ds)return true;if(l.is_recurring&&+l.recurring_day===dw){if(ds<ld)return false;if(l.recurring_end_date&&ds>=(l.recurring_end_date+"").slice(0,10))return false;return true;}return false;});};
 
   const gCo=sid=>{const st=students.find(x=>x.id===sid);return SC[(st?.color_index||0)%8];};
   const getStu=sid=>students.find(x=>x.id===sid);
+  const toggleStu=sid=>setHidden(p=>{const n=new Set(p);n.has(sid)?n.delete(sid):n.add(sid);return n;});
+  const gMonthDays=()=>{const y=cur.getFullYear(),m=cur.getMonth();const first=new Date(y,m,1);const startDow=first.getDay()===0?6:first.getDay()-1;const dim=new Date(y,m+1,0).getDate();const days=[];for(let i=-startDow;i<42;i++){const d=new Date(y,m,1+i);days.push(d);if(i>=dim-1+startDow&&days.length%7===0)break;}return days;};
 
   /* Conflict detection */
   const checkConflict=(dateStr,sh,sm,dur,excludeId)=>{
@@ -256,27 +260,55 @@ export default function Schedule({menuBtn}){
       {/* Header */}
       <div style={{background:C.sf,borderBottom:`1px solid ${C.bd}`,padding:"16px 24px",position:"sticky",top:0,zIndex:20}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12}}>
-          <div style={{display:"flex",alignItems:"center",gap:12}}>{tog}<h2 style={{fontSize:18,fontWeight:700,color:C.tp}}>수업 일정</h2><span style={{fontSize:13,color:C.ts}}>{wk[0].getMonth()+1}/{wk[0].getDate()} ~ {wk[6].getMonth()+1}/{wk[6].getDate()}</span></div>
+          <div style={{display:"flex",alignItems:"center",gap:12}}>{tog}<h2 style={{fontSize:18,fontWeight:700,color:C.tp}}>수업 일정</h2><span style={{fontSize:13,color:C.ts}}>{viewMode==='month'?`${cur.getFullYear()}년 ${cur.getMonth()+1}월`:`${wk[0].getMonth()+1}/${wk[0].getDate()} ~ ${wk[6].getMonth()+1}/${wk[6].getDate()}`}</span></div>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
             <button className="nb" onClick={()=>nW(-1)}><IcL/></button>
             <button onClick={()=>setCur(new Date())} style={{padding:"6px 14px",borderRadius:8,border:`1px solid ${C.bd}`,background:C.sf,fontSize:12,cursor:"pointer",color:C.ts,fontFamily:"inherit"}}>오늘</button>
             <button className="nb" onClick={()=>nW(1)}><IcR/></button>
+            <div style={{display:"flex",border:`1px solid ${C.bd}`,borderRadius:8,overflow:"hidden",marginLeft:4}}>
+              <button onClick={()=>setVM('week')} style={{padding:"5px 10px",fontSize:11,fontWeight:viewMode==='week'?700:500,border:"none",cursor:"pointer",fontFamily:"inherit",background:viewMode==='week'?C.pr:'transparent',color:viewMode==='week'?'#fff':C.ts}}>주간</button>
+              <button onClick={()=>setVM('month')} style={{padding:"5px 10px",fontSize:11,fontWeight:viewMode==='month'?700:500,border:"none",cursor:"pointer",fontFamily:"inherit",background:viewMode==='month'?C.pr:'transparent',color:viewMode==='month'?'#fff':C.ts,borderLeft:`1px solid ${C.bd}`}}>월간</button>
+            </div>
             <button onClick={()=>{setEL(null);setMO(true);}} style={{display:"flex",alignItems:"center",gap:4,background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"7px 16px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}><IcP/> 수업 추가</button>
           </div>
         </div>
         <div style={{display:"flex",gap:8,marginTop:10,flexWrap:"wrap",alignItems:"center"}}>
-          {students.slice(0,6).map(st=>{const c=SC[(st.color_index||0)%8];return(<div key={st.id} style={{display:"flex",alignItems:"center",gap:6,padding:"3px 8px",borderRadius:6,background:c.bg,fontSize:11,fontWeight:500,color:c.t}}><div style={{width:7,height:7,borderRadius:"50%",background:c.b}}/>{st.name}</div>);})}
-          <span style={{fontSize:10,color:C.tt,background:C.sfh,padding:"3px 8px",borderRadius:4}}>좌클릭: 상세 · 우클릭: 메뉴 · 드래그: 이동/생성</span>
-          <div style={{display:"flex",alignItems:"center",gap:4,marginLeft:"auto",fontSize:11,color:C.ts}}>
+          {students.map(st=>{const c=SC[(st.color_index||0)%8];const hide=hiddenStu.has(st.id);return(<div key={st.id} onClick={()=>toggleStu(st.id)} style={{display:"flex",alignItems:"center",gap:6,padding:"3px 8px",borderRadius:6,background:hide?C.sfh:c.bg,fontSize:11,fontWeight:500,color:hide?C.tt:c.t,cursor:"pointer",opacity:hide?.5:1,transition:"all .15s"}}><div style={{width:7,height:7,borderRadius:"50%",background:hide?C.tt:c.b}}/>{st.name}{hide&&<span style={{fontSize:9}}>✕</span>}</div>);})}
+          <span style={{fontSize:10,color:C.tt,background:C.sfh,padding:"3px 8px",borderRadius:4}}>{viewMode==='month'?'클릭: 해당 주간으로 이동':'좌클릭: 상세 · 우클릭: 메뉴 · 드래그: 이동/생성'}</span>
+          {hiddenStu.size>0&&<button onClick={()=>setHidden(new Set())} style={{fontSize:10,color:C.ac,background:C.al,border:`1px solid ${C.ac}`,borderRadius:5,padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>전체 보기</button>}
+          {viewMode==='week'&&<div style={{display:"flex",alignItems:"center",gap:4,marginLeft:"auto",fontSize:11,color:C.ts}}>
             <select value={stH} onChange={e=>{const v=+e.target.value;setStH(v);localStorage.setItem('sch_stH',v);if(v>=enH){setEnH(v+1);localStorage.setItem('sch_enH',v+1);}}} style={{padding:"2px 4px",borderRadius:4,border:`1px solid ${C.bd}`,fontSize:11,color:C.ts,background:C.sf,fontFamily:"inherit",cursor:"pointer"}}>{Array.from({length:24},(_,i)=>i).map(h=><option key={h} value={h}>{p2(h)}:00</option>)}</select>
             <span>~</span>
             <select value={enH} onChange={e=>{const v=+e.target.value;setEnH(v);localStorage.setItem('sch_enH',v);}} style={{padding:"2px 4px",borderRadius:4,border:`1px solid ${C.bd}`,fontSize:11,color:C.ts,background:C.sf,fontFamily:"inherit",cursor:"pointer"}}>{Array.from({length:24-stH},(_,i)=>i+stH+1).map(h=><option key={h} value={h}>{p2(h)}:00</option>)}</select>
-          </div>
+          </div>}
         </div>
       </div>
 
+      {/* Monthly grid */}
+      {viewMode==='month'&&(()=>{const mDays=gMonthDays();const cm=cur.getMonth();return(
+        <div key={animKey} className={slideDir==='r'?'wk-r':slideDir==='l'?'wk-l':''} style={{padding:"0 24px 24px"}} onTouchStart={onTS} onTouchEnd={onTE}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:0,border:`1px solid ${C.bd}`,borderRadius:12,overflow:"hidden",background:C.sf}}>
+            {DK.map(d=><div key={d} style={{padding:"8px 0",textAlign:"center",fontSize:12,fontWeight:600,color:C.tt,background:C.sfh,borderBottom:`1px solid ${C.bd}`}}>{d}</div>)}
+            {mDays.map((d,i)=>{const isM=d.getMonth()===cm;const it=sdy(d,today);const dl=gL(d).filter(l=>!hiddenStu.has(l.student_id));const cnt=dl.filter(l=>l.status!=='cancelled').length;const canCnt=dl.filter(l=>l.status==='cancelled').length;
+              return(<div key={i} onClick={()=>{setCur(d);setVM('week');}} style={{minHeight:90,padding:6,borderRight:(i%7<6)?`1px solid ${C.bl}`:"none",borderBottom:`1px solid ${C.bl}`,background:it?C.as:isM?"transparent":"#FAFAF8",cursor:"pointer",transition:"background .1s"}} onMouseEnter={e=>e.currentTarget.style.background=it?C.as:C.sfh} onMouseLeave={e=>e.currentTarget.style.background=it?C.as:isM?"transparent":"#FAFAF8"}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                  <span style={{fontSize:13,fontWeight:it?700:isM?500:400,color:it?C.ac:isM?C.tp:C.tt,width:it?24:undefined,height:it?24:undefined,borderRadius:"50%",background:it?C.ac:"transparent",color:it?"#fff":isM?C.tp:C.tt,display:"inline-flex",alignItems:"center",justifyContent:"center"}}>{d.getDate()}</span>
+                  {cnt>0&&<span style={{fontSize:10,fontWeight:600,color:C.ac,background:C.al,borderRadius:4,padding:"1px 5px"}}>{cnt}건</span>}
+                </div>
+                {isM&&<div style={{display:"flex",flexDirection:"column",gap:2}}>
+                  {dl.slice(0,3).map(l=>{const co=gCo(l.student_id);const st=getStu(l.student_id);const isCan=l.status==='cancelled';return(
+                    <div key={l.id} style={{fontSize:10,padding:"1px 4px",borderRadius:4,background:isCan?C.sfh:co.bg,color:isCan?C.tt:co.t,fontWeight:500,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",opacity:isCan?.5:1,textDecoration:isCan?'line-through':'none'}}>{p2(l.start_hour)}:{p2(l.start_min)} {st?.name||""}</div>);
+                  })}
+                  {dl.length>3&&<div style={{fontSize:9,color:C.tt,paddingLeft:4}}>+{dl.length-3}건</div>}
+                </div>}
+              </div>);
+            })}
+          </div>
+        </div>);
+      })()}
+
       {/* Weekly grid */}
-      <div ref={gridRef} style={{overflowX:"auto",overflowY:"auto",maxHeight:"calc(100vh - 120px)",userSelect:"none"}} onTouchStart={onTS} onTouchEnd={onTE}>
+      {viewMode==='week'&&<div ref={gridRef} style={{overflowX:"auto",overflowY:"auto",maxHeight:"calc(100vh - 120px)",userSelect:"none"}} onTouchStart={onTS} onTouchEnd={onTE}>
         <div key={animKey} className={slideDir==='r'?'wk-r':slideDir==='l'?'wk-l':''} style={{display:"grid",gridTemplateColumns:"60px repeat(7,1fr)",minWidth:800}}>
           {/* Header row */}
           <div style={{borderBottom:`1px solid ${C.bd}`,borderRight:`1px solid ${C.bl}`,background:C.sf,position:"sticky",top:0,zIndex:12}}/>
@@ -294,7 +326,7 @@ export default function Schedule({menuBtn}){
 
           {/* Day columns */}
           {wk.map((date,di)=>{
-            const dl=gL(date),it=sdy(date,today);
+            const dl=gL(date).filter(l=>!hiddenStu.has(l.student_id)),it=sdy(date,today);
             return(
               <div key={di} style={{position:"relative",height:tH,borderRight:di<6?`1px solid ${C.bl}`:"none",background:it?"rgba(37,99,235,.015)":"transparent"}} onMouseDown={e=>onGD(e,di)}>
                 {hrs.map((h,i)=>(<div key={h} style={{position:"absolute",top:i*SHT*4,left:0,right:0,height:SHT*4,borderBottom:`1px solid ${C.bl}`}}><div style={{position:"absolute",top:SHT*2-1,left:0,right:0,height:1,background:C.bl,opacity:.5}}/></div>))}
@@ -320,7 +352,7 @@ export default function Schedule({menuBtn}){
             );
           })}
         </div>
-      </div>
+      </div>}
 
       {/* Context Menu */}
       {ctxMenu&&<>
