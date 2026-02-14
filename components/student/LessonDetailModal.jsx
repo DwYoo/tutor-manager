@@ -7,6 +7,7 @@ const ls={display:"block",fontSize:12,fontWeight:500,color:C.tt,marginBottom:6};
 const is={width:"100%",padding:"9px 12px",borderRadius:8,border:`1px solid ${C.bd}`,fontSize:14,color:C.tp,background:C.sf,outline:"none",fontFamily:"inherit"};
 const p2=n=>String(n).padStart(2,"0");
 const m2s=m=>`${p2(Math.floor(m/60))}:${p2(m%60)}`;
+const bk=(e,val,set,df)=>{const ta=e.target,pos=ta.selectionStart;if(e.key==='*'){const ls=val.lastIndexOf('\n',pos-1)+1;if(val.substring(ls,pos).trim()===''){e.preventDefault();const nv=val.substring(0,ls)+'• '+val.substring(pos);set(nv);df?.();requestAnimationFrame(()=>{ta.selectionStart=ta.selectionEnd=ls+2;});}}if(e.key==='Enter'){const lines=val.substring(0,pos).split('\n'),cl=lines[lines.length-1];if(cl.startsWith('• ')){e.preventDefault();if(cl.trim()==='•'){const ls=pos-cl.length;const nv=val.substring(0,ls)+val.substring(pos);set(nv);df?.();requestAnimationFrame(()=>{ta.selectionStart=ta.selectionEnd=ls;});}else{const nv=val.substring(0,pos)+'\n• '+val.substring(pos);set(nv);df?.();requestAnimationFrame(()=>{ta.selectionStart=ta.selectionEnd=pos+3;});}}}};
 
 const IcX=()=><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
 const IcLock=()=><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>;
@@ -76,7 +77,7 @@ export default function LessonDetailModal({ les, student, onUpdate, onClose }) {
           {tab === "content" && (
             <div>
               <label style={ls}>수업 내용</label>
-              <textarea value={content} onChange={e => { setContent(e.target.value); markDirty(); }} style={{ ...is, minHeight: 200, resize: "vertical", lineHeight: 1.6 }} placeholder="오늘 수업에서 다룬 내용..." />
+              <textarea value={content} onChange={e => { setContent(e.target.value); markDirty(); }} onKeyDown={e => bk(e, content, setContent, markDirty)} style={{ ...is, minHeight: 200, resize: "vertical", lineHeight: 1.6 }} placeholder="오늘 수업에서 다룬 내용..." />
             </div>
           )}
 
@@ -85,7 +86,7 @@ export default function LessonDetailModal({ les, student, onUpdate, onClose }) {
               <div>
                 <label style={ls}>학생 피드백 <span style={{ color: C.ac, fontWeight: 400 }}>(공개 — 학생/학부모 열람 가능)</span></label>
                 <div style={{ background: C.as, border: "1px solid " + C.al, borderRadius: 8, padding: "6px 12px", fontSize: 11, color: C.ac, marginBottom: 8 }}>이 내용은 학생과 학부모에게 공유됩니다.</div>
-                <textarea value={feedback} onChange={e => { setFeedback(e.target.value); markDirty(); }} style={{ ...is, minHeight: 120, resize: "vertical", lineHeight: 1.6 }} placeholder="학생 이해도, 태도, 개선점..." />
+                <textarea value={feedback} onChange={e => { setFeedback(e.target.value); markDirty(); }} onKeyDown={e => bk(e, feedback, setFeedback, markDirty)} style={{ ...is, minHeight: 120, resize: "vertical", lineHeight: 1.6 }} placeholder="학생 이해도, 태도, 개선점..." />
               </div>
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
@@ -93,7 +94,7 @@ export default function LessonDetailModal({ les, student, onUpdate, onClose }) {
                   <label style={{ ...ls, marginBottom: 0 }}>선생님 메모 <span style={{ color: C.dn, fontWeight: 600 }}>(비공개)</span></label>
                 </div>
                 <div style={{ background: C.wb, border: "1px solid #FDE68A", borderRadius: 8, padding: "6px 12px", fontSize: 11, color: "#92400E", marginBottom: 8 }}>선생님만 볼 수 있습니다.</div>
-                <textarea value={tMemo} onChange={e => { setTMemo(e.target.value); markDirty(); }} style={{ ...is, minHeight: 100, resize: "vertical", lineHeight: 1.6 }} placeholder="다음 수업 준비, 학생 특이사항..." />
+                <textarea value={tMemo} onChange={e => { setTMemo(e.target.value); markDirty(); }} onKeyDown={e => bk(e, tMemo, setTMemo, markDirty)} style={{ ...is, minHeight: 100, resize: "vertical", lineHeight: 1.6 }} placeholder="다음 수업 준비, 학생 특이사항..." />
               </div>
             </div>
           )}
@@ -173,14 +174,14 @@ export default function LessonDetailModal({ les, student, onUpdate, onClose }) {
               <div>
                 <label style={{ ...ls, color: C.ac, fontWeight: 600 }}>공유용 수업 계획</label>
                 <div style={{ background: C.as, border: "1px solid " + C.al, borderRadius: 8, padding: "6px 12px", fontSize: 11, color: C.ac, marginBottom: 8 }}>학생/학부모 공유</div>
-                <textarea value={planShared} onChange={e => { setPlanShared(e.target.value); markDirty(); }} style={{ ...is, minHeight: 100, resize: "vertical", lineHeight: 1.6 }} placeholder="다음 수업 예고, 준비물..." />
+                <textarea value={planShared} onChange={e => { setPlanShared(e.target.value); markDirty(); }} onKeyDown={e => bk(e, planShared, setPlanShared, markDirty)} style={{ ...is, minHeight: 100, resize: "vertical", lineHeight: 1.6 }} placeholder="다음 수업 예고, 준비물..." />
               </div>
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
                   <IcLock />
                   <label style={{ ...ls, marginBottom: 0 }}>선생님 전용 <span style={{ color: C.dn, fontWeight: 600 }}>(비공개)</span></label>
                 </div>
-                <textarea value={planPrivate} onChange={e => { setPlanPrivate(e.target.value); markDirty(); }} style={{ ...is, minHeight: 100, resize: "vertical", lineHeight: 1.6 }} placeholder="수업 전략, 난이도 조절..." />
+                <textarea value={planPrivate} onChange={e => { setPlanPrivate(e.target.value); markDirty(); }} onKeyDown={e => bk(e, planPrivate, setPlanPrivate, markDirty)} style={{ ...is, minHeight: 100, resize: "vertical", lineHeight: 1.6 }} placeholder="수업 전략, 난이도 조절..." />
               </div>
             </div>
           )}
