@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, Fragment } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, BarChart, Bar, Cell } from 'recharts';
@@ -563,16 +563,27 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
                 <span style={{fontSize:13,fontWeight:600,color:book?C.tp:C.tt}}>{book||"교재명 미지정"} <span style={{fontWeight:400,color:C.tt}}>({items.length})</span></span>
                 <span style={{fontSize:12,color:C.tt}}>{exp?"▲":"▼"}</span>
               </div>
-              {exp&&<table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-                <thead><tr>{["단원","번호","사유","메모",""].map((h,i)=>(<th key={i} style={{padding:"8px 10px",textAlign:"left",color:C.tt,fontWeight:500,borderBottom:"1px solid "+C.bd}}>{h}</th>))}</tr></thead>
-                <tbody>{items.map(w=>{const rc=reasonColorMap[w.reason||"미분류"]||"#888";const cc=chapterColorMap[w.chapter]||null;return(<tr key={w.id} style={{borderBottom:"1px solid "+C.bl}}>
-                  <td style={{padding:"6px 4px"}}>{isParent?<span style={{fontSize:12,padding:"0 6px",display:"inline-flex",alignItems:"center",gap:4,color:w.chapter?C.ts:"#bbb"}}>{cc&&<span style={{display:"inline-block",width:7,height:7,borderRadius:"50%",background:cc,flexShrink:0}}/>}{w.chapter||"단원"}</span>:<div style={{display:"flex",alignItems:"center",gap:4}}>{cc&&<span style={{display:"inline-block",width:7,height:7,borderRadius:"50%",background:cc,flexShrink:0}}/>}<input value={w.chapter||""} onChange={e=>updWrong(w.id,"chapter",e.target.value)} style={{border:"none",outline:"none",background:"transparent",color:C.ts,fontSize:12,fontFamily:"inherit",width:"100%",padding:"2px 6px"}} placeholder="단원"/></div>}</td>
+              {exp&&(()=>{const uCh=[];const seen=new Set();items.forEach(w=>{const ch=w.chapter||"";if(!seen.has(ch)){seen.add(ch);uCh.push(ch);}});return <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+                <thead><tr>{["번호","사유","메모",""].map((h,i)=>(<th key={i} style={{padding:"8px 10px",textAlign:"left",color:C.tt,fontWeight:500,borderBottom:"1px solid "+C.bd}}>{h}</th>))}</tr></thead>
+                <tbody>{uCh.map(ch=>{const ck=bk+"::"+(ch||"__no_ch__");const chExp=wExpanded[ck]!==false;const chItems=items.filter(w=>(w.chapter||"")===ch);const cc=chapterColorMap[ch]||null;return(<Fragment key={ck}>
+                  <tr onClick={()=>setWExpanded(p=>({...p,[ck]:!chExp}))} style={{cursor:"pointer"}}>
+                    <td colSpan={4} style={{padding:"7px 8px",background:C.sf,borderBottom:"1px solid "+C.bd}}>
+                      <div style={{display:"flex",alignItems:"center",gap:6}}>
+                        {cc&&<span style={{display:"inline-block",width:7,height:7,borderRadius:"50%",background:cc,flexShrink:0}}/>}
+                        <span style={{fontSize:12,fontWeight:500,color:ch?C.ts:C.tt}}>{ch||"단원 미지정"}</span>
+                        <span style={{fontSize:10,color:C.tt}}>({chItems.length})</span>
+                        <span style={{fontSize:10,color:C.tt,marginLeft:"auto"}}>{chExp?"▲":"▼"}</span>
+                      </div>
+                    </td>
+                  </tr>
+                  {chExp&&chItems.map(w=>{const rc=reasonColorMap[w.reason||"미분류"]||"#888";return(<tr key={w.id} style={{borderBottom:"1px solid "+C.bl}}>
                   <td style={{padding:"6px 4px"}}>{isParent?<span style={{fontWeight:600,color:C.tp,fontSize:12,padding:"0 6px"}}>{w.problem_num}</span>:<input value={w.problem_num||""} onChange={e=>updWrong(w.id,"problem_num",e.target.value)} style={{border:"none",outline:"none",background:"transparent",fontWeight:600,color:C.tp,fontSize:12,fontFamily:"inherit",width:60,padding:"2px 6px"}}/>}</td>
                   <td style={{padding:"6px 4px"}}>{isParent?<span style={{background:rc+"20",color:rc,padding:"2px 8px",borderRadius:5,fontSize:10,fontWeight:600}}>{w.reason||"-"}</span>:<input value={w.reason||""} onChange={e=>updWrong(w.id,"reason",e.target.value)} style={{border:"none",outline:"none",background:rc+"20",color:rc,fontSize:11,fontWeight:600,fontFamily:"inherit",borderRadius:5,padding:"2px 8px",width:"100%"}} placeholder="사유"/>}</td>
                   <td style={{padding:"6px 4px"}}>{isParent?<span style={{color:C.ts,fontSize:12,padding:"0 6px"}}>{w.note||"-"}</span>:<input value={w.note||""} onChange={e=>updWrong(w.id,"note",e.target.value)} style={{border:"none",outline:"none",background:"transparent",color:C.ts,fontSize:12,fontFamily:"inherit",width:"100%",padding:"2px 6px"}} placeholder="메모"/>}</td>
                   <td style={{padding:"6px 4px"}}>{!isParent&&<button onClick={()=>delWrong(w.id)} style={{background:"none",border:"none",color:C.tt,cursor:"pointer",fontSize:11,fontFamily:"inherit"}}>삭제</button>}</td>
-                </tr>);})}</tbody>
-              </table>}
+                </tr>);})}
+                </Fragment>);})}</tbody>
+              </table>;})()}
             </div>);})):(
             <div>
               <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
