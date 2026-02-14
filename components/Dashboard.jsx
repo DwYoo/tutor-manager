@@ -312,12 +312,15 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
 
       {/* Hidden blocks restore */}
       {editMode&&(layout.hidden||[]).length>0&&(
-        <div style={{marginBottom:16,display:'flex',gap:8,flexWrap:'wrap'}}>
-          {(layout.hidden||[]).map(id=>(
-            <button key={id} onClick={()=>restoreBlock(id)} style={{padding:"6px 12px",borderRadius:8,border:`1px dashed ${C.bd}`,background:C.sfh,color:C.ts,fontSize:12,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:4}}>
-              <span style={{color:C.su,fontWeight:700,fontSize:14}}>+</span> {BN[id]}
-            </button>
-          ))}
+        <div style={{marginBottom:16,padding:14,borderRadius:12,border:`2px dashed ${C.bd}`,background:C.sfh}}>
+          <div style={{fontSize:12,fontWeight:600,color:C.ts,marginBottom:8}}>숨긴 블록 (눌러서 다시 추가)</div>
+          <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+            {(layout.hidden||[]).map(id=>(
+              <button key={id} onClick={()=>restoreBlock(id)} style={{padding:"8px 14px",borderRadius:8,border:`1px solid ${C.ac}`,background:C.as,color:C.ac,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:6}}>
+                <span style={{fontWeight:700,fontSize:16}}>+</span> {BN[id]}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
