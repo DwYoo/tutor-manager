@@ -114,12 +114,10 @@ export default function LessonDetailModal({ les, student, onUpdate, onClose }) {
                     const pbg = (h.completion_pct||0) >= 80 ? C.sb : (h.completion_pct||0) >= 50 ? C.wb : C.db;
                     return (
                       <div key={h.id} style={{ border: "1px solid " + C.bd, borderRadius: 12, padding: 16 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            <span style={{ fontSize: 12, color: C.tt, fontWeight: 600, background: C.sfh, borderRadius: 6, padding: "2px 8px" }}>#{i + 1}</span>
-                            <input value={h.title||""} onChange={e => { updHw(h.id, "title", e.target.value); }} style={{ fontSize: 14, fontWeight: 600, color: C.tp, border: "none", outline: "none", background: "transparent", padding: 0, fontFamily: "inherit", minWidth: 0, flex: 1 }} placeholder="숙제 제목..." />
-                          </div>
-                          <button onClick={() => delHw(h.id)} style={{ background: "none", border: "none", cursor: "pointer", color: C.tt, padding: 4 }}>✕</button>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                          <span style={{ fontSize: 12, color: C.tt, fontWeight: 600, background: C.sfh, borderRadius: 6, padding: "2px 8px", flexShrink: 0 }}>#{i + 1}</span>
+                          <input value={h.title||""} onChange={e => { updHw(h.id, "title", e.target.value); }} style={{ fontSize: 14, fontWeight: 600, color: C.tp, border: "none", outline: "none", background: "transparent", padding: 0, fontFamily: "inherit", minWidth: 0, flex: 1 }} placeholder="숙제 제목..." />
+                          <button onClick={() => delHw(h.id)} style={{ background: "none", border: "none", cursor: "pointer", color: C.tt, padding: 4, flexShrink: 0 }}>✕</button>
                         </div>
                         <div style={{ marginBottom: 12 }}>
                           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
