@@ -80,9 +80,9 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
 
   // Tabs: 리포트를 수업 안 "기록" 서브탭으로, 계획 제거, 분석에서 리포트 제거
   const mainTabs=[
-    {id:"class",l:"수업",subs:[{id:"timeline",l:"타임라인"},{id:"calendar",l:"일정"}]},
+    {id:"class",l:"수업",subs:[{id:"timeline",l:"타임라인"},{id:"calendar",l:"수업일정"}]},
     {id:"study",l:"학습관리",subs:[{id:"homework",l:"숙제"},{id:"wrong",l:"오답관리"}]},
-    {id:"analysis",l:"학습 분석",subs:[{id:"plan",l:"오버뷰"},{id:"scores",l:"성적"}]},
+    {id:"analysis",l:"학습분석",subs:[{id:"plan",l:"오버뷰"},{id:"scores",l:"성적"}]},
     {id:"archive",l:"자료실",subs:[{id:"files",l:"자료"}]}
   ];
   const curMain=mainTabs.find(m=>m.id===mainTab);
@@ -378,12 +378,13 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
                   const dl=date?gLD(date):[];
                   const isSat=i%7===5,isSun=i%7===6;
                   return(
-                    <div key={i} onClick={()=>{if(dl.length===1&&date)openLesson(dl[0],fd(date));}} style={{textAlign:"center",padding:"6px 2px",minHeight:52,borderRadius:8,background:isToday?C.as:"transparent",cursor:dl.length===1?"pointer":"default",opacity:c.cur?1:.3}}>
-                      <div style={{fontSize:13,fontWeight:isToday?700:400,width:isToday?28:undefined,height:isToday?28:undefined,lineHeight:isToday?"28px":undefined,borderRadius:"50%",background:isToday?C.ac:"transparent",color:isToday?"#fff":isSun?"#DC2626":isSat?C.ac:C.tp,display:"inline-flex",alignItems:"center",justifyContent:"center",margin:"0 auto"}}>{c.d}</div>
-                      {dl.length>0&&(<div style={{display:"flex",gap:3,justifyContent:"center",marginTop:4}}>
-                        {dl.slice(0,3).map((_,j)=><div key={j} style={{width:6,height:6,borderRadius:"50%",background:col.b}}/>)}
-                        {dl.length>3&&<span style={{fontSize:8,color:C.tt}}>+{dl.length-3}</span>}
-                      </div>)}
+                    <div key={i} style={{padding:"6px 4px",minHeight:72,borderRadius:8,opacity:c.cur?1:.3}}>
+                      <div style={{fontSize:13,fontWeight:isToday?700:400,color:isToday?C.ac:isSun?"#DC2626":isSat?C.ac:C.tp,marginBottom:4}}>{c.d}</div>
+                      {dl.length>0&&dl.map(l=>(
+                        <div key={l.id} onClick={()=>openLesson(l,fd(date))} style={{fontSize:9,padding:"2px 4px",borderRadius:4,fontWeight:500,marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",background:col.bg,color:col.t,cursor:"pointer"}}>
+                          {p2(l.start_hour||0)}:{p2(l.start_min||0)} {l.topic||l.subject}
+                        </div>
+                      ))}
                     </div>
                   );
                 })}
@@ -422,7 +423,7 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
             <div style={{marginBottom:10}}><label style={ls}>제목</label><input value={nT} onChange={e=>setNT(e.target.value)} style={is} placeholder="예: 3월 2주차 학습 정리"/></div>
             <div style={{marginBottom:10}}><label style={ls}>내용</label><textarea value={nB} onChange={e=>setNB(e.target.value)} style={{...is,height:120,resize:"vertical"}} placeholder="수업 내용, 학생 상태, 다음 계획 등을 자유롭게 기록하세요..."/></div>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <label style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:C.ts,cursor:"pointer"}}><input type="checkbox" checked={nS} onChange={e=>setNS(e.target.checked)}/>비공개</label>
+              <label style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:C.ts,cursor:"pointer"}}><input type="checkbox" checked={nS} onChange={e=>setNS(e.target.checked)}/><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>비공개</label>
               <div style={{display:"flex",gap:8}}><button onClick={()=>setShowNew(false)} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:8,padding:"8px 14px",fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>취소</button><button onClick={addRp} style={{background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"8px 16px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>저장</button></div>
             </div>
           </div>)}
@@ -879,7 +880,7 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
               <div style={{marginBottom:10}}><label style={ls}>제목</label><input value={planRpTitle} onChange={e=>setPlanRpTitle(e.target.value)} style={is} placeholder="예: 2월 1~2주차 학습 리포트"/></div>
               <div style={{marginBottom:10}}><label style={ls}>내용</label><textarea value={planRpBody} onChange={e=>setPlanRpBody(e.target.value)} style={{...is,minHeight:120,resize:"vertical"}} placeholder="학습 진행 상황, 피드백, 계획 변경 등을 기록하세요..."/></div>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <label style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:C.ts,cursor:"pointer"}}><input type="checkbox" checked={planRpShared} onChange={e=>setPlanRpShared(e.target.checked)}/>비공개</label>
+                <label style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:C.ts,cursor:"pointer"}}><input type="checkbox" checked={planRpShared} onChange={e=>setPlanRpShared(e.target.checked)}/><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>비공개</label>
                 <div style={{display:"flex",gap:8}}>
                   <button onClick={()=>setShowPlanReport(false)} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:8,padding:"8px 14px",fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>취소</button>
                   <button onClick={addPlanReport} style={{background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"8px 16px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>저장</button>
@@ -906,7 +907,7 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
                       <div style={{marginBottom:8}}><label style={{...ls,marginBottom:4}}>제목</label><input value={editCommentTitle} onChange={e=>setEditCommentTitle(e.target.value)} style={{...is,fontSize:12}} placeholder="리포트 제목"/></div>
                       <div style={{marginBottom:8}}><label style={{...ls,marginBottom:4}}>내용</label><textarea value={editCommentText} onChange={e=>setEditCommentText(e.target.value)} style={{...is,minHeight:80,resize:"vertical",fontSize:12}}/></div>
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                        <label style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:C.ts,cursor:"pointer"}}><input type="checkbox" checked={editCommentShared} onChange={e=>setEditCommentShared(e.target.checked)}/>비공개</label>
+                        <label style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:C.ts,cursor:"pointer"}}><input type="checkbox" checked={editCommentShared} onChange={e=>setEditCommentShared(e.target.checked)}/><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>비공개</label>
                         <div style={{display:"flex",gap:6}}>
                           <button onClick={()=>setEditingComment(null)} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:6,padding:"4px 10px",fontSize:10,cursor:"pointer",fontFamily:"inherit"}}>취소</button>
                           <button onClick={()=>updatePlanComment(c.id)} style={{background:C.pr,color:"#fff",border:"none",borderRadius:6,padding:"4px 10px",fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>저장</button>

@@ -110,7 +110,7 @@ export default function ShareView({ token }) {
   const tabs = [
     { id: "lessons", l: "수업", count: 0, subs: [{ id: "history", l: "수업이력" }, { id: "schedule", l: "수업일정" }] },
     { id: "study", l: "학습관리", count: 0 },
-    { id: "analysis", l: "학습 분석", count: 0 },
+    { id: "analysis", l: "학습분석", count: 0 },
     { id: "files", l: "자료실", count: lessonFiles.length + standaloneFiles.length },
   ];
 
