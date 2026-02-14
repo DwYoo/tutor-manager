@@ -100,7 +100,7 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
   const getStu=sid=>students.find(x=>x.id===sid);
   const getCol=sid=>{const s=getStu(sid);return SC[(s?.color_index||0)%8];};
 
-  const getNextClass=(sid)=>{for(let offset=0;offset<14;offset++){const d=new Date(today);d.setDate(today.getDate()+offset);const sLessons=lessons.filter(l=>l.student_id===sid&&lessonOnDate(l,d));for(const l of sLessons){const lesMin=l.start_hour*60+l.start_min;if(offset===0&&lesMin<=today.getHours()*60+today.getMinutes())continue;return`${DK[d.getDay()]} ${p2(l.start_hour)}:${p2(l.start_min)}`;}}return"-";};
+  const getNextClass=(sid)=>{for(let offset=0;offset<14;offset++){const d=new Date(today);d.setDate(today.getDate()+offset);const sLessons=lessons.filter(l=>l.student_id===sid&&lessonOnDate(l,d));for(const l of sLessons){const lesMin=l.start_hour*60+l.start_min;if(offset===0&&lesMin<=today.getHours()*60+today.getMinutes())continue;return`${p2(d.getMonth()+1)}/${p2(d.getDate())}(${DK[d.getDay()]}) ${p2(l.start_hour)}:${p2(l.start_min)}`;}}return"-";};
 
   const getNextLessonPrep=()=>{for(let offset=0;offset<7;offset++){const d=new Date(today);d.setDate(today.getDate()+offset);const dayLessons=lessons.filter(l=>lessonOnDate(l,d)).sort((a,b)=>(a.start_hour*60+a.start_min)-(b.start_hour*60+b.start_min));for(const l of dayLessons){const lesMin=l.start_hour*60+l.start_min;if(offset===0&&lesMin<=today.getHours()*60+today.getMinutes())continue;const stu=getStu(l.student_id);if(!stu||stu.archived)continue;const pastLessons=lessons.filter(pl=>pl.student_id===l.student_id&&pl.id!==l.id&&(pl.date||"")<fd(d)).sort((a,b)=>(b.date||"").localeCompare(a.date||""));const last=pastLessons[0]||null;const lastHw=last?.homework||[];const hwTotal=lastHw.length;const hwDone=lastHw.filter(h=>(h.completion_pct||0)>=100).length;const stuScores=scores.filter(sc=>sc.student_id===l.student_id).sort((a,b)=>(a.date||"").localeCompare(b.date||""));let scoreTrend=null,lastScore=null;if(stuScores.length>=2){const cur=stuScores[stuScores.length-1].score,prev=stuScores[stuScores.length-2].score;scoreTrend=cur>prev?"up":cur<prev?"down":"same";}if(stuScores.length>0)lastScore=stuScores[stuScores.length-1];const dayLabel=offset===0?"오늘":offset===1?"내일":`${DK[d.getDay()]}요일`;return{lesson:l,student:stu,dayLabel,dateStr:`${p2(d.getMonth()+1)}/${p2(d.getDate())}`,last,hwTotal,hwDone,scoreTrend,lastScore};}}return null;};
   const nextPrep=getNextLessonPrep();
@@ -230,11 +230,11 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
       </div>);
     case 'studentList': {
       const stuStat=activeStudents.map(s=>{
-        const hw=lessons.filter(l=>l.student_id===s.id).flatMap(l=>l.homework||[]).slice(-5);
-        const hwR=hw.length>0?Math.round(hw.filter(h=>(h.completion_pct||0)>=100).length/hw.length*100):null;
+        const allHw=lessons.filter(l=>l.student_id===s.id).flatMap(l=>l.homework||[]);
+        const hwInc=allHw.filter(h=>(h.completion_pct||0)<100).length;
         const recent=lessons.filter(l=>l.student_id===s.id).sort((a,b)=>(b.date||"").localeCompare(a.date||""))[0];
         const nc=getNextClass(s.id);
-        return{s,hwR,recent,nc};
+        return{s,hwInc,recent,nc};
       });
       return(
       <div style={{background:C.sf,border:`1px solid ${C.bd}`,borderRadius:14,padding:20}}>
@@ -244,8 +244,7 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
         </div>
         {stuStat.length>0?(
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:10}}>
-          {stuStat.map(({s,hwR,recent,nc})=>{const co=SC[(s.color_index||0)%8];
-            const hwC=hwR==null?{c:C.tt,b:C.bg}:hwR>=80?{c:C.su,b:C.sb}:hwR>=50?{c:C.wn,b:C.wb}:{c:C.dn,b:C.db};
+          {stuStat.map(({s,hwInc,recent,nc})=>{const co=SC[(s.color_index||0)%8];
             return(
             <div key={s.id} onClick={()=>onDetail(s)} style={{padding:12,borderRadius:10,border:`1px solid ${C.bl}`,cursor:"pointer"}} className="hcard">
               <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
@@ -255,10 +254,8 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
                   <div style={{fontSize:11,color:C.tt}}>{s.subject} · {nc}</div>
                 </div>
               </div>
-              {recent&&<div style={{fontSize:11,color:C.ts,marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{recent.title||"제목 없음"}</div>}
-              <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-                <span style={{fontSize:9,color:hwC.c,background:hwC.b,padding:"2px 6px",borderRadius:4,fontWeight:600}}>숙제 {hwR!=null?`${hwR}%`:"-"}</span>
-              </div>
+              {recent&&<div style={{fontSize:11,color:C.ts,marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{recent.topic||recent.subject||"-"}</div>}
+              {hwInc>0&&<span style={{fontSize:9,color:C.wn,background:C.wb,padding:"2px 6px",borderRadius:4,fontWeight:600}}>미완 숙제 {hwInc}건</span>}
             </div>);})}
         </div>):(
         <div style={{textAlign:"center",padding:20,color:C.tt,fontSize:13}}>학생을 추가해보세요</div>
