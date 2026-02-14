@@ -63,6 +63,9 @@ export default function Tuition({menuBtn}){
     return cnt;
   };
 
+  /* Auto status */
+  const autoStatus=(amt,due)=>amt>=due?"paid":amt>0?"partial":"unpaid";
+
   /* Build month records */
   const monthRecs=students.map(s=>{
     const rec=tuitions.find(t=>t.student_id===s.id&&t.month===curMonth);
@@ -73,7 +76,7 @@ export default function Tuition({menuBtn}){
     // fee_override가 있으면 청구액 수동값, 없으면 자동계산(수업료+이월)
     const totalDue=(rec&&rec.fee_override!=null)?rec.fee_override:autoTotalDue;
     const paidAmount=rec?.amount||0;
-    const status=rec?.status||"unpaid";
+    const status=autoStatus(paidAmount,totalDue);
     const isOverridden=(rec&&rec.fee_override!=null);
     return{student:s,record:rec||{student_id:s.id,month:curMonth,status:"unpaid",amount:0,carryover:0,memo:""},lessonCnt,autoFee,carryover,autoTotalDue,totalDue,paidAmount,status,isOverridden};
   });
@@ -90,9 +93,6 @@ export default function Tuition({menuBtn}){
     const sum=tuitions.filter(t=>t.month===mk&&(t.status==="paid"||t.status==="partial")).reduce((a,t)=>a+(t.amount||0),0);
     return{month:(d.getMonth()+1)+"월",income:sum};
   });
-
-  /* Auto status */
-  const autoStatus=(amt,due)=>amt>=due?"paid":amt>0?"partial":"unpaid";
 
   /* CRUD */
   const startEdit=(r)=>{
