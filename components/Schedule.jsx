@@ -62,7 +62,8 @@ export default function Schedule({menuBtn}){
   const[students,setStudents]=useState([]);
   const[loading,setLoading]=useState(true);
   const[mOpen,setMO]=useState(false);const[eLes,setEL]=useState(null);const[dLes,setDL]=useState(null);
-  const stH=9,enH=22;
+  const[ctxMenu,setCtx]=useState(null);
+  const[stH,setStH]=useState(9);const[enH,setEnH]=useState(22);
   const[dcState,setDC]=useState(null);
   const gridRef=useRef(null);const dragRef=useRef(null);const movedRef=useRef(false);
   const today=new Date();const wk=gwd(cur);
@@ -79,6 +80,7 @@ export default function Schedule({menuBtn}){
     setLoading(false);
   },[]);
   useEffect(()=>{fetchData();},[fetchData]);
+  useEffect(()=>{if(!ctxMenu)return;const h=()=>setCtx(null);window.addEventListener("click",h);return()=>window.removeEventListener("click",h);},[ctxMenu]);
 
   const nW=d=>{const t=new Date(cur);t.setDate(t.getDate()+d*7);setCur(t);};
   const gL=date=>{const ds=fd(date),dw=date.getDay()===0?7:date.getDay();return lessons.filter(l=>{if(l.date===ds)return true;if(l.is_recurring&&l.recurring_day===dw)return date>=new Date(l.date);return false;});};
@@ -139,7 +141,10 @@ export default function Schedule({menuBtn}){
     window.addEventListener("mousemove",mv);window.addEventListener("mouseup",up);
   };
 
-  const onRC=(e,l)=>{e.preventDefault();e.stopPropagation();setEL(l);setMO(true);};
+  const onRC=(e,l)=>{e.preventDefault();e.stopPropagation();setCtx({x:e.clientX,y:e.clientY,les:l});};
+  const ctxDel=async(id)=>{await supabase.from('lessons').delete().eq('id',id);setLessons(p=>p.filter(l=>l.id!==id));setCtx(null);};
+  const ctxStopRec=async(id)=>{await supabase.from('lessons').update({is_recurring:false,recurring_day:null}).eq('id',id);setLessons(p=>p.map(l=>l.id===id?{...l,is_recurring:false,recurring_day:null}:l));setCtx(null);};
+  const ctxEdit=(l)=>{setEL(l);setMO(true);setCtx(null);};
 
   const onGD=(e,di)=>{
     if(dragRef.current)return;const g=gridRef.current;if(!g)return;const r=g.getBoundingClientRect(),y=e.clientY-r.top+g.scrollTop;
@@ -170,7 +175,12 @@ export default function Schedule({menuBtn}){
         </div>
         <div style={{display:"flex",gap:8,marginTop:10,flexWrap:"wrap",alignItems:"center"}}>
           {students.slice(0,6).map(st=>{const c=SC[(st.color_index||0)%8];return(<div key={st.id} style={{display:"flex",alignItems:"center",gap:6,padding:"3px 8px",borderRadius:6,background:c.bg,fontSize:11,fontWeight:500,color:c.t}}><div style={{width:7,height:7,borderRadius:"50%",background:c.b}}/>{st.name}</div>);})}
-          <span style={{fontSize:10,color:C.tt,background:C.sfh,padding:"3px 8px",borderRadius:4}}>좌클릭: 상세 · 우클릭: 수정 · 드래그: 이동/생성</span>
+          <span style={{fontSize:10,color:C.tt,background:C.sfh,padding:"3px 8px",borderRadius:4}}>좌클릭: 상세 · 우클릭: 메뉴 · 드래그: 이동/생성</span>
+          <div style={{display:"flex",alignItems:"center",gap:4,marginLeft:"auto",fontSize:11,color:C.ts}}>
+            <select value={stH} onChange={e=>{const v=+e.target.value;setStH(v);if(v>=enH)setEnH(v+1);}} style={{padding:"2px 4px",borderRadius:4,border:`1px solid ${C.bd}`,fontSize:11,color:C.ts,background:C.sf,fontFamily:"inherit",cursor:"pointer"}}>{Array.from({length:24},(_,i)=>i).map(h=><option key={h} value={h}>{p2(h)}:00</option>)}</select>
+            <span>~</span>
+            <select value={enH} onChange={e=>setEnH(+e.target.value)} style={{padding:"2px 4px",borderRadius:4,border:`1px solid ${C.bd}`,fontSize:11,color:C.ts,background:C.sf,fontFamily:"inherit",cursor:"pointer"}}>{Array.from({length:24-stH},(_,i)=>i+stH+1).map(h=><option key={h} value={h}>{p2(h)}:00</option>)}</select>
+          </div>
         </div>
       </div>
 
@@ -214,6 +224,13 @@ export default function Schedule({menuBtn}){
         </div>
       </div>
 
+      {ctxMenu&&(<div style={{position:"fixed",left:ctxMenu.x,top:ctxMenu.y,zIndex:200,background:C.sf,borderRadius:10,boxShadow:"0 4px 16px rgba(0,0,0,.15)",border:`1px solid ${C.bd}`,padding:4,minWidth:160}} onClick={e=>e.stopPropagation()}>
+        <div style={{padding:"6px 12px",fontSize:11,color:C.tt,fontWeight:500,borderBottom:`1px solid ${C.bl}`,marginBottom:2}}>{getStu(ctxMenu.les.student_id)?.name} · {ctxMenu.les.subject}{ctxMenu.les.is_recurring?" (반복)":""}</div>
+        <button onClick={()=>ctxEdit(ctxMenu.les)} onMouseEnter={e=>e.target.style.background=C.sfh} onMouseLeave={e=>e.target.style.background="none"} style={{width:"100%",textAlign:"left",padding:"8px 12px",fontSize:12,border:"none",background:"none",cursor:"pointer",borderRadius:6,fontFamily:"inherit",color:C.tp}}>수정</button>
+        {!ctxMenu.les.is_recurring&&<button onClick={()=>ctxDel(ctxMenu.les.id)} onMouseEnter={e=>e.target.style.background=C.db} onMouseLeave={e=>e.target.style.background="none"} style={{width:"100%",textAlign:"left",padding:"8px 12px",fontSize:12,border:"none",background:"none",cursor:"pointer",borderRadius:6,fontFamily:"inherit",color:C.dn}}>삭제</button>}
+        {ctxMenu.les.is_recurring&&<button onClick={()=>ctxStopRec(ctxMenu.les.id)} onMouseEnter={e=>e.target.style.background=C.wb} onMouseLeave={e=>e.target.style.background="none"} style={{width:"100%",textAlign:"left",padding:"8px 12px",fontSize:12,border:"none",background:"none",cursor:"pointer",borderRadius:6,fontFamily:"inherit",color:C.wn}}>반복 해제</button>}
+        {ctxMenu.les.is_recurring&&<button onClick={()=>ctxDel(ctxMenu.les.id)} onMouseEnter={e=>e.target.style.background=C.db} onMouseLeave={e=>e.target.style.background="none"} style={{width:"100%",textAlign:"left",padding:"8px 12px",fontSize:12,border:"none",background:"none",cursor:"pointer",borderRadius:6,fontFamily:"inherit",color:C.dn}}>모든 반복 수업 삭제</button>}
+      </div>)}
       {mOpen&&<SchModal les={eLes} students={students} onSave={save} onDel={del} onClose={()=>{setMO(false);setEL(null);}}/>}
       {dLes&&<LessonDetailModal les={dLes} student={getStu(dLes.student_id)} onUpdate={updDetail} onClose={()=>setDL(null)}/>}
     </div>
