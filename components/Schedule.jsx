@@ -21,6 +21,7 @@ const IcL=()=><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke
 const IcR=()=><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>;
 const IcP=()=><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
 const IcX=()=><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
+const IcT=()=><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>;
 
 /* ── Add/Edit Modal ── */
 function SchModal({les,students,onSave,onDel,onDelSingle,onDelFuture,onClose}){
@@ -46,7 +47,7 @@ function SchModal({les,students,onSave,onDel,onDelSingle,onDelFuture,onClose}){
         <label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,color:C.ts,cursor:"pointer"}}><input type="checkbox" checked={f.is_recurring} onChange={e=>u("is_recurring",e.target.checked)}/>매주 반복</label>
       </div>
       <div style={{display:"flex",gap:10,marginTop:20,justifyContent:"space-between"}}>
-        <div style={{display:"flex",gap:6}}>{ed&&!les.is_recurring&&<button onClick={()=>onDel(les.id)} style={{background:C.db,color:C.dn,border:"none",borderRadius:8,padding:"10px 16px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>삭제</button>}{ed&&les.is_recurring&&<button onClick={()=>onDelSingle(les.id,les._viewDate||les.date)} style={{background:C.wb,color:"#92400E",border:"none",borderRadius:8,padding:"10px 12px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>이 수업만 삭제</button>}{ed&&les.is_recurring&&<button onClick={()=>onDelFuture(les.id,les._viewDate||les.date)} style={{background:C.db,color:C.dn,border:"none",borderRadius:8,padding:"10px 12px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>이후 반복 삭제</button>}</div>
+        <div style={{display:"flex",gap:6}}>{ed&&!les.is_recurring&&<button onClick={()=>onDel(les.id)} style={{background:C.db,color:C.dn,border:"none",borderRadius:8,padding:"10px 16px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>삭제</button>}{ed&&les.is_recurring&&<button onClick={()=>onDelSingle(les.id,les._viewDate||les.date)} title="이 수업만 삭제" style={{background:"none",color:C.tt,border:`1px solid ${C.bd}`,borderRadius:8,padding:"8px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><IcT/></button>}{ed&&les.is_recurring&&<button onClick={()=>onDelFuture(les.id,les._viewDate||les.date)} style={{background:C.db,color:C.dn,border:"none",borderRadius:8,padding:"10px 12px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>이후 반복 삭제</button>}</div>
         <div style={{display:"flex",gap:10}}><button onClick={onClose} style={{background:C.sfh,color:C.ts,border:`1px solid ${C.bd}`,borderRadius:8,padding:"10px 20px",fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>취소</button><button onClick={go} style={{background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"10px 24px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{ed?"저장":"추가"}</button></div>
       </div>
     </div>
@@ -129,17 +130,15 @@ export default function Schedule({menuBtn}){
     if(e.button!==0){e.stopPropagation();return;}e.preventDefault();e.stopPropagation();
     const g=gridRef.current;if(!g)return;const r=g.getBoundingClientRect(),y=e.clientY-r.top+g.scrollTop;
     const cm=y2m(y),lm=l.start_hour*60+l.start_min,off=cm-lm;movedRef.current=false;
-    dragRef.current={t:"m",id:l.id,off,r};
+    dragRef.current={t:"m",id:l.id,off,r};let lastPos=null;
     const mv=ev=>{movedRef.current=true;const gy=ev.clientY-r.top+g.scrollTop,gx=ev.clientX-r.left;const raw=y2m(gy)-off,sn=s5(raw);const nh=Math.floor(sn/60),nm=sn%60;const di=x2d(gx,r),nd=fd(wk[di]),dw=wk[di].getDay();
-      setLessons(p=>p.map(x=>x.id===l.id?{...x,start_hour:Math.max(0,Math.min(23,nh)),start_min:Math.max(0,nm),date:nd,recurring_day:x.is_recurring?(dw===0?7:dw):x.recurring_day}:x));};
+      lastPos={start_hour:Math.max(0,Math.min(23,nh)),start_min:Math.max(0,nm),date:nd,recurring_day:l.is_recurring?(dw===0?7:dw):l.recurring_day};
+      setLessons(p=>p.map(x=>x.id===l.id?{...x,...lastPos}:x));};
     const up=async()=>{const did=movedRef.current;dragRef.current=null;window.removeEventListener("mousemove",mv);window.removeEventListener("mouseup",up);
       if(!did){
-        // Click → open detail
         const lesData=lessons.find(x=>x.id===l.id);if(lesData)setDL({...lesData,sh:lesData.start_hour,sm:lesData.start_min,dur:lesData.duration,sub:lesData.subject,top:lesData.topic,rep:lesData.is_recurring,tMemo:lesData.private_memo||"",hw:lesData.homework||[],files:lesData.files||[]});
-      }else{
-        // Save dragged position
-        const moved=lessons.find(x=>x.id===l.id);
-        if(moved)await supabase.from('lessons').update({start_hour:moved.start_hour,start_min:moved.start_min,date:moved.date,recurring_day:moved.recurring_day}).eq('id',l.id);
+      }else if(lastPos){
+        await supabase.from('lessons').update(lastPos).eq('id',l.id);
       }
     };
     window.addEventListener("mousemove",mv);window.addEventListener("mouseup",up);
