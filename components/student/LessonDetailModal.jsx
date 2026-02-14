@@ -12,7 +12,7 @@ const IcX=()=><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke
 const IcLock=()=><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>;
 
 export default function LessonDetailModal({ les, student, onUpdate, onClose }) {
-  const col = SC[(student?.ci ?? student?.id ?? 0) % 8];
+  const col = SC[(student?.color_index ?? 0) % 8];
   const em = les.sh * 60 + les.sm + les.dur;
   const [tab, setTab] = useState("content");
   const [topic, setTopic] = useState(les.top || "");
