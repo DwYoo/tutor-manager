@@ -128,6 +128,7 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
   const chapterColorMap={};Object.entries(_cmc).sort((a,b)=>b[1]-a[1]).forEach(([c],i)=>{chapterColorMap[c]=REASON_COLORS[i%REASON_COLORS.length];});
 
   const updHw=async(hwId,key,val)=>{await supabase.from('homework').update({[key]:val}).eq('id',hwId);setLessons(prev=>prev.map(l=>({...l,homework:(l.homework||[]).map(h=>h.id===hwId?{...h,[key]:val}:h)})));};
+  const delHw=async(hwId)=>{if(!confirm("이 숙제를 삭제할까요?"))return;await supabase.from('homework').delete().eq('id',hwId);setLessons(prev=>prev.map(l=>({...l,homework:(l.homework||[]).filter(h=>h.id!==hwId)})));};
   const materialize=async(l,viewDate)=>{
     const{data,error}=await supabase.from('lessons').insert({student_id:l.student_id,date:viewDate,start_hour:l.start_hour,start_min:l.start_min,duration:l.duration,subject:l.subject,topic:"",is_recurring:false,recurring_day:null,user_id:user.id}).select('*, homework(*), files(*)').single();
     if(error||!data)return null;
@@ -145,6 +146,7 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
   const wTimers=useRef({});
   const updWrong=(id,key,val)=>{setWrongs(p=>p.map(w=>w.id===id?{...w,[key]:val}:w));const tk=id+key;clearTimeout(wTimers.current[tk]);wTimers.current[tk]=setTimeout(async()=>{await supabase.from('wrong_answers').update({[key]:val}).eq('id',id);},500);};
   const addRp=async()=>{if(!nT.trim())return;const{data,error}=await supabase.from('reports').insert({student_id:s.id,title:nT,body:nB,is_shared:nS,date:fd(new Date()),user_id:user.id}).select().single();if(!error&&data){setReports(p=>[data,...p]);setNT("");setNB("");setNS(false);setShowNew(false);}};
+  const delRp=async(id)=>{if(!confirm("이 기록을 삭제할까요?"))return;await supabase.from('reports').delete().eq('id',id);setReports(p=>p.filter(r=>r.id!==id));};
   const addScore=async()=>{if(!scoreForm.score)return;const{data,error}=await supabase.from('scores').insert({student_id:s.id,date:scoreForm.date,score:parseInt(scoreForm.score),label:scoreForm.label,user_id:user.id}).select().single();if(!error&&data){setScores(p=>[...p,data]);setScoreForm({date:"",score:"",label:""});setShowAddScore(false);}};
   const openEditScore=(sc)=>{setEditScore(sc);setEditScoreForm({date:sc.date||"",score:String(sc.score),label:sc.label||""});};
   const saveEditScore=async()=>{if(!editScore||!editScoreForm.score)return;const{error}=await supabase.from('scores').update({date:editScoreForm.date,score:parseInt(editScoreForm.score),label:editScoreForm.label}).eq('id',editScore.id);if(!error){setScores(p=>p.map(x=>x.id===editScore.id?{...x,date:editScoreForm.date,score:parseInt(editScoreForm.score),label:editScoreForm.label}:x));setEditScore(null);}};
@@ -191,6 +193,10 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
     setUploading(false);
   };
   const delFile=async(id)=>{await supabase.from('files').delete().eq('id',id);setStandaloneFiles(p=>p.filter(f=>f.id!==id));};
+  const [renFileId,setRenFileId]=useState(null);
+  const [renFileName,setRenFileName]=useState("");
+  const startRename=(f)=>{setRenFileId(f.id);setRenFileName(f.file_name||"");};
+  const saveRename=async()=>{if(!renFileId||!renFileName.trim())return;await supabase.from('files').update({file_name:renFileName.trim()}).eq('id',renFileId);setStandaloneFiles(p=>p.map(f=>f.id===renFileId?{...f,file_name:renFileName.trim()}:f));setRenFileId(null);};
   const copyShareLink=async()=>{
     let tk=shareToken;
     if(!tk){tk=crypto.randomUUID();const{error}=await supabase.from('students').update({share_token:tk}).eq('id',s.id);if(error){alert("공유 링크 생성 실패: "+error.message);return;}setShareToken(tk);}
@@ -423,7 +429,10 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
                 <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:18,borderLeft:i===0?"3px solid "+C.ac:"none"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
                     <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}><span style={{fontSize:14,fontWeight:600,color:C.tp}}>{r.title}</span>{r.is_shared?<span style={{background:C.as,color:C.ac,padding:"2px 8px",borderRadius:5,fontSize:10,fontWeight:600}}>공유됨</span>:<span style={{background:C.sfh,color:C.tt,padding:"2px 8px",borderRadius:5,fontSize:10}}>비공개</span>}</div>
-                    <span style={{fontSize:12,color:C.tt,flexShrink:0}}>{r.date}</span>
+                    <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+                      <span style={{fontSize:12,color:C.tt}}>{r.date}</span>
+                      {!isParent&&<button onClick={()=>delRp(r.id)} style={{background:"none",border:"none",color:C.tt,cursor:"pointer",fontSize:11,fontFamily:"inherit",padding:"2px 4px"}} title="삭제">✕</button>}
+                    </div>
                   </div>
                   <div style={{fontSize:13,color:C.ts,lineHeight:1.7,whiteSpace:"pre-wrap"}}>{r.body}</div>
                 </div>
@@ -484,6 +493,7 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
                           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
                             <input value={h.title||""} onChange={e=>updHw(h.id,"title",e.target.value)} style={{fontSize:14,fontWeight:600,color:C.tp,border:"none",outline:"none",background:"transparent",padding:0,fontFamily:"inherit",minWidth:0,flex:1}} placeholder="숙제" disabled={isParent}/>
                             <span style={{fontSize:10,background:pb,color:pc,padding:"2px 8px",borderRadius:5,fontWeight:600}}>{sl}</span>
+                            {!isParent&&<button onClick={()=>delHw(h.id)} style={{background:"none",border:"none",color:C.tt,cursor:"pointer",fontSize:11,fontFamily:"inherit",marginLeft:6,padding:"2px 4px",flexShrink:0}} title="삭제">✕</button>}
                           </div>
                           <div style={{display:"flex",alignItems:"center",gap:10}}>
                             <div onMouseDown={barDrag} style={{flex:1,height:10,background:C.bl,borderRadius:5,cursor:isParent?"default":"pointer",position:"relative"}}>
@@ -695,6 +705,7 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
                 <div><label style={ls}>점수</label><input type="number" value={editScoreForm.score} onChange={e=>setEditScoreForm(p=>({...p,score:e.target.value}))} style={is} placeholder="100"/></div>
               </div>
               <div style={{display:"flex",gap:10,marginTop:20,justifyContent:"flex-end"}}>
+                <button onClick={()=>{if(!confirm("이 성적을 삭제할까요?"))return;delScore(editScore.id);setEditScore(null);}} style={{background:C.db,color:C.dn,border:"1px solid #FECACA",borderRadius:8,padding:"10px 16px",fontSize:13,cursor:"pointer",fontFamily:"inherit",marginRight:"auto"}}>삭제</button>
                 <button onClick={()=>setEditScore(null)} style={{background:C.sfh,color:C.ts,border:`1px solid ${C.bd}`,borderRadius:8,padding:"10px 20px",fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>취소</button>
                 <button onClick={saveEditScore} style={{background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"10px 24px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>저장</button>
               </div>
@@ -837,13 +848,20 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
           {standaloneFiles.length>0&&(<div style={{marginBottom:16}}>
             <div style={{fontSize:13,fontWeight:600,color:C.tp,marginBottom:8}}>직접 추가한 자료</div>
             <div style={{display:"flex",flexDirection:"column",gap:6}}>
-              {standaloneFiles.map(f=>{const icon=f.file_type==="pdf"?"📄":f.file_type==="img"?"🖼️":"📎";return(
-                <div key={f.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:C.sf,border:"1px solid "+C.bd,borderRadius:10}}>
+              {standaloneFiles.map(f=>{const icon=f.file_type==="pdf"?"📄":f.file_type==="img"?"🖼️":"📎";const isRen=renFileId===f.id;return(
+                <div key={f.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:C.sf,border:"1px solid "+(isRen?C.ac:C.bd),borderRadius:10}}>
                   <span style={{fontSize:18}}>{icon}</span>
-                  <span style={{fontSize:13,fontWeight:500,color:C.tp,flex:1}}>{f.file_name}</span>
-                  <span style={{fontSize:10,color:C.tt,background:C.sfh,padding:"2px 8px",borderRadius:4}}>{f.file_type||"file"}</span>
-                  {f.file_url&&<a href={f.file_url} target="_blank" rel="noreferrer" style={{fontSize:10,color:C.ac,textDecoration:"none"}}>열기</a>}
-                  {!isParent&&<button onClick={()=>delFile(f.id)} style={{background:"none",border:"none",color:C.tt,cursor:"pointer",fontSize:11,fontFamily:"inherit"}}>삭제</button>}
+                  {isRen?(<>
+                    <input value={renFileName} onChange={e=>setRenFileName(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")saveRename();if(e.key==="Escape")setRenFileId(null);}} autoFocus style={{fontSize:13,fontWeight:500,color:C.tp,flex:1,border:"none",outline:"none",background:"transparent",padding:0,fontFamily:"inherit"}}/>
+                    <button onClick={saveRename} style={{background:C.as,color:C.ac,border:"1px solid "+C.al,borderRadius:6,padding:"2px 10px",fontSize:11,cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>확인</button>
+                    <button onClick={()=>setRenFileId(null)} style={{background:"none",border:"none",color:C.tt,cursor:"pointer",fontSize:11,fontFamily:"inherit"}}>취소</button>
+                  </>):(<>
+                    <span style={{fontSize:13,fontWeight:500,color:C.tp,flex:1}}>{f.file_name}</span>
+                    <span style={{fontSize:10,color:C.tt,background:C.sfh,padding:"2px 8px",borderRadius:4}}>{f.file_type||"file"}</span>
+                    {f.file_url&&<a href={f.file_url} target="_blank" rel="noreferrer" style={{fontSize:10,color:C.ac,textDecoration:"none"}}>열기</a>}
+                    {!isParent&&<button onClick={()=>startRename(f)} style={{background:"none",border:"none",color:C.tt,cursor:"pointer",fontSize:11,fontFamily:"inherit"}}>이름변경</button>}
+                    {!isParent&&<button onClick={()=>delFile(f.id)} style={{background:"none",border:"none",color:C.tt,cursor:"pointer",fontSize:11,fontFamily:"inherit"}}>삭제</button>}
+                  </>)}
                 </div>);})}
             </div>
           </div>)}
