@@ -3,9 +3,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
 import LessonDetailModal from './student/LessonDetailModal';
-
-const C={bg:"#FAFAF9",sf:"#FFFFFF",sfh:"#F5F5F4",bd:"#E7E5E4",bl:"#F0EFED",pr:"#1A1A1A",ac:"#2563EB",al:"#DBEAFE",as:"#EFF6FF",tp:"#1A1A1A",ts:"#78716C",tt:"#A8A29E",su:"#16A34A",sb:"#F0FDF4",dn:"#DC2626",db:"#FEF2F2",wn:"#F59E0B",wb:"#FFFBEB"};
-const SC=[{bg:"#DBEAFE",t:"#1E40AF",b:"#93C5FD"},{bg:"#FCE7F3",t:"#9D174D",b:"#F9A8D4"},{bg:"#D1FAE5",t:"#065F46",b:"#6EE7B7"},{bg:"#FEF3C7",t:"#92400E",b:"#FCD34D"},{bg:"#EDE9FE",t:"#5B21B6",b:"#C4B5FD"},{bg:"#FFE4E6",t:"#9F1239",b:"#FDA4AF"},{bg:"#CCFBF1",t:"#115E59",b:"#5EEAD4"},{bg:"#FEE2E2",t:"#991B1B",b:"#FCA5A5"}];
+import { C, SC } from '@/components/Colors';
 const LSTATUS={scheduled:{l:"예정",c:"#78716C",bg:"#F5F5F4"},completed:{l:"완료",c:"#16A34A",bg:"#F0FDF4"},cancelled:{l:"취소",c:"#DC2626",bg:"#FEF2F2"},makeup:{l:"보강",c:"#2563EB",bg:"#DBEAFE"}};
 const DK=["월","화","수","목","금","토","일"];
 const p2=n=>String(n).padStart(2,"0");
@@ -35,8 +33,8 @@ function SchModal({les,students,onSave,onClose,checkConflict,durPresets}){
   const conflict=checkConflict?.(f.date,f.start_hour,f.start_min,f.duration,les?.id);
   const conflictStu=conflict?students.find(s=>s.id===conflict.student_id):null;
   return(<div style={{position:"fixed",inset:0,zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,.35)"}} onClick={onClose}>
-    <div onClick={e=>e.stopPropagation()} style={{background:C.sf,borderRadius:16,width:"100%",maxWidth:440,padding:28,boxShadow:"0 20px 60px rgba(0,0,0,.15)"}}>
-      <div style={{display:"flex",justifyContent:"space-between",marginBottom:20}}><h2 style={{fontSize:18,fontWeight:700,color:C.tp}}>{ed?"수업 수정":isCopy?"보강 추가":"수업 추가"}</h2><button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,display:"flex"}}><IcX/></button></div>
+    <div onClick={e=>e.stopPropagation()} className="detail-modal" style={{background:C.sf,borderRadius:16,width:"100%",maxWidth:480,padding:28,boxShadow:"0 20px 60px rgba(0,0,0,.15)"}}>
+      <div style={{display:"flex",justifyContent:"space-between",marginBottom:20}}><h2 style={{fontSize:18,fontWeight:700,color:C.tp}}>{ed?"수업 수정":isCopy?"보강 추가":"수업 추가"}</h2><button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,display:"flex",minHeight:44,minWidth:44,alignItems:"center",justifyContent:"center"}}><IcX/></button></div>
       <div style={{display:"flex",flexDirection:"column",gap:12}}>
         <div><label style={ls}>학생</label><select value={f.student_id} onChange={e=>{const st=students.find(x=>x.id===e.target.value);u("student_id",e.target.value);if(st)u("subject",st.subject);}} style={is}>{students.map(st=>(<option key={st.id} value={st.id}>{st.name} ({st.subject})</option>))}</select></div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
@@ -46,7 +44,7 @@ function SchModal({les,students,onSave,onClose,checkConflict,durPresets}){
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
           <div><label style={ls}>시작(시)</label><select value={f.start_hour} onChange={e=>u("start_hour",+e.target.value)} style={is}>{Array.from({length:24},(_,i)=>i).map(h=>(<option key={h} value={h}>{p2(h)}</option>))}</select></div>
           <div><label style={ls}>시작(분)</label><select value={f.start_min} onChange={e=>u("start_min",+e.target.value)} style={is}>{[0,5,10,15,20,25,30,35,40,45,50,55].map(m=>(<option key={m} value={m}>{p2(m)}</option>))}</select></div>
-          <div><label style={ls}>수업시간(분)</label><input type="number" value={f.duration} onChange={e=>u("duration",+e.target.value)} style={is} step="5"/><div style={{display:"flex",gap:4,marginTop:4}}>{durPresets.map(v=><button key={v} type="button" onClick={()=>u("duration",v)} style={{flex:1,padding:"4px 0",borderRadius:6,border:`1px solid ${f.duration===v?C.ac:C.bd}`,background:f.duration===v?C.al:"transparent",color:f.duration===v?C.ac:C.ts,fontSize:11,fontWeight:f.duration===v?700:500,cursor:"pointer",fontFamily:"inherit"}}>{v}분</button>)}</div></div>
+          <div><label style={ls}>수업시간(분)</label><input type="number" value={f.duration} onChange={e=>u("duration",+e.target.value)} style={is} step="5"/><div style={{display:"flex",gap:4,marginTop:4}}>{durPresets.map(v=><button key={v} type="button" onClick={()=>u("duration",v)} style={{flex:1,padding:"4px 0",borderRadius:6,border:`1px solid ${f.duration===v?C.ac:C.bd}`,background:f.duration===v?C.al:"transparent",color:f.duration===v?C.ac:C.ts,fontSize:11,fontWeight:f.duration===v?700:500,cursor:"pointer",fontFamily:"inherit",minHeight:44}}>{v}분</button>)}</div></div>
         </div>
         <div><label style={ls}>수업 주제</label><input value={f.topic} onChange={e=>u("topic",e.target.value)} style={is} placeholder="수업 주제..."/></div>
         <label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,color:C.ts,cursor:"pointer"}}><input type="checkbox" checked={f.is_recurring} onChange={e=>u("is_recurring",e.target.checked)}/>매주 반복</label>
@@ -56,7 +54,7 @@ function SchModal({les,students,onSave,onClose,checkConflict,durPresets}){
         </div>}
       </div>
       <div style={{display:"flex",gap:10,marginTop:20,justifyContent:"flex-end"}}>
-        <button onClick={onClose} style={{background:C.sfh,color:C.ts,border:`1px solid ${C.bd}`,borderRadius:8,padding:"10px 20px",fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>취소</button><button onClick={go} style={{background:conflict?C.wn:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"10px 24px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{ed?"저장":isCopy?"보강 추가":"추가"}</button>
+        <button onClick={onClose} style={{background:C.sfh,color:C.ts,border:`1px solid ${C.bd}`,borderRadius:8,padding:"10px 20px",fontSize:13,cursor:"pointer",fontFamily:"inherit",minHeight:44}}>취소</button><button onClick={go} style={{background:conflict?C.wn:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"10px 24px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",minHeight:44}}>{ed?"저장":isCopy?"보강 추가":"추가"}</button>
       </div>
     </div>
   </div>);
@@ -259,32 +257,32 @@ export default function Schedule({menuBtn}){
   const cms={padding:"7px 12px",fontSize:12,cursor:"pointer",borderRadius:6,color:C.tp,background:"transparent",border:"none",width:"100%",textAlign:"left",fontFamily:"inherit"};
 
   return(
-    <div style={{minHeight:"100vh",background:C.bg}} onClick={()=>ctxMenu&&setCtx(null)}>
-      <style>{`.lb{cursor:grab;transition:box-shadow .12s,transform .1s;}.lb:hover{box-shadow:0 4px 12px rgba(0,0,0,.12);transform:scale(1.02);}.nb{transition:all .1s;cursor:pointer;border:none;background:none;display:flex;align-items:center;justify-content:center;padding:8px;border-radius:8px;color:${C.ts};}.nb:hover{background:${C.sfh};}.cm-i{transition:background .1s;}.cm-i:hover{background:${C.sfh};}@keyframes wkR{from{transform:translateX(50px);opacity:0}to{transform:translateX(0);opacity:1}}@keyframes wkL{from{transform:translateX(-50px);opacity:0}to{transform:translateX(0);opacity:1}}.wk-r{animation:wkR .2s ease-out}.wk-l{animation:wkL .2s ease-out}`}</style>
+    <div className="sch-container" style={{minHeight:"100vh",background:C.bg,padding:28}} onClick={()=>ctxMenu&&setCtx(null)}>
+      <style>{`.lb{cursor:grab;transition:box-shadow .12s,transform .1s;}.lb:hover{box-shadow:0 4px 12px rgba(0,0,0,.12);transform:scale(1.02);}.nb{transition:all .1s;cursor:pointer;border:none;background:none;display:flex;align-items:center;justify-content:center;padding:8px;border-radius:8px;color:${C.ts};min-height:44px;min-width:44px;}.nb:hover{background:${C.sfh};}.cm-i{transition:background .1s;min-height:44px;}.cm-i:hover{background:${C.sfh};}@keyframes wkR{from{transform:translateX(50px);opacity:0}to{transform:translateX(0);opacity:1}}@keyframes wkL{from{transform:translateX(-50px);opacity:0}to{transform:translateX(0);opacity:1}}.wk-r{animation:wkR .2s ease-out}.wk-l{animation:wkL .2s ease-out}@media(max-width:768px){.sch-container{padding:12px!important;}.sch-week-grid{overflow-x:auto;-webkit-overflow-scrolling:touch;}.sch-week-grid>div{min-width:600px;}.sch-header{padding:12px 14px!important;}.sch-header-title{font-size:15px!important;}.sch-header-sub{font-size:11px!important;}.sch-dur-btn{min-height:44px;min-width:44px;}select,input[type="date"],input[type="number"]{min-height:44px;}}`}</style>
 
       {/* Header */}
-      <div style={{background:C.sf,borderBottom:`1px solid ${C.bd}`,padding:"16px 24px",position:"sticky",top:0,zIndex:20}}>
+      <div className="sch-header" style={{background:C.sf,borderBottom:`1px solid ${C.bd}`,padding:"16px 24px",position:"sticky",top:0,zIndex:20}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12}}>
-          <div style={{display:"flex",alignItems:"center",gap:12}}>{tog}<h2 style={{fontSize:18,fontWeight:700,color:C.tp}}>수업 일정</h2><span style={{fontSize:13,color:C.ts}}>{viewMode==='month'?`${cur.getFullYear()}년 ${cur.getMonth()+1}월`:`${wk[0].getMonth()+1}/${wk[0].getDate()} ~ ${wk[6].getMonth()+1}/${wk[6].getDate()}`}</span></div>
-          <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <div style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>{tog}<h2 className="sch-header-title" style={{fontSize:18,fontWeight:700,color:C.tp}}>수업 일정</h2><span className="sch-header-sub" style={{fontSize:13,color:C.ts}}>{viewMode==='month'?`${cur.getFullYear()}년 ${cur.getMonth()+1}월`:`${wk[0].getMonth()+1}/${wk[0].getDate()} ~ ${wk[6].getMonth()+1}/${wk[6].getDate()}`}</span></div>
+          <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
             <button className="nb" onClick={()=>nW(-1)}><IcL/></button>
-            <button onClick={()=>setCur(new Date())} style={{padding:"6px 14px",borderRadius:8,border:`1px solid ${C.bd}`,background:C.sf,fontSize:12,cursor:"pointer",color:C.ts,fontFamily:"inherit"}}>오늘</button>
+            <button onClick={()=>setCur(new Date())} style={{padding:"6px 14px",borderRadius:8,border:`1px solid ${C.bd}`,background:C.sf,fontSize:12,cursor:"pointer",color:C.ts,fontFamily:"inherit",minHeight:44}}>오늘</button>
             <button className="nb" onClick={()=>nW(1)}><IcR/></button>
             <div style={{display:"flex",border:`1px solid ${C.bd}`,borderRadius:8,overflow:"hidden",marginLeft:4}}>
-              <button onClick={()=>changeViewMode('week')} style={{padding:"5px 10px",fontSize:11,fontWeight:viewMode==='week'?700:500,border:"none",cursor:"pointer",fontFamily:"inherit",background:viewMode==='week'?C.pr:'transparent',color:viewMode==='week'?'#fff':C.ts}}>주간</button>
-              <button onClick={()=>changeViewMode('month')} style={{padding:"5px 10px",fontSize:11,fontWeight:viewMode==='month'?700:500,border:"none",cursor:"pointer",fontFamily:"inherit",background:viewMode==='month'?C.pr:'transparent',color:viewMode==='month'?'#fff':C.ts,borderLeft:`1px solid ${C.bd}`}}>월간</button>
+              <button onClick={()=>changeViewMode('week')} style={{padding:"5px 10px",fontSize:11,fontWeight:viewMode==='week'?700:500,border:"none",cursor:"pointer",fontFamily:"inherit",background:viewMode==='week'?C.pr:'transparent',color:viewMode==='week'?'#fff':C.ts,minHeight:44}}>주간</button>
+              <button onClick={()=>changeViewMode('month')} style={{padding:"5px 10px",fontSize:11,fontWeight:viewMode==='month'?700:500,border:"none",cursor:"pointer",fontFamily:"inherit",background:viewMode==='month'?C.pr:'transparent',color:viewMode==='month'?'#fff':C.ts,borderLeft:`1px solid ${C.bd}`,minHeight:44}}>월간</button>
             </div>
-            <button onClick={()=>{setEL(null);setMO(true);}} style={{display:"flex",alignItems:"center",gap:4,background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"7px 16px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}><IcP/> 수업 추가</button>
+            <button onClick={()=>{setEL(null);setMO(true);}} style={{display:"flex",alignItems:"center",gap:4,background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"7px 16px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",minHeight:44}}><IcP/> 수업 추가</button>
           </div>
         </div>
         <div style={{display:"flex",gap:8,marginTop:10,flexWrap:"wrap",alignItems:"center"}}>
-          {students.map(st=>{const c=SC[(st.color_index||0)%8];const dim=activeStu&&activeStu!==st.id;const sel=activeStu===st.id;return(<div key={st.id} onClick={()=>toggleStu(st.id)} style={{display:"flex",alignItems:"center",gap:6,padding:"3px 8px",borderRadius:6,background:dim?C.sfh:c.bg,fontSize:11,fontWeight:sel?700:500,color:dim?C.tt:c.t,cursor:"pointer",opacity:dim?.4:1,transition:"all .15s",border:sel?`1.5px solid ${c.b}`:"1.5px solid transparent"}}><div style={{width:7,height:7,borderRadius:"50%",background:dim?C.tt:c.b}}/>{st.name}</div>);})}
+          {students.map(st=>{const c=SC[(st.color_index||0)%8];const dim=activeStu&&activeStu!==st.id;const sel=activeStu===st.id;return(<div key={st.id} onClick={()=>toggleStu(st.id)} style={{display:"flex",alignItems:"center",gap:6,padding:"3px 8px",borderRadius:6,background:dim?C.sfh:c.bg,fontSize:11,fontWeight:sel?700:500,color:dim?C.tt:c.t,cursor:"pointer",opacity:dim?.4:1,transition:"all .15s",border:sel?`1.5px solid ${c.b}`:"1.5px solid transparent",minHeight:44}}><div style={{width:7,height:7,borderRadius:"50%",background:dim?C.tt:c.b}}/>{st.name}</div>);})}
           <span style={{fontSize:10,color:C.tt,background:C.sfh,padding:"3px 8px",borderRadius:4}}>{viewMode==='month'?'클릭: 해당 주간으로 이동':'좌클릭: 상세 · 우클릭: 메뉴 · 드래그: 이동/생성'}</span>
-          {activeStu&&<button onClick={()=>setActive(null)} style={{fontSize:10,color:C.ac,background:C.al,border:`1px solid ${C.ac}`,borderRadius:5,padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>전체 보기</button>}
+          {activeStu&&<button onClick={()=>setActive(null)} style={{fontSize:10,color:C.ac,background:C.al,border:`1px solid ${C.ac}`,borderRadius:5,padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",fontWeight:600,minHeight:44}}>전체 보기</button>}
           {viewMode==='week'&&<div style={{display:"flex",alignItems:"center",gap:4,marginLeft:"auto",fontSize:11,color:C.ts}}>
-            <select value={stH} onChange={e=>{const v=+e.target.value;setStH(v);localStorage.setItem('sch_stH',v);if(v>=enH){setEnH(v+1);localStorage.setItem('sch_enH',v+1);}}} style={{padding:"2px 4px",borderRadius:4,border:`1px solid ${C.bd}`,fontSize:11,color:C.ts,background:C.sf,fontFamily:"inherit",cursor:"pointer"}}>{Array.from({length:24},(_,i)=>i).map(h=><option key={h} value={h}>{p2(h)}:00</option>)}</select>
+            <select value={stH} onChange={e=>{const v=+e.target.value;setStH(v);localStorage.setItem('sch_stH',v);if(v>=enH){setEnH(v+1);localStorage.setItem('sch_enH',v+1);}}} style={{padding:"2px 4px",borderRadius:4,border:`1px solid ${C.bd}`,fontSize:11,color:C.ts,background:C.sf,fontFamily:"inherit",cursor:"pointer",minHeight:44}}>{Array.from({length:24},(_,i)=>i).map(h=><option key={h} value={h}>{p2(h)}:00</option>)}</select>
             <span>~</span>
-            <select value={enH} onChange={e=>{const v=+e.target.value;setEnH(v);localStorage.setItem('sch_enH',v);}} style={{padding:"2px 4px",borderRadius:4,border:`1px solid ${C.bd}`,fontSize:11,color:C.ts,background:C.sf,fontFamily:"inherit",cursor:"pointer"}}>{Array.from({length:24-stH},(_,i)=>i+stH+1).map(h=><option key={h} value={h}>{p2(h)}:00</option>)}</select>
+            <select value={enH} onChange={e=>{const v=+e.target.value;setEnH(v);localStorage.setItem('sch_enH',v);}} style={{padding:"2px 4px",borderRadius:4,border:`1px solid ${C.bd}`,fontSize:11,color:C.ts,background:C.sf,fontFamily:"inherit",cursor:"pointer",minHeight:44}}>{Array.from({length:24-stH},(_,i)=>i+stH+1).map(h=><option key={h} value={h}>{p2(h)}:00</option>)}</select>
           </div>}
           <div style={{display:"flex",alignItems:"center",gap:4,marginLeft:viewMode==='week'?0:"auto",fontSize:11,color:C.ts,position:"relative"}}>
             <span style={{color:C.tt,fontSize:10}}>프리셋:</span>
@@ -318,7 +316,7 @@ export default function Schedule({menuBtn}){
       })()}
 
       {/* Weekly grid */}
-      {viewMode==='week'&&<div ref={gridRef} style={{overflowX:"auto",overflowY:"auto",maxHeight:"calc(100vh - 120px)",userSelect:"none"}} onTouchStart={onTS} onTouchEnd={onTE}>
+      {viewMode==='week'&&<div ref={gridRef} className="sch-week-grid" style={{overflowX:"auto",overflowY:"auto",maxHeight:"calc(100vh - 120px)",userSelect:"none",WebkitOverflowScrolling:"touch"}} onTouchStart={onTS} onTouchEnd={onTE}>
         <div key={animKey} className={slideDir==='r'?'wk-r':slideDir==='l'?'wk-l':''} style={{display:"grid",gridTemplateColumns:"60px repeat(7,1fr)",minWidth:800}}>
           {/* Header row */}
           <div style={{borderBottom:`1px solid ${C.bd}`,borderRight:`1px solid ${C.bl}`,background:C.sf,position:"sticky",top:0,zIndex:12}}/>
@@ -379,7 +377,7 @@ export default function Schedule({menuBtn}){
           <div style={{display:"flex",gap:4,padding:"2px 8px 8px"}}>
             {Object.entries(LSTATUS).map(([k,v])=>{
               const cur=effSt(ctxMenu.l,fd(ctxMenu.vd))===k;
-              return(<button key={k} onClick={()=>updStatus(k)} style={{fontSize:10,fontWeight:cur?700:500,color:cur?v.c:C.ts,background:cur?v.bg:'transparent',border:`1px solid ${cur?v.c:C.bd}`,borderRadius:5,padding:"3px 7px",cursor:"pointer",fontFamily:"inherit"}}>{v.l}</button>);
+              return(<button key={k} onClick={()=>updStatus(k)} style={{fontSize:10,fontWeight:cur?700:500,color:cur?v.c:C.ts,background:cur?v.bg:'transparent',border:`1px solid ${cur?v.c:C.bd}`,borderRadius:5,padding:"3px 7px",cursor:"pointer",fontFamily:"inherit",minHeight:44}}>{v.l}</button>);
             })}
           </div>
           <div style={{height:1,background:C.bd,margin:"4px 0"}}/>

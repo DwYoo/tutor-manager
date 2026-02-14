@@ -3,9 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import LessonDetailModal from './student/LessonDetailModal'
-
-const C={bg:"#FAFAF9",sf:"#FFFFFF",sfh:"#F5F5F4",bd:"#E7E5E4",bl:"#F0EFED",pr:"#1A1A1A",ac:"#2563EB",al:"#DBEAFE",as:"#EFF6FF",tp:"#1A1A1A",ts:"#78716C",tt:"#A8A29E",su:"#16A34A",sb:"#F0FDF4",dn:"#DC2626",db:"#FEF2F2",wn:"#F59E0B",wb:"#FFFBEB"};
-const SC=[{bg:"#DBEAFE",t:"#1E40AF",b:"#93C5FD"},{bg:"#FCE7F3",t:"#9D174D",b:"#F9A8D4"},{bg:"#D1FAE5",t:"#065F46",b:"#6EE7B7"},{bg:"#FEF3C7",t:"#92400E",b:"#FCD34D"},{bg:"#EDE9FE",t:"#5B21B6",b:"#C4B5FD"},{bg:"#FFE4E6",t:"#9F1239",b:"#FDA4AF"},{bg:"#CCFBF1",t:"#115E59",b:"#5EEAD4"},{bg:"#FEE2E2",t:"#991B1B",b:"#FCA5A5"}];
+import { C, SC } from '@/components/Colors'
 const DK=["일","월","화","수","목","금","토"];
 const DKS=["월","화","수","목","금","토","일"];
 const p2=n=>String(n).padStart(2,"0");
@@ -133,7 +131,7 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
                 <div style={{fontSize:12,color:C.ts}}>{nl.subject} · {p2(nl.start_hour)}:{p2(nl.start_min)}~{p2(Math.floor(em/60))}:{p2(em%60)}</div>
               </div>
             </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:10}}>
               <div onClick={e=>{e.stopPropagation();if(last)setDLes(mkLes(last));}} style={{background:C.bg,borderRadius:8,padding:"10px 12px",cursor:last?"pointer":"default"}}>
                 <div style={{fontSize:10,color:C.tt,marginBottom:4}}>지난 수업</div>
                 <div style={{fontSize:12,fontWeight:600,color:C.tp}}>{last?.topic||last?.subject||"기록 없음"}</div>
@@ -162,9 +160,9 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
           {upcomingDays.map((day,di)=>(
             <div key={di}>
               <div style={{fontSize:12,fontWeight:600,color:C.ts,marginBottom:8}}>{day.dayLabel}</div>
-              <div style={{display:"flex",flexDirection:"column",gap:6}}>
+              <div style={{display:"flex",flexDirection:"column",gap:6,overflowX:"auto",flexWrap:"nowrap",WebkitOverflowScrolling:"touch"}}>
                 {day.classes.map(l=>{const stu=getStu(l.student_id);const co=getCol(l.student_id);return(
-                  <div key={l.id} onClick={()=>stu&&onDetail(stu)} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderRadius:8,border:`1px solid ${C.bl}`,borderLeft:`3px solid ${co.b}`,cursor:"pointer"}} className="hcard">
+                  <div key={l.id} onClick={()=>stu&&onDetail(stu)} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderRadius:8,border:`1px solid ${C.bl}`,borderLeft:`3px solid ${co.b}`,cursor:"pointer",flexShrink:0}} className="hcard">
                     <div style={{fontSize:12,color:C.tt,fontWeight:500,minWidth:44}}>{p2(l.start_hour)}:{p2(l.start_min)}</div>
                     <div style={{width:24,height:24,borderRadius:6,background:co.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:co.t}}>{(stu?.name||"?")[0]}</div>
                     <div style={{fontSize:13,fontWeight:500,color:C.tp}}>{stu?.name||"-"}</div>
@@ -222,7 +220,7 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
             <button onClick={e=>{e.stopPropagation();setWeekOff(w=>w+1);}} style={{background:"none",border:`1px solid ${C.bd}`,borderRadius:6,width:26,height:26,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,color:C.ts,fontFamily:"inherit"}}>▶</button>
           </div>
         </div>
-        <div style={{display:"flex",alignItems:"flex-end",gap:8,height:100,padding:"0 8px"}}>
+        <div style={{display:"flex",alignItems:"flex-end",gap:8,height:100,padding:"0 8px",overflow:"hidden"}}>
           {weekData.map((d,i)=>{const maxC=Math.max(...weekData.map(x=>x.c),1);const h=d.c>0?(d.c/maxC)*100:4;const isT=i===todayIdx;return(
             <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:6}}>
               <div style={{fontSize:11,fontWeight:600,color:C.tt}}>{d.c}</div>
@@ -309,12 +307,12 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
   if(loading)return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:C.tt,fontSize:14}}>불러오는 중...</div></div>);
 
   return(
-    <div className="main-pad" style={{padding:28}}>
+    <div className="main-pad dash-container" style={{padding:28}}>
       <style>{`.hcard{transition:all .12s;cursor:pointer;}.hcard:hover{background:${C.sfh}!important;}
-        @media(max-width:768px){.dash-main{grid-template-columns:1fr!important;}.main-pad{padding:16px!important;}}`}</style>
+        @media(max-width:768px){.dash-main{grid-template-columns:1fr!important;}.main-pad{padding:16px!important;}.dash-container{padding:16px!important;}}`}</style>
 
       {/* Header */}
-      <div style={{marginBottom:24,display:"flex",alignItems:"center",gap:12}}>
+      <div style={{marginBottom:24,display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
         {tog}
         <div style={{flex:1}}>
           <h1 style={{fontSize:22,fontWeight:700,color:C.tp}}>안녕하세요, 선생님 👋</h1>
@@ -338,7 +336,7 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
       )}
 
       {/* Main grid */}
-      <div className="dash-main" style={{display:"grid",gridTemplateColumns:"1fr 320px",gap:20}}>
+      <div className="dash-main" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:20}}>
         {['left','right'].map(col=>{
           const items=layout[col]||[];
           const showEndDrop=editMode&&dropTgt&&dropTgt.col===col&&dropTgt.idx>=items.length;

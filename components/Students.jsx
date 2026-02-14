@@ -3,10 +3,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/components/AuthProvider';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/components/Toast';
-
-const C={bg:"#FAFAF9",sf:"#FFFFFF",sfh:"#F5F5F4",bd:"#E7E5E4",bl:"#F0EFED",pr:"#1A1A1A",ac:"#2563EB",al:"#DBEAFE",as:"#EFF6FF",tp:"#1A1A1A",ts:"#78716C",tt:"#A8A29E",su:"#16A34A",sb:"#F0FDF4",dn:"#DC2626",db:"#FEF2F2",wn:"#F59E0B",wb:"#FFFBEB"};
-const SC=[{bg:"#DBEAFE",t:"#1E40AF",b:"#93C5FD"},{bg:"#FCE7F3",t:"#9D174D",b:"#F9A8D4"},{bg:"#D1FAE5",t:"#065F46",b:"#6EE7B7"},{bg:"#FEF3C7",t:"#92400E",b:"#FCD34D"},{bg:"#EDE9FE",t:"#5B21B6",b:"#C4B5FD"},{bg:"#FFE4E6",t:"#9F1239",b:"#FDA4AF"},{bg:"#CCFBF1",t:"#115E59",b:"#5EEAD4"},{bg:"#FEE2E2",t:"#991B1B",b:"#FCA5A5"}];
-const STATUS=[{id:"paid",l:"완납",c:C.su,bg:C.sb},{id:"partial",l:"일부납",c:C.wn,bg:C.wb},{id:"unpaid",l:"미납",c:C.dn,bg:C.db}];
+import { C, SC, STATUS } from '@/components/Colors';
 const DK=["일","월","화","수","목","금","토"];const p2=n=>String(n).padStart(2,"0");
 const fd=d=>`${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`;
 const ls={display:"block",fontSize:12,fontWeight:500,color:C.tt,marginBottom:6};
@@ -76,9 +73,9 @@ export default function Students({onDetail,menuBtn}){
   if(loading)return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:C.tt,fontSize:14}}>불러오는 중...</div></div>);
 
   return(
-    <div style={{padding:28}}>
+    <div className="stu-container" style={{padding:28}}>
       <style>{`.hcard{transition:all .12s;}.hcard:hover{background:${C.sfh}!important;}
-        @media(max-width:768px){.stu-grid{grid-template-columns:1fr!important;}}`}</style>
+        @media(max-width:768px){.stu-container{padding:16px!important;}.stu-grid{grid-template-columns:1fr!important;}.stu-search{width:100%!important;}.hcard{padding:14px!important;min-height:120px;}}`}</style>
 
       {/* Header */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24,flexWrap:"wrap",gap:12}}>
@@ -88,22 +85,22 @@ export default function Students({onDetail,menuBtn}){
           <h1 style={{fontSize:20,fontWeight:700,color:C.tp}}>{showArchived?"보관된 학생":"학생 관리"}</h1>
           <span style={{background:C.sfh,color:C.ts,padding:"3px 10px",borderRadius:6,fontSize:12}}>{(showArchived?archivedStudents:activeStudents).length}명</span>
         </div>
-        <div style={{display:"flex",alignItems:"center",gap:8}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",flex:1,minWidth:0,justifyContent:"flex-end"}}>
           {!showArchived&&archivedStudents.length>0&&<button onClick={()=>setShowArchived(true)} style={{display:"flex",alignItems:"center",gap:5,background:C.sfh,color:C.ts,border:`1px solid ${C.bd}`,borderRadius:8,padding:"8px 12px",fontSize:12,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}><IcA/> 보관함 ({archivedStudents.length})</button>}
-          <input value={search} onChange={e=>setSearch(e.target.value)} style={{padding:"8px 14px",borderRadius:8,border:`1px solid ${C.bd}`,fontSize:13,color:C.tp,outline:"none",width:200,fontFamily:"inherit"}} placeholder="검색..."/>
+          <input value={search} onChange={e=>setSearch(e.target.value)} className="stu-search" style={{padding:"8px 14px",borderRadius:8,border:`1px solid ${C.bd}`,fontSize:13,color:C.tp,outline:"none",width:200,flex:1,minWidth:0,fontFamily:"inherit"}} placeholder="검색..."/>
           {!showArchived&&<button onClick={openAdd} style={{display:"flex",alignItems:"center",gap:4,background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"8px 16px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}><IcP/> 학생 추가</button>}
         </div>
       </div>
 
       {/* Student cards */}
-      <div className="stu-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:14}}>
+      <div className="stu-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:14}}>
         {filtered.map((s,idx)=>{
           const col=SC[(s.color_index||0)%8];
           const isDrag=dragId===s.id;
           const showL=canDrag&&dragId&&!isDrag&&dropIdx===idx&&!noDrop;
           const showR=canDrag&&dragId&&!isDrag&&idx===filtered.length-1&&dropIdx===filtered.length&&!noDrop;
           return(
-            <div key={s.id} onClick={()=>onDetail(s)} draggable={canDrag} onDragStart={e=>onDS(e,s.id)} onDragOver={e=>onDO(e,idx)} onDrop={onDR} onDragEnd={onDE} style={{position:"relative",display:"flex",flexDirection:"column",background:C.sf,border:`1px solid ${C.bd}`,borderRadius:14,padding:20,cursor:canDrag?"grab":"pointer",borderTop:`3px solid ${col.b}`,opacity:isDrag?.4:1,transition:"opacity .15s"}} className="hcard">
+            <div key={s.id} onClick={()=>onDetail(s)} draggable={canDrag} onDragStart={e=>onDS(e,s.id)} onDragOver={e=>onDO(e,idx)} onDrop={onDR} onDragEnd={onDE} style={{position:"relative",display:"flex",flexDirection:"column",background:C.sf,border:`1px solid ${C.bd}`,borderRadius:14,padding:20,cursor:canDrag?"grab":"pointer",borderTop:`3px solid ${col.b}`,opacity:isDrag?.4:1,transition:"opacity .15s",minHeight:120}} className="hcard">
               {showL&&<div style={{position:"absolute",left:-9,top:4,bottom:4,width:3,borderRadius:2,background:C.ac,boxShadow:`0 0 8px ${C.ac}`,zIndex:5}}/>}
               {showR&&<div style={{position:"absolute",right:-9,top:4,bottom:4,width:3,borderRadius:2,background:C.ac,boxShadow:`0 0 8px ${C.ac}`,zIndex:5}}/>}
               <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14}}>
@@ -149,7 +146,7 @@ export default function Students({onDetail,menuBtn}){
       {/* Add/Edit Modal */}
       {showAdd&&(
         <div style={{position:"fixed",inset:0,zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,.35)"}} onClick={()=>{setShowAdd(false);setEditStu(null);}}>
-          <div onClick={e=>e.stopPropagation()} style={{background:C.sf,borderRadius:16,width:"100%",maxWidth:440,padding:28,boxShadow:"0 20px 60px rgba(0,0,0,.15)",maxHeight:"90vh",overflow:"auto"}}>
+          <div onClick={e=>e.stopPropagation()} className="detail-modal" style={{background:C.sf,borderRadius:16,width:"100%",maxWidth:440,padding:28,boxShadow:"0 20px 60px rgba(0,0,0,.15)",maxHeight:"90vh",overflow:"auto"}}>
             <div style={{display:"flex",justifyContent:"space-between",marginBottom:20}}>
               <h2 style={{fontSize:18,fontWeight:700,color:C.tp}}>{editStu?"학생 수정":"학생 추가"}</h2>
               <button onClick={()=>{setShowAdd(false);setEditStu(null);}} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,display:"flex"}}><IcX/></button>

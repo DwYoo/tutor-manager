@@ -5,9 +5,7 @@ import { useAuth } from '@/components/AuthProvider';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, BarChart, Bar, Cell, ReferenceLine } from 'recharts';
 import LessonDetailModal from './student/LessonDetailModal';
 import { useToast } from '@/components/Toast';
-
-const C={bg:"#FAFAF9",sf:"#FFFFFF",sfh:"#F5F5F4",bd:"#E7E5E4",bl:"#F0EFED",pr:"#1A1A1A",ac:"#2563EB",al:"#DBEAFE",as:"#EFF6FF",tp:"#1A1A1A",ts:"#78716C",tt:"#A8A29E",su:"#16A34A",sb:"#F0FDF4",dn:"#DC2626",db:"#FEF2F2",wn:"#F59E0B",wb:"#FFFBEB"};
-const SC=[{bg:"#DBEAFE",t:"#1E40AF",b:"#93C5FD"},{bg:"#FCE7F3",t:"#9D174D",b:"#F9A8D4"},{bg:"#D1FAE5",t:"#065F46",b:"#6EE7B7"},{bg:"#FEF3C7",t:"#92400E",b:"#FCD34D"},{bg:"#EDE9FE",t:"#5B21B6",b:"#C4B5FD"},{bg:"#FFE4E6",t:"#9F1239",b:"#FDA4AF"},{bg:"#CCFBF1",t:"#115E59",b:"#5EEAD4"},{bg:"#FEE2E2",t:"#991B1B",b:"#FCA5A5"}];
+import { C, SC } from '@/components/Colors';
 const REASON_COLORS=["#2563EB","#DC2626","#F59E0B","#16A34A","#8B5CF6","#EC4899","#06B6D4","#F97316"];
 const p2=n=>String(n).padStart(2,"0");
 const fd=d=>d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate());
@@ -256,8 +254,8 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
   if(loading)return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:C.tt,fontSize:14}}>불러오는 중...</div></div>);
 
   return(
-    <div style={{padding:28}}>
-      <style>{".hcard{transition:all .12s;cursor:pointer;}.hcard:hover{background:"+C.sfh+"!important;}\n@media(max-width:768px){.sd-header{flex-direction:column!important;align-items:flex-start!important;}}"}</style>
+    <div className="sd-container" style={{padding:28}}>
+      <style>{".hcard{transition:all .12s;cursor:pointer;}.hcard:hover{background:"+C.sfh+"!important;}\n@media(max-width:768px){.sd-header{flex-direction:column!important;align-items:flex-start!important;} .sd-header .share-btns{margin-top:8px;width:100%;justify-content:flex-start;} .sd-container{padding:14px!important;} .sd-tabs{overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap;} .sd-tabs button{white-space:nowrap;flex-shrink:0;} .sd-subtabs{overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap;} .sd-subtabs button{white-space:nowrap;flex-shrink:0;} .cal-cell{min-height:56px!important;}}\n@media(max-width:640px){.hw-stats{grid-template-columns:repeat(2,1fr)!important;} .score-stats{grid-template-columns:repeat(1,1fr)!important;} .swot-grid{grid-template-columns:1fr!important;}}"}</style>
 
       {/* Header */}
       <div className="sd-header" style={{display:"flex",alignItems:"center",gap:16,marginBottom:24}}>
@@ -272,18 +270,18 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
             <div style={{fontSize:13,color:C.ts}}>{s.subject} · {s.grade}{s.school?" · "+s.school:""}</div>
           </div>
         </div>
-        <div style={{display:"flex",alignItems:"center",gap:10}}>
+        <div className="share-btns" style={{display:"flex",alignItems:"center",gap:10}}>
           <button onClick={copyShareLink} style={{background:shareCopied?C.sb:C.as,color:shareCopied?C.su:C.ac,border:"1px solid "+(shareCopied?"#BBF7D0":C.al),borderRadius:8,padding:"6px 12px",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",transition:"all .2s"}}>{shareCopied?"링크 복사됨":"공유 링크"}</button>
           <label style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:C.ts,cursor:"pointer",whiteSpace:"nowrap"}}><input type="checkbox" checked={isParent} onChange={e=>setIsParent(e.target.checked)}/>학부모 뷰</label>
         </div>
       </div>
 
       {/* Main tabs */}
-      <div style={{display:"flex",gap:4,marginBottom:4,borderBottom:"1px solid "+C.bd,paddingBottom:0}}>
+      <div className="sd-tabs" style={{display:"flex",gap:4,marginBottom:4,borderBottom:"1px solid "+C.bd,paddingBottom:0}}>
         {mainTabs.map(m=>(<button key={m.id} onClick={()=>switchMain(m.id)} style={{padding:"10px 20px",border:"none",borderBottom:mainTab===m.id?"2px solid "+C.ac:"2px solid transparent",background:"none",fontSize:14,fontWeight:mainTab===m.id?600:400,color:mainTab===m.id?C.ac:C.ts,cursor:"pointer",fontFamily:"inherit"}}>{m.l}</button>))}
       </div>
       {/* Sub tabs */}
-      {curMain&&curMain.subs.length>1&&(<div style={{display:"flex",gap:4,marginBottom:20,paddingTop:8}}>
+      {curMain&&curMain.subs.length>1&&(<div className="sd-subtabs" style={{display:"flex",gap:4,marginBottom:20,paddingTop:8}}>
         {curMain.subs.map(sb=>(<button key={sb.id} onClick={()=>setSubTab(sb.id)} style={{padding:"6px 16px",borderRadius:8,border:"1px solid "+(subTab===sb.id?C.ac:C.bd),background:subTab===sb.id?C.as:"transparent",fontSize:12,fontWeight:subTab===sb.id?600:400,color:subTab===sb.id?C.ac:C.ts,cursor:"pointer",fontFamily:"inherit"}}>{sb.l}</button>))}
       </div>)}
 
@@ -404,7 +402,7 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
                   const dl=date?gLD(date):[];
                   const isSat=i%7===5,isSun=i%7===6;
                   return(
-                    <div key={i} style={{padding:"6px 4px",minHeight:72,borderRadius:8,opacity:c.cur?1:.3}}>
+                    <div key={i} className="cal-cell" style={{padding:"6px 4px",minHeight:72,borderRadius:8,opacity:c.cur?1:.3}}>
                       <div style={{fontSize:13,fontWeight:isToday?700:400,color:isToday?C.ac:isSun?"#DC2626":isSat?C.ac:C.tp,marginBottom:4}}>{c.d}</div>
                       {dl.length>0&&dl.map(l=>(
                         <div key={l.id} onClick={()=>openLesson(l,fd(date))} style={{fontSize:9,padding:"2px 4px",borderRadius:4,fontWeight:500,marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",background:col.bg,color:col.t,cursor:"pointer"}}>
@@ -479,7 +477,7 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
           return(<div>
             <h3 style={{fontSize:16,fontWeight:700,color:C.tp,marginBottom:16}}>숙제 현황</h3>
             {/* Summary stats */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:20}}>
+            <div className="hw-stats" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:20}}>
               <div onClick={()=>setHwFilter(null)} style={{background:hwFilter===null?C.sfh:C.sf,border:hwFilter===null?"2px solid "+C.tp:"1px solid "+C.bd,borderRadius:12,padding:"14px 16px",textAlign:"center",cursor:"pointer",opacity:hwFilter===null?1:.5,transition:"all .15s"}}>
                 <div style={{fontSize:22,fontWeight:700,color:C.tp}}>{tHw}</div>
                 <div style={{fontSize:11,color:C.tt,marginTop:2}}>전체</div>
@@ -553,7 +551,7 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
 
           {/* Stats charts */}
           {wrongs.length>0&&(<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
-              <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:12,padding:"14px 12px"}}>
+              <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:12,padding:"14px 12px",overflow:"hidden"}}>
                 <div style={{fontSize:12,fontWeight:600,color:C.tp,marginBottom:6}}>오답 사유별</div>
                 <div style={{display:"flex",gap:3,marginBottom:8,flexWrap:"wrap"}}>
                   <button onClick={()=>setReasonBook("")} style={{padding:"2px 8px",borderRadius:5,border:"1px solid "+(!reasonBook?C.ac:C.bd),background:!reasonBook?C.as:"transparent",fontSize:9,fontWeight:!reasonBook?600:400,color:!reasonBook?C.ac:C.ts,cursor:"pointer",fontFamily:"inherit"}}>전체</button>
@@ -570,7 +568,7 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
                   </BarChart>
                 </ResponsiveContainer>):(<div style={{height:120,display:"flex",alignItems:"center",justifyContent:"center",color:C.tt,fontSize:11}}>데이터 없음</div>)}
               </div>
-              <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:12,padding:"14px 12px"}}>
+              <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:12,padding:"14px 12px",overflow:"hidden"}}>
                 <div style={{fontSize:12,fontWeight:600,color:C.tp,marginBottom:6}}>단원별 오답</div>
                 <div style={{display:"flex",gap:3,marginBottom:8,flexWrap:"wrap"}}>
                   {wBooks.map(b=>(<button key={b} onClick={()=>setChapterBook(b)} style={{padding:"2px 8px",borderRadius:5,border:"1px solid "+(chapterBookSel===b?C.ac:C.bd),background:chapterBookSel===b?C.as:"transparent",fontSize:9,fontWeight:chapterBookSel===b?600:400,color:chapterBookSel===b?C.ac:C.ts,cursor:"pointer",fontFamily:"inherit"}}>{b}</button>))}
@@ -593,7 +591,7 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
             <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"flex-end"}}>
               <div style={{flex:"1 1 100px"}}><label style={ls}>교재</label><input value={wForm.book} onChange={e=>setWForm(p=>({...p,book:e.target.value}))} style={{...is,fontSize:12,padding:"6px 10px"}} placeholder="교재명"/></div>
               <div style={{flex:"1 1 80px"}}><label style={ls}>단원</label><input value={wForm.chapter} onChange={e=>setWForm(p=>({...p,chapter:e.target.value}))} style={{...is,fontSize:12,padding:"6px 10px"}} placeholder="단원"/></div>
-              <div style={{flex:"0 0 60px"}}><label style={ls}>번호</label><input value={wForm.problem_num} onChange={e=>setWForm(p=>({...p,problem_num:e.target.value}))} style={{...is,fontSize:12,padding:"6px 10px"}} placeholder="#"/></div>
+              <div style={{flex:"1 1 60px",minWidth:60}}><label style={ls}>번호</label><input value={wForm.problem_num} onChange={e=>setWForm(p=>({...p,problem_num:e.target.value}))} style={{...is,fontSize:12,padding:"6px 10px"}} placeholder="#"/></div>
               <div style={{flex:"1 1 100px"}}><label style={ls}>오답 사유</label><input value={wForm.reason} onChange={e=>setWForm(p=>({...p,reason:e.target.value}))} style={{...is,fontSize:12,padding:"6px 10px"}} placeholder="오답 사유"/></div>
               <div style={{flex:"1 1 100px"}}><label style={ls}>메모</label><input value={wForm.note} onChange={e=>setWForm(p=>({...p,note:e.target.value}))} style={{...is,fontSize:12,padding:"6px 10px"}} placeholder="메모"/></div>
               <button onClick={addWrong} style={{background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"6px 16px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",flexShrink:0,alignSelf:"flex-end"}}>추가</button>
@@ -614,7 +612,7 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
           {/* Wrong answers list */}
           {wrongs.length===0?(<div style={{textAlign:"center",padding:40,color:C.tt,background:C.sf,border:"1px solid "+C.bd,borderRadius:14}}><div style={{fontSize:14}}>오답 기록이 없습니다</div></div>):
           !wFilter?([...wBooks,...(wrongs.some(w=>!w.book)?[""]:[] )].map(book=>{const bk=book||"__no_book__";const items=[...wrongs.filter(w=>book?w.book===book:!w.book)].sort((a,b)=>{const ac=a.chapter||"",bc=b.chapter||"";if(ac!==bc)return ac.localeCompare(bc,undefined,{numeric:true});const an=parseInt(a.problem_num)||0,bn=parseInt(b.problem_num)||0;return an-bn;});const exp=wExpanded[bk]!==false;return(
-            <div key={bk} style={{marginBottom:12}}>
+            <div key={bk} className="table-scroll" style={{marginBottom:12}}>
               <div onClick={()=>setWExpanded(p=>({...p,[bk]:!exp}))} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",background:C.sfh,borderRadius:10,cursor:"pointer",marginBottom:exp?8:0}}>
                 <span style={{fontSize:13,fontWeight:600,color:book?C.tp:C.tt}}>{book||"교재명 미지정"} <span style={{fontWeight:400,color:C.tt}}>({items.length})</span></span>
                 <span style={{fontSize:12,color:C.tt}}>{exp?"▲":"▼"}</span>
@@ -643,7 +641,7 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
                 </Fragment>);})}</tbody>
               </table>;})()}
             </div>);})):(
-            <div>
+            <div className="table-scroll">
               {(()=>{const fItems=filteredW;const uCh=[];const seen=new Set();fItems.forEach(w=>{const ch=w.chapter||"";if(!seen.has(ch)){seen.add(ch);uCh.push(ch);}});const fk=wFilter||"__filtered__";const cols=5;return fItems.length===0?<div style={{textAlign:"center",padding:24,color:C.tt,fontSize:13}}>오답 기록이 없습니다</div>:<table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
                 <thead><tr>{["",wBulkMode?"":"번호","사유","메모",""].map((h,i)=>(<th key={i} style={{padding:"8px 10px",textAlign:"left",color:C.tt,fontWeight:500,borderBottom:"1px solid "+C.bd,width:i===0?28:i===4?48:"auto"}}>{h}</th>))}</tr></thead>
                 <tbody>{uCh.map(ch=>{const ck=fk+"::"+(ch||"__no_ch__");const chExp=wExpanded[ck]!==false;const chItems=fItems.filter(w=>(w.chapter||"")===ch);const cc=chapterColorMap[ch]||null;const chResolved=chItems.filter(w=>w.resolved).length;return(<Fragment key={ck}>
@@ -721,7 +719,7 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
               <button onClick={()=>setChartMode("grade")} style={{padding:"6px 14px",borderRadius:8,border:"1px solid "+(isGradeMode?"#8B5CF6":C.bd),background:isGradeMode?"#EDE9FE":"transparent",fontSize:11,fontWeight:isGradeMode?600:400,color:isGradeMode?"#8B5CF6":C.ts,cursor:"pointer",fontFamily:"inherit"}}>등급</button>
             </div>
             {/* Summary cards */}
-            {!isGradeMode?(<div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
+            {!isGradeMode?(<div className="score-stats" style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
               <div style={{background:"#EFF6FF",borderRadius:12,padding:"16px 12px",textAlign:"center"}}>
                 <div style={{fontSize:11,color:C.tt,marginBottom:4}}>최근 점수</div>
                 <div style={{fontSize:22,fontWeight:700,color:C.ac}}>{recent}점</div>
@@ -734,7 +732,7 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
                 <div style={{fontSize:11,color:C.tt,marginBottom:4}}>평균 점수 <span style={{fontSize:10,color:C.tt}}>(1년)</span></div>
                 <div style={{fontSize:22,fontWeight:700,color:C.ts}}>{avgSc}점</div>
               </div>
-            </div>):(<div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
+            </div>):(<div className="score-stats" style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
               <div style={{background:"#EDE9FE",borderRadius:12,padding:"16px 12px",textAlign:"center"}}>
                 <div style={{fontSize:11,color:C.tt,marginBottom:4}}>최근 등급</div>
                 <div style={{fontSize:22,fontWeight:700,color:"#8B5CF6"}}>{recentGrade!=null?recentGrade+"등급":"-"}</div>
@@ -749,7 +747,7 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
               </div>
             </div>)}
             {/* Chart */}
-            <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:20,marginBottom:16}}>
+            <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:20,marginBottom:16,overflow:"hidden"}}>
               {!isGradeMode?(<>
                 {!isParent&&<div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",gap:6,marginBottom:12}}>
                   <span style={{fontSize:11,color:C.tt}}>목표</span>
@@ -810,7 +808,7 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
             </div>
           </>)}
           {/* Edit Score Modal */}
-          {editScore&&!isParent&&(<div style={{position:"fixed",inset:0,zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,.35)"}} onClick={()=>setEditScore(null)}>
+          {editScore&&!isParent&&(<div className="detail-modal" style={{position:"fixed",inset:0,zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,.35)"}} onClick={()=>setEditScore(null)}>
             <div onClick={e=>e.stopPropagation()} style={{background:C.sf,borderRadius:16,width:"100%",maxWidth:380,padding:28,boxShadow:"0 20px 60px rgba(0,0,0,.15)"}}>
               <div style={{display:"flex",justifyContent:"space-between",marginBottom:20}}><h2 style={{fontSize:18,fontWeight:700,color:C.tp}}>성적 수정</h2><button onClick={()=>setEditScore(null)} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,fontSize:18}}>✕</button></div>
               <div style={{display:"flex",flexDirection:"column",gap:12}}>
@@ -846,7 +844,7 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
               <div style={{fontSize:13,fontWeight:600,color:C.ac,marginBottom:10}}>🧭 학습 전략</div>
               <textarea value={planStrategy} onChange={e=>{setPlanStrategy(e.target.value);e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px';}} onKeyDown={e=>bk(e,planStrategy,setPlanStrategy)} ref={el=>{if(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}}} style={{...is,minHeight:80,resize:"none",fontSize:13,lineHeight:1.7,overflow:"hidden"}} placeholder="학생의 전반적인 학습 방향과 전략을 작성하세요..."/>
             </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+            <div className="swot-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
               <div style={{background:C.sb,border:"1px solid #BBF7D0",borderRadius:14,padding:16}}>
                 <div style={{fontSize:13,fontWeight:600,color:C.su,marginBottom:8}}>💪 강점 (S)</div>
                 <textarea value={planStrength} onChange={e=>{setPlanStrength(e.target.value);e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px';}} onKeyDown={e=>bk(e,planStrength,setPlanStrength)} ref={el=>{if(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}}} style={{...is,minHeight:60,resize:"none",fontSize:12,background:"transparent",border:"1px solid #BBF7D0",overflow:"hidden"}} placeholder="강점 기록..."/>
@@ -874,7 +872,7 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
               <div style={{fontSize:13,fontWeight:600,color:C.ac,marginBottom:10}}>🧭 학습 전략</div>
               <div style={{fontSize:13,color:planStrategy?C.tp:C.tt,lineHeight:1.7,whiteSpace:"pre-wrap",minHeight:20}}>{planStrategy||"아직 작성된 전략이 없습니다"}</div>
             </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}>
+            <div className="swot-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}>
               <div style={{background:C.sb,border:"1px solid #BBF7D0",borderRadius:14,padding:16}}>
                 <div style={{fontSize:13,fontWeight:600,color:C.su,marginBottom:8}}>💪 강점 (S)</div>
                 <div style={{fontSize:12,color:planStrength?C.tp:C.tt,lineHeight:1.7,whiteSpace:"pre-wrap",minHeight:20}}>{planStrength||"미작성"}</div>

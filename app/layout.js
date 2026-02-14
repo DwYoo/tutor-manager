@@ -7,6 +7,14 @@ export const metadata = {
   description: '과외 선생님을 위한 올인원 관리 도구',
 }
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
+}
+
 export default function RootLayout({ children }) {
   return (
     <html lang="ko">
