@@ -383,16 +383,11 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
           const aHw=lessons.flatMap(l=>(l.homework||[]).map(h=>({...h,_ld:l.date,_lt:l.topic||l.subject})));
           const tHw=aHw.length,dHw=aHw.filter(h=>(h.completion_pct||0)>=100).length;
           const pHw=aHw.filter(h=>{const p=h.completion_pct||0;return p>0&&p<100;}).length;
-          const avgP=tHw>0?Math.round(aHw.reduce((a,h)=>a+(h.completion_pct||0),0)/tHw):0;
-          const avgC=avgP>=80?C.su:avgP>=40?C.wn:C.dn;
+          const nHw=aHw.filter(h=>(h.completion_pct||0)===0).length;
           return(<div>
             <h3 style={{fontSize:16,fontWeight:700,color:C.tp,marginBottom:16}}>숙제 현황</h3>
             {/* Summary stats */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:20}}>
-              <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:12,padding:"14px 16px",textAlign:"center"}}>
-                <div style={{fontSize:22,fontWeight:700,color:C.tp}}>{tHw}</div>
-                <div style={{fontSize:11,color:C.tt,marginTop:2}}>전체 숙제</div>
-              </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:20}}>
               <div style={{background:C.sb,border:"1px solid #BBF7D0",borderRadius:12,padding:"14px 16px",textAlign:"center"}}>
                 <div style={{fontSize:22,fontWeight:700,color:C.su}}>{dHw}</div>
                 <div style={{fontSize:11,color:C.su,marginTop:2}}>완료</div>
@@ -401,9 +396,9 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
                 <div style={{fontSize:22,fontWeight:700,color:C.wn}}>{pHw}</div>
                 <div style={{fontSize:11,color:C.wn,marginTop:2}}>진행중</div>
               </div>
-              <div style={{background:C.as,border:"1px solid "+C.al,borderRadius:12,padding:"14px 16px",textAlign:"center"}}>
-                <div style={{fontSize:22,fontWeight:700,color:avgC}}>{avgP}%</div>
-                <div style={{fontSize:11,color:C.ac,marginTop:2}}>평균 완성도</div>
+              <div style={{background:C.db,border:"1px solid #FECACA",borderRadius:12,padding:"14px 16px",textAlign:"center"}}>
+                <div style={{fontSize:22,fontWeight:700,color:C.dn}}>{nHw}</div>
+                <div style={{fontSize:11,color:C.dn,marginTop:2}}>미시작</div>
               </div>
             </div>
             {/* Grouped by lesson */}
@@ -422,8 +417,8 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
                   <div style={{display:"flex",flexDirection:"column",gap:8}}>
                     {lhw.map(h=>{
                       const pct=h.completion_pct||0;
-                      const pc=pct>=100?C.su:pct>=50?C.wn:C.dn;
-                      const pb=pct>=100?C.sb:pct>=50?C.wb:C.db;
+                      const pc=pct>=100?C.su:pct>30?C.wn:pct>0?C.lo:C.dn;
+                      const pb=pct>=100?C.sb:pct>30?C.wb:pct>0?C.lob:C.db;
                       const sl=pct>=100?"완료":pct>0?"진행중":"미시작";
                       const barDrag=e=>{if(isParent)return;e.preventDefault();const bar=e.currentTarget;const calc=ev=>{const r=bar.getBoundingClientRect();const v=Math.max(0,Math.min(100,Math.round((ev.clientX-r.left)/r.width*10)*10));updHw(h.id,"completion_pct",v);};calc(e);const mv=ev=>calc(ev);const up=()=>{window.removeEventListener("mousemove",mv);window.removeEventListener("mouseup",up);};window.addEventListener("mousemove",mv);window.addEventListener("mouseup",up);};
                       return(

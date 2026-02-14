@@ -3,7 +3,8 @@ export const C = {
   bl: "#F0EFED", pr: "#1A1A1A", ac: "#2563EB", al: "#DBEAFE",
   as: "#EFF6FF", tp: "#1A1A1A", ts: "#78716C", tt: "#A8A29E",
   su: "#16A34A", sb: "#F0FDF4", dn: "#DC2626", db: "#FEF2F2",
-  wn: "#F59E0B", wb: "#FFFBEB"
+  wn: "#F59E0B", wb: "#FFFBEB",
+  lo: "#EA580C", lob: "#FFF7ED"
 }
 
 export const SC = [
