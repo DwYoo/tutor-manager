@@ -17,6 +17,7 @@ export default function ShareView({ token }) {
   const [wrongs, setWrongs] = useState([]);
   const [reports, setReports] = useState([]);
   const [planComments, setPlanComments] = useState([]);
+  const [studyPlans, setStudyPlans] = useState([]);
   const [standaloneFiles, setStandaloneFiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -35,12 +36,13 @@ export default function ShareView({ token }) {
       const { data: stu, error: e } = await supabase.from('students').select('*').eq('share_token', token).single();
       if (e || !stu) { setError('not_found'); setLoading(false); return; }
       setS(stu);
-      const [a, b, c, d, f] = await Promise.all([
+      const [a, b, c, d, f, g] = await Promise.all([
         supabase.from('lessons').select('*, homework(*)').eq('student_id', stu.id).order('date', { ascending: false }),
         supabase.from('scores').select('*').eq('student_id', stu.id).order('created_at'),
         supabase.from('wrong_answers').select('*').eq('student_id', stu.id).order('created_at', { ascending: false }),
         supabase.from('reports').select('*').eq('student_id', stu.id).order('date', { ascending: false }),
         supabase.from('files').select('*').eq('student_id', stu.id).is('lesson_id', null).order('created_at', { ascending: false }),
+        supabase.from('study_plans').select('*').eq('student_id', stu.id).order('date', { ascending: false }),
       ]);
       setLessons(a.data || []);
       setScores(b.data || []);
@@ -48,6 +50,7 @@ export default function ShareView({ token }) {
       const allReps = d.data || [];
       setReports(allReps.filter(r => r.type !== 'plan'));
       setPlanComments(allReps.filter(r => r.type === 'plan'));
+      setStudyPlans(g.data || []);
       setStandaloneFiles(f.data || []);
       setLoading(false);
     })();
@@ -137,13 +140,33 @@ export default function ShareView({ token }) {
         return recentReport ? (
           <div style={{ background: C.sf, borderBottom: "1px solid " + C.bd, padding: "20px 0" }}>
             <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 20px" }}>
-              <h3 style={{ fontSize: 14, fontWeight: 700, color: C.tp, marginBottom: 10 }}>최근 학습 리포트</h3>
+              <h3 style={{ fontSize: 14, fontWeight: 700, color: C.tp, marginBottom: 10 }}>학습 리포트</h3>
               <div style={{ background: "linear-gradient(135deg, " + C.as + " 0%, " + C.sf + " 100%)", border: "2px solid " + C.ac, borderRadius: 14, padding: 16 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                   <span style={{ fontSize: 14, fontWeight: 700, color: C.tp }}>{recentReport.title || "리포트"}</span>
                   <span style={{ fontSize: 11, color: C.tt }}>{recentReport.date}</span>
                 </div>
                 <div style={{ fontSize: 13, color: C.tp, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{recentReport.body}</div>
+              </div>
+            </div>
+          </div>
+        ) : null;
+      })()}
+
+      {/* Recent Study Plan (above tabs) */}
+      {(() => {
+        const sharedPlans = studyPlans.filter(sp => sp.is_shared !== false).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+        const recentPlan = sharedPlans[0];
+        return recentPlan ? (
+          <div style={{ background: C.sf, borderBottom: "1px solid " + C.bd, padding: "20px 0" }}>
+            <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 20px" }}>
+              <h3 style={{ fontSize: 14, fontWeight: 700, color: C.tp, marginBottom: 10 }}>학습 계획</h3>
+              <div style={{ background: "linear-gradient(135deg, #D1FAE5 0%, " + C.sf + " 100%)", border: "2px solid #16A34A", borderRadius: 14, padding: 16 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: C.tp }}>{recentPlan.title || "학습 계획"}</span>
+                  <span style={{ fontSize: 11, color: C.tt }}>{recentPlan.date}</span>
+                </div>
+                <div style={{ fontSize: 13, color: C.tp, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{recentPlan.body}</div>
               </div>
             </div>
           </div>
@@ -531,7 +554,7 @@ export default function ShareView({ token }) {
           {/* SWOT */}
           <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp, marginBottom: 12 }}>학습 오버뷰</h3>
           <div style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 14, padding: 20, marginBottom: 16 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: C.ac, marginBottom: 10 }}>🧭 학업 전략</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: C.ac, marginBottom: 10 }}>🧭 학습 전략</div>
             <div style={{ fontSize: 13, color: s.plan_strategy ? C.tp : C.tt, lineHeight: 1.7, whiteSpace: "pre-wrap", minHeight: 20 }}>{s.plan_strategy || "아직 작성된 전략이 없습니다"}</div>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 24 }}>
