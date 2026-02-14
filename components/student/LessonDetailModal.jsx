@@ -1,8 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-
-const C={bg:"#FAFAF9",sf:"#FFFFFF",sfh:"#F5F5F4",bd:"#E7E5E4",bl:"#F0EFED",pr:"#1A1A1A",ac:"#2563EB",al:"#DBEAFE",as:"#EFF6FF",tp:"#1A1A1A",ts:"#78716C",tt:"#A8A29E",su:"#16A34A",sb:"#F0FDF4",dn:"#DC2626",db:"#FEF2F2",wn:"#F59E0B",wb:"#FFFBEB"};
-const SC=[{bg:"#DBEAFE",t:"#1E40AF",b:"#93C5FD"},{bg:"#FCE7F3",t:"#9D174D",b:"#F9A8D4"},{bg:"#D1FAE5",t:"#065F46",b:"#6EE7B7"},{bg:"#FEF3C7",t:"#92400E",b:"#FCD34D"},{bg:"#EDE9FE",t:"#5B21B6",b:"#C4B5FD"},{bg:"#FFE4E6",t:"#9F1239",b:"#FDA4AF"},{bg:"#CCFBF1",t:"#115E59",b:"#5EEAD4"},{bg:"#FEE2E2",t:"#991B1B",b:"#FCA5A5"}];
+import { C, SC } from '@/components/Colors';
 const ls={display:"block",fontSize:12,fontWeight:500,color:C.tt,marginBottom:6};
 const is={width:"100%",padding:"9px 12px",borderRadius:8,border:`1px solid ${C.bd}`,fontSize:14,color:C.tp,background:C.sf,outline:"none",fontFamily:"inherit"};
 const p2=n=>String(n).padStart(2,"0");
@@ -45,6 +43,7 @@ export default function LessonDetailModal({ les, student, onUpdate, onClose }) {
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,.35)" }} onClick={onClose}>
+      <style>{`@media(max-width:640px){.ldm-tabs{overflow-x:auto;-webkit-overflow-scrolling:touch;} .ldm-tabs button{white-space:nowrap;flex-shrink:0;} .ldm-footer{position:sticky;bottom:0;background:white;padding:16px;border-top:1px solid #E7E5E4;} .ldm-textarea{min-height:120px!important;}}`}</style>
       <div onClick={e => e.stopPropagation()} className="detail-modal" style={{ background: C.sf, borderRadius: 16, width: "100%", maxWidth: 560, maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 20px 60px rgba(0,0,0,.15)", overflow: "hidden" }}>
         {/* Header */}
         <div style={{ padding: "24px 24px 0", flexShrink: 0 }}>
@@ -64,7 +63,7 @@ export default function LessonDetailModal({ les, student, onUpdate, onClose }) {
             {rep && <span style={{ color: C.ac, fontSize: 12 }}>🔁 반복</span>}
           </div>
           {/* Tabs */}
-          <div style={{ display: "flex", gap: 0, borderBottom: `1px solid ${C.bd}` }}>
+          <div className="ldm-tabs" style={{ display: "flex", gap: 0, borderBottom: `1px solid ${C.bd}` }}>
             {tabs.map(t => (
               <button key={t.id} onClick={() => setTab(t.id)} style={{ padding: "8px 14px", fontSize: 12, fontWeight: tab === t.id ? 600 : 400, color: tab === t.id ? C.ac : C.tt, borderTop: "none", borderLeft: "none", borderRight: "none", borderBottom: tab === t.id ? `2px solid ${C.ac}` : "2px solid transparent", background: "none", cursor: "pointer", fontFamily: "inherit", marginBottom: -1 }}>
                 {t.l}
@@ -80,7 +79,7 @@ export default function LessonDetailModal({ les, student, onUpdate, onClose }) {
           {tab === "content" && (
             <div>
               <label style={ls}>수업 내용</label>
-              <textarea value={content} onChange={e => { setContent(e.target.value); markDirty(); }} onKeyDown={e => bk(e, content, setContent, markDirty)} style={{ ...is, minHeight: 200, resize: "vertical", lineHeight: 1.6 }} placeholder="오늘 수업에서 다룬 내용..." />
+              <textarea className="ldm-textarea" value={content} onChange={e => { setContent(e.target.value); markDirty(); }} onKeyDown={e => bk(e, content, setContent, markDirty)} style={{ ...is, minHeight: 200, resize: "vertical", lineHeight: 1.6 }} placeholder="오늘 수업에서 다룬 내용..." />
             </div>
           )}
 
@@ -89,7 +88,7 @@ export default function LessonDetailModal({ les, student, onUpdate, onClose }) {
               <div>
                 <label style={ls}>학생 피드백 <span style={{ color: C.ac, fontWeight: 400 }}>(공개 — 학생/학부모 열람 가능)</span></label>
                 <div style={{ background: C.as, border: "1px solid " + C.al, borderRadius: 8, padding: "6px 12px", fontSize: 11, color: C.ac, marginBottom: 8 }}>이 내용은 학생과 학부모에게 공유됩니다.</div>
-                <textarea value={feedback} onChange={e => { setFeedback(e.target.value); markDirty(); }} onKeyDown={e => bk(e, feedback, setFeedback, markDirty)} style={{ ...is, minHeight: 120, resize: "vertical", lineHeight: 1.6 }} placeholder="학생 이해도, 태도, 개선점..." />
+                <textarea className="ldm-textarea" value={feedback} onChange={e => { setFeedback(e.target.value); markDirty(); }} onKeyDown={e => bk(e, feedback, setFeedback, markDirty)} style={{ ...is, minHeight: 120, resize: "vertical", lineHeight: 1.6 }} placeholder="학생 이해도, 태도, 개선점..." />
               </div>
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
@@ -97,7 +96,7 @@ export default function LessonDetailModal({ les, student, onUpdate, onClose }) {
                   <label style={{ ...ls, marginBottom: 0 }}>선생님 메모 <span style={{ color: C.dn, fontWeight: 600 }}>(비공개)</span></label>
                 </div>
                 <div style={{ background: C.wb, border: "1px solid #FDE68A", borderRadius: 8, padding: "6px 12px", fontSize: 11, color: "#92400E", marginBottom: 8 }}>선생님만 볼 수 있습니다.</div>
-                <textarea value={tMemo} onChange={e => { setTMemo(e.target.value); markDirty(); }} onKeyDown={e => bk(e, tMemo, setTMemo, markDirty)} style={{ ...is, minHeight: 100, resize: "vertical", lineHeight: 1.6 }} placeholder="다음 수업 준비, 학생 특이사항..." />
+                <textarea className="ldm-textarea" value={tMemo} onChange={e => { setTMemo(e.target.value); markDirty(); }} onKeyDown={e => bk(e, tMemo, setTMemo, markDirty)} style={{ ...is, minHeight: 100, resize: "vertical", lineHeight: 1.6 }} placeholder="다음 수업 준비, 학생 특이사항..." />
               </div>
             </div>
           )}
@@ -123,7 +122,7 @@ export default function LessonDetailModal({ les, student, onUpdate, onClose }) {
                         {showT&&<div style={{position:"absolute",left:0,right:0,top:-8,height:3,borderRadius:2,background:C.ac,boxShadow:`0 0 8px ${C.ac}`,zIndex:5}}/>}
                         {showB&&<div style={{position:"absolute",left:0,right:0,bottom:-8,height:3,borderRadius:2,background:C.ac,boxShadow:`0 0 8px ${C.ac}`,zIndex:5}}/>}
                         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                          <span style={{ fontSize: 14, color: C.tt, cursor: "grab", flexShrink: 0, userSelect: "none" }}>⠿</span>
+                          <span style={{ fontSize: 14, color: C.tt, cursor: "grab", flexShrink: 0, userSelect: "none", minWidth: 44, minHeight: 44, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>⠿</span>
                           <span style={{ fontSize: 12, color: C.tt, fontWeight: 600, background: C.sfh, borderRadius: 6, padding: "2px 8px", flexShrink: 0 }}>#{i + 1}</span>
                           <input value={h.title||""} onChange={e => { updHw(h.id, "title", e.target.value); }} style={{ fontSize: 14, fontWeight: 600, color: C.tp, border: "none", outline: "none", background: "transparent", padding: 0, fontFamily: "inherit", minWidth: 0, flex: 1 }} placeholder="숙제 제목..." />
                           <button onClick={() => delHw(h.id)} style={{ background: "none", border: "none", cursor: "pointer", color: C.tt, padding: 4, flexShrink: 0 }}>✕</button>
@@ -184,21 +183,21 @@ export default function LessonDetailModal({ les, student, onUpdate, onClose }) {
               <div>
                 <label style={{ ...ls, color: C.ac, fontWeight: 600 }}>공유용 수업 계획</label>
                 <div style={{ background: C.as, border: "1px solid " + C.al, borderRadius: 8, padding: "6px 12px", fontSize: 11, color: C.ac, marginBottom: 8 }}>학생/학부모 공유</div>
-                <textarea value={planShared} onChange={e => { setPlanShared(e.target.value); markDirty(); }} onKeyDown={e => bk(e, planShared, setPlanShared, markDirty)} style={{ ...is, minHeight: 100, resize: "vertical", lineHeight: 1.6 }} placeholder="다음 수업 예고, 준비물..." />
+                <textarea className="ldm-textarea" value={planShared} onChange={e => { setPlanShared(e.target.value); markDirty(); }} onKeyDown={e => bk(e, planShared, setPlanShared, markDirty)} style={{ ...is, minHeight: 100, resize: "vertical", lineHeight: 1.6 }} placeholder="다음 수업 예고, 준비물..." />
               </div>
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
                   <IcLock />
                   <label style={{ ...ls, marginBottom: 0 }}>선생님 전용 <span style={{ color: C.dn, fontWeight: 600 }}>(비공개)</span></label>
                 </div>
-                <textarea value={planPrivate} onChange={e => { setPlanPrivate(e.target.value); markDirty(); }} onKeyDown={e => bk(e, planPrivate, setPlanPrivate, markDirty)} style={{ ...is, minHeight: 100, resize: "vertical", lineHeight: 1.6 }} placeholder="수업 전략, 난이도 조절..." />
+                <textarea className="ldm-textarea" value={planPrivate} onChange={e => { setPlanPrivate(e.target.value); markDirty(); }} onKeyDown={e => bk(e, planPrivate, setPlanPrivate, markDirty)} style={{ ...is, minHeight: 100, resize: "vertical", lineHeight: 1.6 }} placeholder="수업 전략, 난이도 조절..." />
               </div>
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div style={{ padding: "16px 24px", borderTop: `1px solid ${C.bd}`, display: "flex", justifyContent: "flex-end", gap: 10, flexShrink: 0 }}>
+        <div className="ldm-footer" style={{ padding: "16px 24px", borderTop: `1px solid ${C.bd}`, display: "flex", justifyContent: "flex-end", gap: 10, flexShrink: 0 }}>
           {dirty && <span style={{ fontSize: 12, color: C.wn, display: "flex", alignItems: "center", gap: 4, marginRight: "auto" }}>● 변경사항 있음</span>}
           <button onClick={onClose} style={{ background: C.sfh, color: C.ts, border: `1px solid ${C.bd}`, borderRadius: 8, padding: "10px 20px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>닫기</button>
           <button onClick={doSave} style={{ background: dirty ? C.ac : C.pr, color: "#fff", border: "none", borderRadius: 8, padding: "10px 24px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>저장</button>

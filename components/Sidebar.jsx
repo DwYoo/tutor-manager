@@ -1,6 +1,5 @@
 'use client';
-
-const C={bg:"#FAFAF9",sf:"#FFFFFF",sfh:"#F5F5F4",bd:"#E7E5E4",bl:"#F0EFED",ac:"#2563EB",al:"#DBEAFE",as:"#EFF6FF",tp:"#1A1A1A",ts:"#78716C",tt:"#A8A29E"};
+import { C } from '@/components/Colors';
 
 const IcDash=()=>(<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg>);
 const IcCal=()=>(<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>);
@@ -71,7 +70,7 @@ export default function Sidebar({nav,page,onNav,onClose,isDesktop,user,onSignOut
                 <span style={{color:"#fff",fontSize:11,fontWeight:700}}>{(user.email||"?")[0].toUpperCase()}</span>
               </div>
               <div>
-                <div style={{fontSize:12,fontWeight:600,color:C.tp,maxWidth:140,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{(user.user_metadata&&user.user_metadata.full_name)||user.email.split("@")[0]||"선생님"}</div>
+                <div style={{fontSize:12,fontWeight:600,color:C.tp,maxWidth:140,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{(user.user_metadata&&user.user_metadata.full_name)||(user.email?user.email.split("@")[0]:"")||"선생님"}</div>
                 <div style={{fontSize:10,color:C.tt,maxWidth:140,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user.email||""}</div>
               </div>
             </div>

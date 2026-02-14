@@ -2,9 +2,7 @@
 import { useState, useEffect, Fragment } from 'react';
 import { supabase } from '@/lib/supabase';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
-
-const C={bg:"#FAFAF9",sf:"#FFFFFF",sfh:"#F5F5F4",bd:"#E7E5E4",bl:"#F0EFED",pr:"#1A1A1A",ac:"#2563EB",al:"#DBEAFE",as:"#EFF6FF",tp:"#1A1A1A",ts:"#78716C",tt:"#A8A29E",su:"#16A34A",sb:"#F0FDF4",dn:"#DC2626",db:"#FEF2F2",wn:"#F59E0B",wb:"#FFFBEB"};
-const SC=[{bg:"#DBEAFE",t:"#1E40AF",b:"#93C5FD"},{bg:"#FCE7F3",t:"#9D174D",b:"#F9A8D4"},{bg:"#D1FAE5",t:"#065F46",b:"#6EE7B7"},{bg:"#FEF3C7",t:"#92400E",b:"#FCD34D"},{bg:"#EDE9FE",t:"#5B21B6",b:"#C4B5FD"},{bg:"#FFE4E6",t:"#9F1239",b:"#FDA4AF"},{bg:"#CCFBF1",t:"#115E59",b:"#5EEAD4"},{bg:"#FEE2E2",t:"#991B1B",b:"#FCA5A5"}];
+import { C, SC } from '@/components/Colors';
 const REASON_COLORS=["#2563EB","#DC2626","#F59E0B","#16A34A","#8B5CF6","#EC4899","#06B6D4","#F97316"];
 const p2=n=>String(n).padStart(2,"0");
 const m2s=m=>`${p2(Math.floor(m/60))}:${p2(m%60)}`;
@@ -119,13 +117,14 @@ export default function ShareView({ token }) {
   ];
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg }}>
+    <div className="share-container" style={{ minHeight: "100vh", background: C.bg }}>
+      <style>{`@media(max-width:768px){.share-container{padding:0!important;} .share-container .sv-content{padding:16px 16px 60px!important;}} @media(max-width:640px){.sv-tabs{overflow-x:auto;-webkit-overflow-scrolling:touch;} .sv-tabs button{white-space:nowrap;flex-shrink:0;} .sv-wrong-table{overflow-x:auto;-webkit-overflow-scrolling:touch;} .sv-wrong-table table{min-width:400px;}}`}</style>
       {/* Header */}
       <div style={{ background: C.sf, borderBottom: "1px solid " + C.bd, padding: "24px 0" }}>
         <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 20px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
             <div style={{ width: 52, height: 52, borderRadius: 14, background: col.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, fontWeight: 800, color: col.t, flexShrink: 0 }}>{(s.name || "?")[0]}</div>
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 20, fontWeight: 700, color: C.tp }}>{s.name}</div>
               <div style={{ fontSize: 13, color: C.ts }}>{s.subject} · {s.grade}{s.school ? " · " + s.school : ""}</div>
             </div>
@@ -144,7 +143,7 @@ export default function ShareView({ token }) {
 
         return (
           <div style={{ background: C.sf, borderBottom: "1px solid " + C.bd, padding: "20px 0" }}>
-            <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 20px", display: "flex", gap: 12 }}>
+            <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 20px", display: "flex", gap: 12, flexWrap: "wrap" }}>
               {recentReport && (
                 <div style={{ flex: 1 }}>
                   <h3 style={{ fontSize: 14, fontWeight: 700, color: C.tp, marginBottom: 10 }}>학습 리포트</h3>
@@ -176,7 +175,7 @@ export default function ShareView({ token }) {
 
       {/* Tabs */}
       <div style={{ background: C.sf, borderBottom: "1px solid " + C.bd, position: "sticky", top: 0, zIndex: 10 }}>
-        <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 20px", display: "flex", gap: 0, overflowX: "auto" }}>
+        <div className="sv-tabs" style={{ maxWidth: 720, margin: "0 auto", padding: "0 20px", display: "flex", gap: 0, overflowX: "auto" }}>
           {tabs.map(t => (
             <button key={t.id} onClick={() => { setTab(t.id); if (t.subs) setSubTab(t.subs[0].id); }} style={{ padding: "12px 20px", border: "none", borderBottom: tab === t.id ? "2px solid " + C.ac : "2px solid transparent", background: "none", fontSize: 14, fontWeight: tab === t.id ? 600 : 400, color: tab === t.id ? C.ac : C.ts, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
               {t.l}{t.count > 0 && <span style={{ marginLeft: 6, fontSize: 11, color: tab === t.id ? C.ac : C.tt }}>({t.count})</span>}
@@ -199,7 +198,7 @@ export default function ShareView({ token }) {
       )}
 
       {/* Content */}
-      <div style={{ maxWidth: 720, margin: "0 auto", padding: "20px 20px 60px" }}>
+      <div className="sv-content" style={{ maxWidth: 720, margin: "0 auto", padding: "20px 20px 60px" }}>
 
         {/* === 수업 탭 === */}
         {tab === "lessons" && (<div>
@@ -216,7 +215,7 @@ export default function ShareView({ token }) {
                 const open = expandedLesson === l.id;
                 return (
                   <div key={l.id} style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 14, overflow: "hidden" }}>
-                    <div onClick={() => setExpandedLesson(open ? null : l.id)} style={{ padding: "16px 20px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div onClick={() => setExpandedLesson(open ? null : l.id)} style={{ padding: "14px 16px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <div>
                         <div style={{ fontSize: 14, fontWeight: 600, color: C.tp }}>{l.date}</div>
                         <div style={{ fontSize: 12, color: C.ts, marginTop: 2 }}>{m2s(sh * 60 + sm)}~{m2s(em)} · {l.subject}{l.topic ? " · " + l.topic : ""}</div>
@@ -227,7 +226,7 @@ export default function ShareView({ token }) {
                       </div>
                     </div>
                     {open && (
-                      <div style={{ padding: "0 20px 16px", borderTop: "1px solid " + C.bl }}>
+                      <div style={{ padding: "0 16px 16px", borderTop: "1px solid " + C.bl }}>
                         {l.content && <div style={{ marginTop: 12 }}>
                           <div style={{ fontSize: 11, fontWeight: 600, color: C.tt, marginBottom: 4 }}>수업 내용</div>
                           <div style={{ fontSize: 13, color: C.tp, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{l.content}</div>
@@ -428,7 +427,7 @@ export default function ShareView({ token }) {
             )}
           </div>
           {allHw.length === 0 ? <Empty text="숙제 기록이 없습니다" /> : (<>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginBottom: showHwDetail ? 16 : 28 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(120px,1fr))", gap: 10, marginBottom: showHwDetail ? 16 : 28 }}>
               <StatCard label="완료율" value={hwAvg + "%"} color={C.ac} />
               <StatCard label="완료" value={hwDone + "건"} color={C.su} />
               <StatCard label="진행중" value={hwInProg + "건"} color={C.wn} />
@@ -465,9 +464,9 @@ export default function ShareView({ token }) {
           </div>
           {wrongs.length === 0 ? <Empty text="오답 기록이 없습니다" /> : (<>
             {reasonData.length > 0 && (
-              <div style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 14, padding: 20, marginBottom: showWrongList ? 16 : 28 }}>
+              <div style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 14, padding: 20, marginBottom: showWrongList ? 16 : 28, overflow: "hidden" }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: C.tp, marginBottom: 12 }}>오답 유형 분포</div>
-                <div style={{ height: 180 }}>
+                <div style={{ height: 180, overflow: "hidden" }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={reasonData} layout="vertical" margin={{ left: 0, right: 20 }}>
                       <XAxis type="number" hide />
@@ -507,7 +506,7 @@ export default function ShareView({ token }) {
                         const seen = new Set();
                         items.forEach(w => { const ch = w.chapter || ""; if (!seen.has(ch)) { seen.add(ch); uCh.push(ch); } });
                         return (
-                          <div style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 10, overflow: "hidden" }}>
+                          <div className="sv-wrong-table" style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 10, overflow: "hidden" }}>
                             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                               <thead><tr>{["번호", "사유", "메모"].map((h) => (<th key={h} style={{ padding: "8px 10px", textAlign: "left", color: C.tt, fontWeight: 500, borderBottom: "1px solid " + C.bd }}>{h}</th>))}</tr></thead>
                               <tbody>{uCh.map(ch => {
@@ -558,7 +557,7 @@ export default function ShareView({ token }) {
             <div style={{ fontSize: 13, fontWeight: 600, color: C.ac, marginBottom: 10 }}>🧭 학습 전략</div>
             <div style={{ fontSize: 13, color: s.plan_strategy ? C.tp : C.tt, lineHeight: 1.7, whiteSpace: "pre-wrap", minHeight: 20 }}>{s.plan_strategy || "아직 작성된 전략이 없습니다"}</div>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 24 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))", gap: 12, marginBottom: 24 }}>
             <SwotCard label="💪 강점 (S)" bg={C.sb} border="#BBF7D0" color={C.su} text={s.plan_strength} />
             <SwotCard label="🔧 약점 (W)" bg={C.db} border="#FECACA" color={C.dn} text={s.plan_weakness} />
             <SwotCard label="🚀 기회 (O)" bg="#EFF6FF" border="#BFDBFE" color={C.ac} text={s.plan_opportunity} />
@@ -578,13 +577,13 @@ export default function ShareView({ token }) {
           {scores.length === 0 ? <Empty text="성적 기록이 없습니다" /> : (<>
             {chartMode === "grade" ? (
               gradeEntries.length === 0 ? <Empty text="등급 데이터가 없습니다" /> : (<>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 16 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(120px,1fr))", gap: 10, marginBottom: 16 }}>
                   <StatCard label="최근 등급" value={latestGrade != null ? latestGrade + "등급" : "-"} color="#8B5CF6" />
                   <StatCard label="최고 등급" value={bestGrade != null ? bestGrade + "등급" : "-"} color={C.su} />
                   <StatCard label="평균 등급" value={avgGrade != null ? avgGrade + "등급" : "-"} color={C.ts} />
                 </div>
-                <div style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 14, padding: 20 }}>
-                  <div style={{ height: 200 }}>
+                <div style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 14, padding: 20, overflow: "hidden" }}>
+                  <div style={{ height: 200, overflow: "hidden" }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={gradeEntries.map(x => ({ date: x.date, grade: x.grade, label: x.label }))} margin={{ top: 5, right: 10, bottom: 5, left: -20 }}>
                         <defs><linearGradient id="gg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#8B5CF6" stopOpacity={.15} /><stop offset="100%" stopColor="#8B5CF6" stopOpacity={0} /></linearGradient></defs>
@@ -603,13 +602,13 @@ export default function ShareView({ token }) {
               </>)
             ) : (
               <>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 16 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(120px,1fr))", gap: 10, marginBottom: 16 }}>
                   <StatCard label="최근" value={latestScore + "점"} color={C.ac} />
                   <StatCard label="최고" value={bestScore + "점"} color={C.su} />
                   <StatCard label="평균" value={avgScore + "점"} color={C.ts} />
                 </div>
-                <div style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 14, padding: 20 }}>
-                  <div style={{ height: 200 }}>
+                <div style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 14, padding: 20, overflow: "hidden" }}>
+                  <div style={{ height: 200, overflow: "hidden" }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={scoreData} margin={{ top: 5, right: 10, bottom: 5, left: -20 }}>
                         <defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={C.ac} stopOpacity={.15} /><stop offset="100%" stopColor={C.ac} stopOpacity={0} /></linearGradient></defs>

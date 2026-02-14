@@ -3,9 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-
-const C={bg:"#FAFAF9",sf:"#FFFFFF",sfh:"#F5F5F4",bd:"#E7E5E4",bl:"#F0EFED",pr:"#1A1A1A",ac:"#2563EB",al:"#DBEAFE",as:"#EFF6FF",tp:"#1A1A1A",ts:"#78716C",tt:"#A8A29E",su:"#16A34A",sb:"#F0FDF4",dn:"#DC2626",db:"#FEF2F2",wn:"#F59E0B",wb:"#FFFBEB"};
-const STATUS=[{id:"paid",l:"완납",c:C.su,bg:C.sb},{id:"partial",l:"일부납",c:C.wn,bg:C.wb},{id:"unpaid",l:"미납",c:C.dn,bg:C.db}];
+import { C, STATUS } from '@/components/Colors';
 const p2=n=>String(n).padStart(2,"0");
 const IcL=()=>(<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>);
 const IcR=()=>(<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>);
@@ -152,13 +150,13 @@ export default function Tuition({menuBtn}){
   const eis={padding:"4px 6px",borderRadius:6,border:"1px solid "+C.bd,fontSize:12,fontFamily:"inherit"};
 
   return(
-    <div style={{padding:28}}>
-      <style>{".tr{transition:all .1s;}.tr:hover{background:"+C.sfh+"!important;}\n.nb{transition:all .1s;cursor:pointer;border:none;background:none;display:flex;align-items:center;justify-content:center;padding:8px;border-radius:8px;color:"+C.ts+";}.nb:hover{background:"+C.sfh+";}\n@media(max-width:768px){.tu-grid{grid-template-columns:1fr!important;}.tu-stats{grid-template-columns:repeat(2,1fr)!important;}}"}</style>
+    <div className="tui-container" style={{padding:28}}>
+      <style>{".tr{transition:all .1s;}.tr:hover{background:"+C.sfh+"!important;}\n.nb{transition:all .1s;cursor:pointer;border:none;background:none;display:flex;align-items:center;justify-content:center;padding:8px;border-radius:8px;color:"+C.ts+";min-width:44px;min-height:44px;}.nb:hover{background:"+C.sfh+";}\n@media(max-width:768px){.tui-container{padding:16px!important;}.tu-grid{grid-template-columns:1fr!important;}.tu-stats{grid-template-columns:repeat(2,1fr)!important;}}"}</style>
 
       {/* Header */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24,flexWrap:"wrap",gap:12}}>
         <div style={{display:"flex",alignItems:"center",gap:12}}>{tog}<h1 style={{fontSize:20,fontWeight:700,color:C.tp}}>수업료 관리</h1></div>
-        <div style={{display:"flex",alignItems:"center",gap:8}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
           <button className="nb" onClick={prevM}><IcL/></button>
           <span style={{fontSize:15,fontWeight:600,color:C.tp,minWidth:110,textAlign:"center"}}>{year}년 {month}월</span>
           <button className="nb" onClick={nextM}><IcR/></button>
@@ -166,7 +164,7 @@ export default function Tuition({menuBtn}){
       </div>
 
       {/* Stats */}
-      <div className="tu-stats" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:24}}>
+      <div className="tu-stats" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:14,marginBottom:24}}>
         <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:18}}><div style={{fontSize:12,color:C.tt,marginBottom:4}}>총 청구액</div><div style={{fontSize:20,fontWeight:700,color:C.tp}}>₩{totalFee.toLocaleString()}</div></div>
         <div style={{background:C.sb,border:"1px solid #BBF7D0",borderRadius:14,padding:18}}><div style={{fontSize:12,color:C.su,marginBottom:4}}>납부 완료</div><div style={{fontSize:20,fontWeight:700,color:C.su}}>₩{totalPaid.toLocaleString()}</div></div>
         <div style={{background:totalUnpaid>0?C.db:C.sb,border:"1px solid "+(totalUnpaid>0?"#FECACA":"#BBF7D0"),borderRadius:14,padding:18}}><div style={{fontSize:12,color:totalUnpaid>0?C.dn:C.su,marginBottom:4}}>미수금</div><div style={{fontSize:20,fontWeight:700,color:totalUnpaid>0?C.dn:C.su}}>₩{totalUnpaid.toLocaleString()}</div></div>
@@ -212,7 +210,7 @@ export default function Tuition({menuBtn}){
                     </td>
                     <td style={{padding:"10px 12px"}}>
                       {isEditing?<select value={editForm.status} onChange={e=>setEditForm(p=>({...p,status:e.target.value}))} style={{...eis,fontSize:11}}>{STATUS.map(x=>(<option key={x.id} value={x.id}>{x.l}</option>))}</select>:
-                      <span style={{background:st.bg,color:st.c,padding:"3px 8px",borderRadius:5,fontSize:10,fontWeight:600}}>{st.l}</span>}
+                      <span style={{background:st.bg,color:st.c,padding:"6px 12px",borderRadius:5,fontSize:10,fontWeight:600,display:"inline-block",minHeight:44,lineHeight:"32px",boxSizing:"border-box"}}>{st.l}</span>}
                     </td>
                     <td style={{padding:"10px 12px"}}>
                       {isEditing?<input value={editForm.memo} onChange={e=>setEditForm(p=>({...p,memo:e.target.value}))} style={{...eis,width:80,fontSize:11}} placeholder="메모"/>:
@@ -238,7 +236,7 @@ export default function Tuition({menuBtn}){
         <div style={{display:"flex",flexDirection:"column",gap:14}}>
           <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:18}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}><div style={{fontSize:13,fontWeight:600,color:C.tp}}>월별 수입</div><div style={{fontSize:10,color:C.tt}}>단위: 만원</div></div>
-            <div><ResponsiveContainer width="100%" height={160}><BarChart data={monthlyChart} margin={{top:5,right:5,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke={C.bl} vertical={false}/><XAxis dataKey="month" tick={{fontSize:10,fill:C.tt}} axisLine={false} tickLine={false}/><YAxis tick={{fontSize:10,fill:C.tt}} axisLine={false} tickLine={false} tickFormatter={v=>Math.round(v/10000)}/><Tooltip content={<CustomTooltip/>}/><Bar dataKey="income" fill={C.ac} radius={[5,5,0,0]} barSize={20}/></BarChart></ResponsiveContainer></div>
+            <div style={{overflow:"hidden"}}><ResponsiveContainer width="100%" height={160}><BarChart data={monthlyChart} margin={{top:5,right:5,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke={C.bl} vertical={false}/><XAxis dataKey="month" tick={{fontSize:10,fill:C.tt}} axisLine={false} tickLine={false}/><YAxis tick={{fontSize:10,fill:C.tt}} axisLine={false} tickLine={false} tickFormatter={v=>Math.round(v/10000)}/><Tooltip content={<CustomTooltip/>}/><Bar dataKey="income" fill={C.ac} radius={[5,5,0,0]} barSize={20}/></BarChart></ResponsiveContainer></div>
           </div>
           <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:18}}>
             <div style={{fontSize:13,fontWeight:600,color:C.tp,marginBottom:12}}>미납 현황</div>

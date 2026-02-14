@@ -1,8 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
-
-const C = { bg: "#FAFAF9", sf: "#FFFFFF", sfh: "#F5F5F4", bd: "#E7E5E4", bl: "#F0EFED", pr: "#1A1A1A", ac: "#2563EB", tp: "#1A1A1A", ts: "#78716C", tt: "#A8A29E", dn: "#DC2626" };
+import { C } from '@/components/Colors';
 
 export default function Login() {
   const [mode, setMode] = useState('login'); // login | signup | forgot
@@ -53,7 +52,7 @@ export default function Login() {
     if (error) setError(error.message);
   };
 
-  const is = { width: "100%", padding: "12px 14px", borderRadius: 10, border: `1px solid ${C.bd}`, fontSize: 14, color: C.tp, background: C.sf, outline: "none", fontFamily: "inherit" };
+  const is = { width: "100%", padding: "12px 14px", borderRadius: 10, border: `1px solid ${C.bd}`, fontSize: 16, color: C.tp, background: C.sf, outline: "none", fontFamily: "inherit" };
   const btn = { width: "100%", padding: "12px", borderRadius: 10, border: "none", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", transition: "all .12s" };
 
   return (
@@ -66,7 +65,7 @@ export default function Login() {
         .link-btn:hover{text-decoration:underline;}
       `}</style>
 
-      <div className="login-card" style={{ background: C.sf, borderRadius: 20, padding: 40, width: "100%", maxWidth: 420, boxShadow: "0 8px 40px rgba(0,0,0,.06)", border: `1px solid ${C.bd}` }}>
+      <div className="login-card" style={{ background: C.sf, borderRadius: 20, padding: 'clamp(24px, 5vw, 40px)', width: "100%", maxWidth: 420, boxShadow: "0 8px 40px rgba(0,0,0,.06)", border: `1px solid ${C.bd}` }}>
         {/* Logo */}
         <div style={{ textAlign: "center", marginBottom: 32 }}>
           <div style={{ width: 56, height: 56, borderRadius: 16, background: "linear-gradient(135deg, #2563EB, #1D4ED8)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px", boxShadow: "0 4px 16px rgba(37,99,235,.25)" }}>
@@ -106,20 +105,20 @@ export default function Login() {
         )}
 
         {/* Email form */}
-        <div onSubmit={handleEmail} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="이메일" style={is} onKeyDown={e => e.key === 'Enter' && handleEmail(e)} />
+        <form onSubmit={handleEmail} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="이메일" style={is} autoComplete="email" />
           {mode !== 'forgot' && (
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="비밀번호" style={is} onKeyDown={e => e.key === 'Enter' && handleEmail(e)} />
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="비밀번호" style={is} autoComplete="current-password" />
           )}
 
           {error && <div style={{ fontSize: 12, color: C.dn, padding: "8px 12px", background: "#FEF2F2", borderRadius: 8 }}>{error}</div>}
           {message && <div style={{ fontSize: 12, color: "#16A34A", padding: "8px 12px", background: "#F0FDF4", borderRadius: 8 }}>{message}</div>}
 
-          <button onClick={handleEmail} disabled={loading}
+          <button type="submit" disabled={loading}
             style={{ ...btn, background: C.pr, color: "#fff", opacity: loading ? 0.6 : 1 }}>
             {loading ? '처리 중...' : mode === 'signup' ? '회원가입' : mode === 'forgot' ? '재설정 이메일 보내기' : '로그인'}
           </button>
-        </div>
+        </form>
 
         {/* Footer links */}
         <div style={{ marginTop: 20, textAlign: "center", fontSize: 13, display: "flex", flexDirection: "column", gap: 8 }}>
