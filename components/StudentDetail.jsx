@@ -612,30 +612,24 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
               </ResponsiveContainer>
             </div>
             {/* Test records */}
-            <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:20}}>
-              <h4 style={{fontSize:14,fontWeight:600,color:C.tp,marginBottom:14}}>시험 기록</h4>
-              <div style={{display:"flex",flexDirection:"column",gap:10}}>
-                {[...sorted].reverse().map((sc,i)=>{
-                  const d=sc.date?new Date(sc.date):null;
-                  const mLabel=d?`${d.getMonth()+1}월`:"";
-                  const barColor=sc.score>=85?C.su:sc.score>=70?C.wn:C.dn;
-                  const barBg=sc.score>=85?C.sb:sc.score>=70?C.wb:C.db;
-                  return(<div key={sc.id} style={{display:"flex",alignItems:"center",gap:12,cursor:isParent?undefined:"pointer",borderRadius:8,padding:"4px 0",transition:"background .15s"}} onClick={()=>{if(!isParent)openEditScore(sc);}} onMouseEnter={e=>{if(!isParent)e.currentTarget.style.background=C.sfh;}} onMouseLeave={e=>{e.currentTarget.style.background="transparent";}}>
-                    <div style={{minWidth:70,flexShrink:0}}>
-                      {i===0&&<div style={{fontSize:9,color:C.ac,fontWeight:600,marginBottom:1}}>최근</div>}
-                      <div style={{fontSize:13,fontWeight:600,color:C.tp}}>{sc.label||`${sorted.length-i}차`}</div>
-                      <div style={{fontSize:10,color:C.tt}}>{mLabel}</div>
-                    </div>
-                    <div style={{flex:1,height:28,background:C.bl,borderRadius:6,overflow:"hidden",position:"relative"}}>
-                      <div style={{height:"100%",width:`${sc.score}%`,background:barBg,borderRadius:6,position:"relative"}}>
-                        <div style={{position:"absolute",inset:0,background:barColor,opacity:.25,borderRadius:6}}/>
-                      </div>
-                    </div>
-                    <div style={{minWidth:44,textAlign:"right",fontSize:15,fontWeight:700,color:barColor}}>{sc.score}<span style={{fontSize:11,fontWeight:500}}>점</span></div>
-                    {!isParent&&<button onClick={e=>{e.stopPropagation();delScore(sc.id);}} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,fontSize:12,padding:4,flexShrink:0,opacity:.5}} title="삭제">x</button>}
-                  </div>);
-                })}
-              </div>
+            <div>
+              <h4 style={{fontSize:14,fontWeight:600,color:C.tp,marginBottom:12}}>시험 기록</h4>
+              {[...sorted].reverse().map((sc,i)=>{
+                const d=sc.date?new Date(sc.date):null;
+                const mLabel=d?`${d.getMonth()+1}월`:"";
+                const barColor=sc.score>=85?C.su:sc.score>=70?C.wn:C.dn;
+                return(<div key={sc.id} style={{display:"flex",alignItems:"center",padding:"10px 4px",cursor:isParent?undefined:"pointer",borderRadius:8,transition:"background .15s"}} onClick={()=>{if(!isParent)openEditScore(sc);}} onMouseEnter={e=>{if(!isParent)e.currentTarget.style.background=C.sfh;}} onMouseLeave={e=>{e.currentTarget.style.background="transparent";}}>
+                  <div style={{display:"flex",alignItems:"baseline",gap:8,minWidth:80,flexShrink:0}}>
+                    <span style={{fontSize:14,fontWeight:700,color:C.tp}}>{i===0?"최근":(sc.label||`${sorted.length-i}차`)}</span>
+                    <span style={{fontSize:12,color:C.tt}}>{mLabel}</span>
+                  </div>
+                  <div style={{flex:1}}/>
+                  <div style={{width:160,height:4,background:C.bl,borderRadius:2,overflow:"hidden",flexShrink:0,marginRight:12}}>
+                    <div style={{height:"100%",width:`${sc.score}%`,background:barColor,borderRadius:2}}/>
+                  </div>
+                  <div style={{minWidth:36,textAlign:"right",fontSize:16,fontWeight:700,color:barColor}}>{sc.score}</div>
+                </div>);
+              })}
             </div>
           </>)}
           {/* Edit Score Modal */}
