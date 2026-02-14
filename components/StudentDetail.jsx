@@ -38,7 +38,9 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
   const [showNew,setShowNew]=useState(false);
   const [nT,setNT]=useState("");const [nB,setNB]=useState("");const [nS,setNS]=useState(false);
   const [wForm,setWForm]=useState({book:"",chapter:"",problem_num:"",reason:"",note:""});
-  const [wFilter,setWFilter]=useState("");const [wPage,setWPage]=useState(0);const [wExpanded,setWExpanded]=useState({});
+  const [wFilter,setWFilter]=useState("");const [wPage,setWPage]=useState(0);
+  const [wExpanded,setWExpanded]=useState(()=>{try{const s=localStorage.getItem("wExp_"+student.id);return s?JSON.parse(s):{};}catch{return{};}});
+  useEffect(()=>{try{localStorage.setItem("wExp_"+student.id,JSON.stringify(wExpanded));}catch{}},[wExpanded,student.id]);
   const PER_PAGE=20;
   const [showAddScore,setShowAddScore]=useState(false);
   const [scoreForm,setScoreForm]=useState({date:"",score:"",label:""});
