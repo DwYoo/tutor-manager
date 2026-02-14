@@ -80,7 +80,7 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
 
   // Tabs: 리포트를 수업 안 "기록" 서브탭으로, 계획 제거, 분석에서 리포트 제거
   const mainTabs=[
-    {id:"class",l:"수업",subs:[{id:"timeline",l:"타임라인"},{id:"calendar",l:"일정"}]},
+    {id:"class",l:"수업",subs:[{id:"timeline",l:"타임라인"},{id:"calendar",l:"수업일정"}]},
     {id:"study",l:"학습관리",subs:[{id:"homework",l:"숙제"},{id:"wrong",l:"오답관리"}]},
     {id:"analysis",l:"학습 분석",subs:[{id:"plan",l:"오버뷰"},{id:"scores",l:"성적"}]},
     {id:"archive",l:"자료실",subs:[{id:"files",l:"자료"}]}
@@ -378,12 +378,13 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
                   const dl=date?gLD(date):[];
                   const isSat=i%7===5,isSun=i%7===6;
                   return(
-                    <div key={i} onClick={()=>{if(dl.length===1&&date)openLesson(dl[0],fd(date));}} style={{textAlign:"center",padding:"6px 2px",minHeight:52,borderRadius:8,background:isToday?C.as:"transparent",cursor:dl.length===1?"pointer":"default",opacity:c.cur?1:.3}}>
-                      <div style={{fontSize:13,fontWeight:isToday?700:400,width:isToday?28:undefined,height:isToday?28:undefined,lineHeight:isToday?"28px":undefined,borderRadius:"50%",background:isToday?C.ac:"transparent",color:isToday?"#fff":isSun?"#DC2626":isSat?C.ac:C.tp,display:"inline-flex",alignItems:"center",justifyContent:"center",margin:"0 auto"}}>{c.d}</div>
-                      {dl.length>0&&(<div style={{display:"flex",gap:3,justifyContent:"center",marginTop:4}}>
-                        {dl.slice(0,3).map((_,j)=><div key={j} style={{width:6,height:6,borderRadius:"50%",background:col.b}}/>)}
-                        {dl.length>3&&<span style={{fontSize:8,color:C.tt}}>+{dl.length-3}</span>}
-                      </div>)}
+                    <div key={i} style={{padding:"6px 4px",minHeight:72,borderRadius:8,opacity:c.cur?1:.3}}>
+                      <div style={{fontSize:13,fontWeight:isToday?700:400,color:isToday?C.ac:isSun?"#DC2626":isSat?C.ac:C.tp,marginBottom:4}}>{c.d}</div>
+                      {dl.length>0&&dl.map(l=>(
+                        <div key={l.id} onClick={()=>openLesson(l,fd(date))} style={{fontSize:9,padding:"2px 4px",borderRadius:4,fontWeight:500,marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",background:col.bg,color:col.t,cursor:"pointer"}}>
+                          {p2(l.start_hour||0)}:{p2(l.start_min||0)} {l.topic||l.subject}
+                        </div>
+                      ))}
                     </div>
                   );
                 })}
