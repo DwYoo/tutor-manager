@@ -76,7 +76,9 @@ export default function Schedule({menuBtn}){
   const[enH,setEnH]=useState(()=>{try{const v=localStorage.getItem('sch_enH');return v?+v:22;}catch{return 22;}});
   const[dcState,setDC]=useState(null);
   const[ctxMenu,setCtx]=useState(null);
-  const gridRef=useRef(null);const dragRef=useRef(null);const movedRef=useRef(false);
+  const[slideDir,setSlide]=useState(null);
+  const[animKey,setAnim]=useState(0);
+  const gridRef=useRef(null);const dragRef=useRef(null);const movedRef=useRef(false);const swipeRef=useRef(null);
   const today=new Date();const wk=gwd(cur);
   const hrs=Array.from({length:enH-stH},(_,i)=>i+stH);const tH=(enH-stH)*4*SHT;
 
@@ -92,8 +94,9 @@ export default function Schedule({menuBtn}){
   },[]);
   useEffect(()=>{fetchData();},[fetchData]);
 
-  const nW=d=>{const t=new Date(cur);t.setDate(t.getDate()+d*7);setCur(t);};
+  const nW=d=>{setSlide(d>0?'r':'l');setAnim(k=>k+1);const t=new Date(cur);t.setDate(t.getDate()+d*7);setCur(t);};
   const gL=date=>{const ds=fd(date),dw=date.getDay()===0?7:date.getDay();return lessons.filter(l=>{const ld=(l.date||"").slice(0,10);if(l.is_recurring&&l.recurring_exceptions&&l.recurring_exceptions.includes(ds))return false;if(ld===ds)return true;if(l.is_recurring&&+l.recurring_day===dw){if(ds<ld)return false;if(l.recurring_end_date&&ds>=(l.recurring_end_date+"").slice(0,10))return false;return true;}return false;});};
+
   const gCo=sid=>{const st=students.find(x=>x.id===sid);return SC[(st?.color_index||0)%8];};
   const getStu=sid=>students.find(x=>x.id===sid);
 
@@ -235,13 +238,20 @@ export default function Schedule({menuBtn}){
     window.addEventListener("mousemove",mv);window.addEventListener("mouseup",up);
   };
 
+  /* Swipe & wheel navigation */
+  const onTS=e=>{if(e.touches.length===1)swipeRef.current={x:e.touches[0].clientX,y:e.touches[0].clientY,t:Date.now()};};
+  const onTE=e=>{if(!swipeRef.current)return;const dx=e.changedTouches[0].clientX-swipeRef.current.x,dy=e.changedTouches[0].clientY-swipeRef.current.y,dt=Date.now()-swipeRef.current.t;swipeRef.current=null;if(Math.abs(dx)>60&&Math.abs(dx)>Math.abs(dy)*1.5&&dt<400)nW(dx<0?1:-1);};
+  const wheelAcc=useRef(0);const wheelTimer=useRef(null);
+  const onWh=e=>{if(Math.abs(e.deltaX)<Math.abs(e.deltaY))return;e.preventDefault();wheelAcc.current+=e.deltaX;clearTimeout(wheelTimer.current);wheelTimer.current=setTimeout(()=>{if(Math.abs(wheelAcc.current)>80)nW(wheelAcc.current>0?1:-1);wheelAcc.current=0;},150);};
+  useEffect(()=>{const g=gridRef.current;if(!g)return;g.addEventListener('wheel',onWh,{passive:false});return()=>g.removeEventListener('wheel',onWh);},[cur]);
+
   if(loading)return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:C.tt,fontSize:14}}>불러오는 중...</div></div>);
 
   const cms={padding:"7px 12px",fontSize:12,cursor:"pointer",borderRadius:6,color:C.tp,background:"transparent",border:"none",width:"100%",textAlign:"left",fontFamily:"inherit"};
 
   return(
     <div style={{minHeight:"100vh",background:C.bg}} onClick={()=>ctxMenu&&setCtx(null)}>
-      <style>{`.lb{cursor:grab;transition:box-shadow .12s,transform .1s;}.lb:hover{box-shadow:0 4px 12px rgba(0,0,0,.12);transform:scale(1.02);}.nb{transition:all .1s;cursor:pointer;border:none;background:none;display:flex;align-items:center;justify-content:center;padding:8px;border-radius:8px;color:${C.ts};}.nb:hover{background:${C.sfh};}.cm-i{transition:background .1s;}.cm-i:hover{background:${C.sfh};}`}</style>
+      <style>{`.lb{cursor:grab;transition:box-shadow .12s,transform .1s;}.lb:hover{box-shadow:0 4px 12px rgba(0,0,0,.12);transform:scale(1.02);}.nb{transition:all .1s;cursor:pointer;border:none;background:none;display:flex;align-items:center;justify-content:center;padding:8px;border-radius:8px;color:${C.ts};}.nb:hover{background:${C.sfh};}.cm-i{transition:background .1s;}.cm-i:hover{background:${C.sfh};}@keyframes wkR{from{transform:translateX(50px);opacity:0}to{transform:translateX(0);opacity:1}}@keyframes wkL{from{transform:translateX(-50px);opacity:0}to{transform:translateX(0);opacity:1}}.wk-r{animation:wkR .2s ease-out}.wk-l{animation:wkL .2s ease-out}`}</style>
 
       {/* Header */}
       <div style={{background:C.sf,borderBottom:`1px solid ${C.bd}`,padding:"16px 24px",position:"sticky",top:0,zIndex:20}}>
@@ -266,8 +276,8 @@ export default function Schedule({menuBtn}){
       </div>
 
       {/* Weekly grid */}
-      <div ref={gridRef} style={{overflowX:"auto",overflowY:"auto",maxHeight:"calc(100vh - 120px)",userSelect:"none"}}>
-        <div style={{display:"grid",gridTemplateColumns:"60px repeat(7,1fr)",minWidth:800}}>
+      <div ref={gridRef} style={{overflowX:"auto",overflowY:"auto",maxHeight:"calc(100vh - 120px)",userSelect:"none"}} onTouchStart={onTS} onTouchEnd={onTE}>
+        <div key={animKey} className={slideDir==='r'?'wk-r':slideDir==='l'?'wk-l':''} style={{display:"grid",gridTemplateColumns:"60px repeat(7,1fr)",minWidth:800}}>
           {/* Header row */}
           <div style={{borderBottom:`1px solid ${C.bd}`,borderRight:`1px solid ${C.bl}`,background:C.sf,position:"sticky",top:0,zIndex:12}}/>
           {wk.map((d,i)=>{const it=sdy(d,today);return(
