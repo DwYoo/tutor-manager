@@ -399,7 +399,7 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
                       return(
                         <div key={h.id} style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:12,padding:"14px 18px"}}>
                           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-                            <span style={{fontSize:14,fontWeight:600,color:C.tp}}>{h.title||"숙제"}</span>
+                            <input value={h.title||""} onChange={e=>updHw(h.id,"title",e.target.value)} style={{fontSize:14,fontWeight:600,color:C.tp,border:"none",outline:"none",background:"transparent",padding:0,fontFamily:"inherit",minWidth:0,flex:1}} placeholder="숙제" disabled={isParent}/>
                             <span style={{fontSize:10,background:pb,color:pc,padding:"2px 8px",borderRadius:5,fontWeight:600}}>{sl}</span>
                           </div>
                           <div style={{display:"flex",alignItems:"center",gap:10}}>

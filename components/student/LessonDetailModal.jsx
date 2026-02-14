@@ -117,7 +117,7 @@ export default function LessonDetailModal({ les, student, onUpdate, onClose }) {
                         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                             <span style={{ fontSize: 12, color: C.tt, fontWeight: 600, background: C.sfh, borderRadius: 6, padding: "2px 8px" }}>#{i + 1}</span>
-                            <span style={{ fontSize: 14, fontWeight: 600, color: C.tp }}>{h.title}</span>
+                            <input value={h.title||""} onChange={e => { updHw(h.id, "title", e.target.value); }} style={{ fontSize: 14, fontWeight: 600, color: C.tp, border: "none", outline: "none", background: "transparent", padding: 0, fontFamily: "inherit", minWidth: 0, flex: 1 }} placeholder="숙제 제목..." />
                           </div>
                           <button onClick={() => delHw(h.id)} style={{ background: "none", border: "none", cursor: "pointer", color: C.tt, padding: 4 }}>✕</button>
                         </div>
