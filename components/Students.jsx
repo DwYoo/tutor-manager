@@ -12,12 +12,15 @@ const ls={display:"block",fontSize:12,fontWeight:500,color:C.tt,marginBottom:6};
 const is={width:"100%",padding:"9px 12px",borderRadius:8,border:`1px solid ${C.bd}`,fontSize:14,color:C.tp,background:C.sf,outline:"none",fontFamily:"inherit"};
 const IcP=()=><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
 const IcX=()=><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
+const IcA=()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>;
+const IcBack=()=><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>;
 
 export default function Students({onDetail,menuBtn}){
   const tog=menuBtn;
   const{user}=useAuth();
   const[students,setStudents]=useState([]);
   const[lessons,setLessons]=useState([]);
+  const[showArchived,setShowArchived]=useState(false);
   const[search,setSearch]=useState('');
   const[loading,setLoading]=useState(true);
   const[showAdd,setShowAdd]=useState(false);
@@ -49,8 +52,12 @@ export default function Students({onDetail,menuBtn}){
   };
 
   const deleteStudent=async(id,e)=>{e.stopPropagation();if(!confirm('정말 삭제하시겠습니까?'))return;await supabase.from('students').delete().eq('id',id);fetchStudents();};
+  const archiveStudent=async(id,e)=>{e.stopPropagation();await supabase.from('students').update({archived:true}).eq('id',id);fetchStudents();};
+  const restoreStudent=async(id,e)=>{e.stopPropagation();await supabase.from('students').update({archived:false}).eq('id',id);fetchStudents();};
 
-  const filtered=students.filter(s=>(s.name||'').includes(search)||(s.subject||'').includes(search)||(s.school||'').includes(search));
+  const activeStudents=students.filter(s=>!s.archived);
+  const archivedStudents=students.filter(s=>!!s.archived);
+  const filtered=(showArchived?archivedStudents:activeStudents).filter(s=>(s.name||'').includes(search)||(s.subject||'').includes(search)||(s.school||'').includes(search));
 
   if(loading)return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:C.tt,fontSize:14}}>불러오는 중...</div></div>);
 
@@ -63,12 +70,14 @@ export default function Students({onDetail,menuBtn}){
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24,flexWrap:"wrap",gap:12}}>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
           {tog}
-          <h1 style={{fontSize:20,fontWeight:700,color:C.tp}}>학생 관리</h1>
-          <span style={{background:C.sfh,color:C.ts,padding:"3px 10px",borderRadius:6,fontSize:12}}>{students.length}명</span>
+          {showArchived&&<button onClick={()=>setShowArchived(false)} style={{background:"none",border:"none",cursor:"pointer",color:C.ts,display:"flex",alignItems:"center",padding:0}}><IcBack/></button>}
+          <h1 style={{fontSize:20,fontWeight:700,color:C.tp}}>{showArchived?"보관된 학생":"학생 관리"}</h1>
+          <span style={{background:C.sfh,color:C.ts,padding:"3px 10px",borderRadius:6,fontSize:12}}>{(showArchived?archivedStudents:activeStudents).length}명</span>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
+          {!showArchived&&archivedStudents.length>0&&<button onClick={()=>setShowArchived(true)} style={{display:"flex",alignItems:"center",gap:5,background:C.sfh,color:C.ts,border:`1px solid ${C.bd}`,borderRadius:8,padding:"8px 12px",fontSize:12,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}><IcA/> 보관함 ({archivedStudents.length})</button>}
           <input value={search} onChange={e=>setSearch(e.target.value)} style={{padding:"8px 14px",borderRadius:8,border:`1px solid ${C.bd}`,fontSize:13,color:C.tp,outline:"none",width:200,fontFamily:"inherit"}} placeholder="검색..."/>
-          <button onClick={openAdd} style={{display:"flex",alignItems:"center",gap:4,background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"8px 16px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}><IcP/> 학생 추가</button>
+          {!showArchived&&<button onClick={openAdd} style={{display:"flex",alignItems:"center",gap:4,background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"8px 16px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}><IcP/> 학생 추가</button>}
         </div>
       </div>
 
@@ -95,18 +104,23 @@ export default function Students({onDetail,menuBtn}){
                 <span style={{color:C.ts}}>{s.school}</span>
               </div>}
               <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:8,paddingTop:8,borderTop:`1px solid ${C.bl}`}}>
-                <button onClick={e=>openEdit(s,e)} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,fontSize:11,fontFamily:"inherit"}}>수정</button>
+                {s.archived
+                  ?<button onClick={e=>restoreStudent(s.id,e)} style={{background:"none",border:"none",cursor:"pointer",color:C.ac,fontSize:11,fontWeight:600,fontFamily:"inherit"}}>복원</button>
+                  :<><button onClick={e=>openEdit(s,e)} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,fontSize:11,fontFamily:"inherit"}}>수정</button><button onClick={e=>archiveStudent(s.id,e)} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,fontSize:11,fontFamily:"inherit"}}>보관</button></>
+                }
                 <button onClick={e=>deleteStudent(s.id,e)} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,fontSize:11,fontFamily:"inherit"}}>삭제</button>
               </div>
             </div>
           );
         })}
 
+        {showArchived&&filtered.length===0&&<div style={{gridColumn:"1/-1",textAlign:"center",padding:40,color:C.tt,fontSize:14}}>보관된 학생이 없습니다</div>}
+
         {/* Add card */}
-        <div onClick={openAdd} style={{background:C.sf,border:`2px dashed ${C.bd}`,borderRadius:14,padding:20,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:160,color:C.tt}} className="hcard">
+        {!showArchived&&<div onClick={openAdd} style={{background:C.sf,border:`2px dashed ${C.bd}`,borderRadius:14,padding:20,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:160,color:C.tt}} className="hcard">
           <IcP/>
           <div style={{marginTop:8,fontSize:13}}>학생 추가</div>
-        </div>
+        </div>}
       </div>
 
       {/* Add/Edit Modal */}
