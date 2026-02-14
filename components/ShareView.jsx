@@ -27,6 +27,7 @@ export default function ShareView({ token }) {
   const [showWrongList, setShowWrongList] = useState(false);
   const [chartMode, setChartMode] = useState("grade");
   const [wExpanded, setWExpanded] = useState({});
+  const [calMonth, setCalMonth] = useState(new Date());
 
   useEffect(() => {
     if (!token) return;
@@ -107,9 +108,9 @@ export default function ShareView({ token }) {
   const lessonFiles = pastLessons.flatMap(l => (l.files || []).map(f => ({ ...f, lesDate: l.date, lesTopic: l.topic || l.subject })));
 
   const tabs = [
-    { id: "lessons", l: "수업", count: pastLessons.length + upcomingLessons.length, subs: [{ id: "history", l: "수업이력" }, { id: "schedule", l: "수업일정" }] },
-    { id: "study", l: "학습관리", count: allHw.length + wrongs.length },
-    { id: "analysis", l: "학습 분석", count: scores.length },
+    { id: "lessons", l: "수업", count: 0, subs: [{ id: "history", l: "수업이력" }, { id: "schedule", l: "수업일정" }] },
+    { id: "study", l: "학습관리", count: 0 },
+    { id: "analysis", l: "학습 분석", count: 0 },
     { id: "files", l: "자료실", count: lessonFiles.length + standaloneFiles.length },
   ];
 
@@ -130,7 +131,7 @@ export default function ShareView({ token }) {
 
       {/* Recent Report (above tabs) */}
       {(() => {
-        const allReports = [...planComments, ...reports].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+        const allReports = [...planComments, ...reports].filter(r => r.is_shared !== false).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
         const recentReport = allReports[0];
         return recentReport ? (
           <div style={{ background: C.sf, borderBottom: "1px solid " + C.bd, padding: "20px 0" }}>
@@ -247,8 +248,8 @@ export default function ShareView({ token }) {
             {/* Calendar View */}
             {(() => {
               const now = new Date();
-              const year = now.getFullYear();
-              const month = now.getMonth();
+              const year = calMonth.getFullYear();
+              const month = calMonth.getMonth();
               const firstDay = new Date(year, month, 1).getDay();
               const startOffset = firstDay === 0 ? 6 : firstDay - 1;
               const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -273,32 +274,54 @@ export default function ShareView({ token }) {
               const rem = 42 - cells.length;
               for (let i = 0; i < rem; i++) cells.push({ d: null });
 
+              // 해당 월의 모든 수업 (과거+미래)
+              const monthStart = `${year}-${p2(month + 1)}-01`;
+              const monthEnd = `${year}-${p2(month + 1)}-${p2(daysInMonth)}`;
+              const monthLessons = lessons.filter(l => {
+                if (l.date >= monthStart && l.date <= monthEnd) return true;
+                if (l.is_recurring) {
+                  // recurring lessons
+                  if (l.recurring_end_date && l.recurring_end_date < monthStart) return false;
+                  if (l.date > monthEnd) return false;
+                  return true;
+                }
+                return false;
+              }).sort((a, b) => a.date.localeCompare(b.date));
+
               return (
                 <div style={{ marginBottom: 24 }}>
-                  <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp, marginBottom: 12 }}>
-                    {s.name} 수업 일정 · {year}년 {month + 1}월
-                  </h3>
-                  <div style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 14, overflow: "hidden" }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", borderBottom: "1px solid " + C.bd }}>
+                  <div style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 14, padding: 20 }}>
+                    {/* Header with month navigation */}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <button onClick={() => setCalMonth(new Date(year, month - 1, 1))} style={{ background: "none", border: "none", cursor: "pointer", color: C.ts, fontSize: 20, padding: "4px 8px", borderRadius: 6, display: "flex", alignItems: "center" }}>‹</button>
+                        <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp, minWidth: 110, textAlign: "center" }}>{year}년 {month + 1}월</h3>
+                        <button onClick={() => setCalMonth(new Date(year, month + 1, 1))} style={{ background: "none", border: "none", cursor: "pointer", color: C.ts, fontSize: 20, padding: "4px 8px", borderRadius: 6, display: "flex", alignItems: "center" }}>›</button>
+                      </div>
+                      <button onClick={() => setCalMonth(new Date())} style={{ padding: "5px 14px", borderRadius: 8, border: "1px solid " + C.bd, background: C.sf, fontSize: 12, cursor: "pointer", color: C.ts, fontFamily: "inherit" }}>이번 달</button>
+                    </div>
+                    {/* Day headers */}
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginBottom: 4 }}>
                       {["월", "화", "수", "목", "금", "토", "일"].map(d => (
-                        <div key={d} style={{ padding: "10px", textAlign: "center", fontSize: 12, fontWeight: 500, color: C.tt }}>{d}</div>
+                        <div key={d} style={{ textAlign: "center", fontSize: 12, fontWeight: 500, color: C.tt, padding: "6px 0" }}>{d}</div>
                       ))}
                     </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)" }}>
+                    {/* Calendar cells */}
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", border: "1px solid " + C.bd, borderRadius: 8, overflow: "hidden" }}>
                       {cells.map((c, i) => (
                         <div
                           key={i}
                           style={{
                             minHeight: 72,
                             padding: 6,
-                            borderBottom: "1px solid " + C.bl,
+                            borderBottom: Math.floor(i / 7) < 5 ? "1px solid " + C.bl : "none",
                             borderRight: (i + 1) % 7 ? "1px solid " + C.bl : "none",
                             opacity: c.d ? 1 : 0.3,
                           }}
                         >
                           {c.d && (
                             <div>
-                              <div style={{ fontSize: 13, marginBottom: 4, fontWeight: c.d === now.getDate() && c.ds >= today ? 700 : 400, color: c.d === now.getDate() && c.ds >= today ? C.ac : C.tp }}>{c.d}</div>
+                              <div style={{ fontSize: 13, marginBottom: 4, fontWeight: c.d === now.getDate() && year === now.getFullYear() && month === now.getMonth() ? 700 : 400, color: c.d === now.getDate() && year === now.getFullYear() && month === now.getMonth() ? C.ac : C.tp }}>{c.d}</div>
                               {c.lessons?.map(l => (
                                 <div
                                   key={l.id}
@@ -328,34 +351,43 @@ export default function ShareView({ token }) {
               );
             })()}
 
-            {/* Upcoming Lessons List */}
-            {upcomingLessons.length > 0 && (
-              <div>
-                <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp, marginBottom: 12 }}>예정 수업</h3>
-                <div style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 14, overflow: "hidden" }}>
-                  {upcomingLessons.map((l, idx) => {
-                    const sh = l.start_hour, sm = l.start_min, dur = l.duration;
-                    const em = sh * 60 + sm + dur;
-                    const dateObj = new Date(l.date + "T00:00:00");
-                    const dayOfWeek = ["일", "월", "화", "수", "목", "금", "토"][dateObj.getDay()];
-                    return (
-                      <div key={l.id} style={{ padding: "14px 18px", borderBottom: idx < upcomingLessons.length - 1 ? "1px solid " + C.bl : "none" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                          <div style={{ textAlign: "center", flexShrink: 0 }}>
-                            <div style={{ fontSize: 11, color: C.tt }}>{l.date.split('-')[1]}/{l.date.split('-')[2]}</div>
-                            <div style={{ fontSize: 10, color: C.ts, marginTop: 2 }}>({dayOfWeek})</div>
-                          </div>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: C.tp }}>{l.subject}{l.topic ? " · " + l.topic : ""}</div>
-                            <div style={{ fontSize: 12, color: C.ts, marginTop: 2 }}>{m2s(sh * 60 + sm)}~{m2s(em)}</div>
+            {/* 해당 월 수업 전체 리스트 */}
+            {(() => {
+              const year = calMonth.getFullYear();
+              const month = calMonth.getMonth();
+              const daysInMonth = new Date(year, month + 1, 0).getDate();
+              const monthStart = `${year}-${p2(month + 1)}-01`;
+              const monthEnd = `${year}-${p2(month + 1)}-${p2(daysInMonth)}`;
+              const monthLessons = lessons.filter(l => l.date >= monthStart && l.date <= monthEnd).sort((a, b) => a.date.localeCompare(b.date));
+
+              return monthLessons.length > 0 ? (
+                <div>
+                  <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp, marginBottom: 12 }}>{month + 1}월 수업</h3>
+                  <div style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 14, overflow: "hidden" }}>
+                    {monthLessons.map((l, idx) => {
+                      const sh = l.start_hour, sm = l.start_min, dur = l.duration;
+                      const em = sh * 60 + sm + dur;
+                      const dateObj = new Date(l.date + "T00:00:00");
+                      const dayOfWeek = ["일", "월", "화", "수", "목", "금", "토"][dateObj.getDay()];
+                      return (
+                        <div key={l.id} style={{ padding: "14px 18px", borderBottom: idx < monthLessons.length - 1 ? "1px solid " + C.bl : "none" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                            <div style={{ textAlign: "center", flexShrink: 0 }}>
+                              <div style={{ fontSize: 11, color: C.tt }}>{l.date.split('-')[1]}/{l.date.split('-')[2]}</div>
+                              <div style={{ fontSize: 10, color: C.ts, marginTop: 2 }}>({dayOfWeek})</div>
+                            </div>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: 13, fontWeight: 600, color: C.tp }}>{l.subject}{l.topic ? " · " + l.topic : ""}</div>
+                              <div style={{ fontSize: 12, color: C.ts, marginTop: 2 }}>{m2s(sh * 60 + sm)}~{m2s(em)}</div>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            )}
+              ) : null;
+            })()}
           </div>)}
         </div>)}
 
@@ -570,7 +602,7 @@ export default function ShareView({ token }) {
 
           {/* Past Reports (below scores chart) */}
           {(() => {
-            const allReports = [...planComments, ...reports].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+            const allReports = [...planComments, ...reports].filter(r => r.is_shared !== false).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
             const pastReports = allReports.slice(1); // All reports except the most recent one
             return pastReports.length > 0 ? (
               <div style={{ marginTop: 24 }}>

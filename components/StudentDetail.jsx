@@ -38,7 +38,7 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
   const [lesDetailData,setLesDetailData]=useState(null);
   const [calMonth,setCalMonth]=useState(new Date());
   const [showNew,setShowNew]=useState(false);
-  const [nT,setNT]=useState("");const [nB,setNB]=useState("");const [nS,setNS]=useState(false);
+  const [nT,setNT]=useState("");const [nB,setNB]=useState("");const [nS,setNS]=useState(false); // nS is "비공개" checkbox (true = private)
   const [wForm,setWForm]=useState({book:"",chapter:"",problem_num:"",reason:"",note:""});
   const [wFilter,setWFilter]=useState("");const [wPage,setWPage]=useState(0);const [wSearch,setWSearch]=useState("");const [wBulkMode,setWBulkMode]=useState(false);const [wSelected,setWSelected]=useState(new Set());
   const [wExpanded,setWExpanded]=useState(()=>{try{const s=localStorage.getItem("wExp_"+student.id);return s?JSON.parse(s):{};}catch{return{};}});
@@ -71,7 +71,7 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
   const [showPlanReport,setShowPlanReport]=useState(false);
   const [planRpTitle,setPlanRpTitle]=useState("");
   const [planRpBody,setPlanRpBody]=useState("");
-  const [planRpShared,setPlanRpShared]=useState(false);
+  const [planRpShared,setPlanRpShared]=useState(false); // planRpShared is "비공개" checkbox (true = private)
   const [fileDrag,setFileDrag]=useState(false);
   const [uploading,setUploading]=useState(false);
   const [standaloneFiles,setStandaloneFiles]=useState([]);
@@ -152,7 +152,7 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
   const bulkDelWrong=async()=>{const ids=[...wSelected];if(!ids.length)return;const{error}=await supabase.from('wrong_answers').delete().in('id',ids);if(error){toast?.('일괄 삭제에 실패했습니다','error');return;}setWrongs(p=>p.filter(w=>!wSelected.has(w.id)));setWSelected(new Set());setWBulkMode(false);toast?.(`${ids.length}건 삭제됨`);};
   const wTimers=useRef({});
   const updWrong=(id,key,val)=>{setWrongs(p=>p.map(w=>w.id===id?{...w,[key]:val}:w));const tk=id+key;clearTimeout(wTimers.current[tk]);wTimers.current[tk]=setTimeout(async()=>{await supabase.from('wrong_answers').update({[key]:val}).eq('id',id);},500);};
-  const addRp=async()=>{if(!nT.trim())return;const{data,error}=await supabase.from('reports').insert({student_id:s.id,title:nT,body:nB,is_shared:nS,date:fd(new Date()),user_id:user.id}).select().single();if(error){toast?.('레포트 저장에 실패했습니다','error');return;}if(data){setReports(p=>[data,...p]);setNT("");setNB("");setNS(false);setShowNew(false);toast?.('레포트가 등록되었습니다');}};
+  const addRp=async()=>{if(!nT.trim())return;const{data,error}=await supabase.from('reports').insert({student_id:s.id,title:nT,body:nB,is_shared:!nS,date:fd(new Date()),user_id:user.id}).select().single();if(error){toast?.('레포트 저장에 실패했습니다','error');return;}if(data){setReports(p=>[data,...p]);setNT("");setNB("");setNS(false);setShowNew(false);toast?.('레포트가 등록되었습니다');}};
   const addScore=async()=>{if(!scoreForm.score&&!scoreForm.grade)return;const ins={student_id:s.id,date:scoreForm.date,label:scoreForm.label,user_id:user.id};if(scoreForm.score)ins.score=parseInt(scoreForm.score);if(scoreForm.grade)ins.grade=parseInt(scoreForm.grade);let{data,error}=await supabase.from('scores').insert(ins).select().single();if(error&&scoreForm.grade){const{grade,...insNoGrade}=ins;({data,error}=await supabase.from('scores').insert(insNoGrade).select().single());}if(error){toast?.('성적 추가에 실패했습니다','error');return;}if(data){if(scoreForm.grade&&!data.grade)data.grade=parseInt(scoreForm.grade);setScores(p=>[...p,data]);setScoreForm({date:"",score:"",label:"",grade:""});setShowAddScore(false);toast?.('성적이 추가되었습니다');}};
   const openEditScore=(sc)=>{setEditScore(sc);setEditScoreForm({date:sc.date||"",score:sc.score!=null?String(sc.score):"",label:sc.label||"",grade:sc.grade!=null?String(sc.grade):""});};
   const saveEditScore=async()=>{if(!editScore||(!editScoreForm.score&&!editScoreForm.grade))return;const upd={date:editScoreForm.date,label:editScoreForm.label,score:editScoreForm.score?parseInt(editScoreForm.score):null,grade:editScoreForm.grade?parseInt(editScoreForm.grade):null};let{error}=await supabase.from('scores').update(upd).eq('id',editScore.id);if(error&&upd.grade!==undefined){const{grade,...updNoGrade}=upd;({error}=await supabase.from('scores').update(updNoGrade).eq('id',editScore.id));}if(error){toast?.('성적 수정에 실패했습니다','error');return;}setScores(p=>p.map(x=>x.id===editScore.id?{...x,...upd}:x));setEditScore(null);toast?.('성적이 수정되었습니다');};
@@ -175,7 +175,7 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
   const addPlanReport=async()=>{
     if(!planRpTitle.trim()){toast?.('제목을 입력해주세요','error');return;}
     try{
-      const row={student_id:s.id,title:planRpTitle,body:planRpBody,is_shared:planRpShared,type:"plan",date:fd(new Date()),user_id:user.id};
+      const row={student_id:s.id,title:planRpTitle,body:planRpBody,is_shared:!planRpShared,type:"plan",date:fd(new Date()),user_id:user.id};
       const{data,error}=await supabase.from('reports').insert(row).select().single();
       if(error){toast?.('리포트 저장에 실패했습니다','error');return;}
       if(data){setPlanComments(p=>[data,...p]);setPlanRpTitle("");setPlanRpBody("");setPlanRpShared(false);setShowPlanReport(false);toast?.('리포트가 등록되었습니다');}
@@ -183,9 +183,9 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
   };
   const updatePlanComment=async(id)=>{
     if(!editCommentTitle.trim()){toast?.('제목을 입력해주세요','error');return;}
-    const{error}=await supabase.from('reports').update({title:editCommentTitle,body:editCommentText,is_shared:editCommentShared}).eq('id',id);
+    const{error}=await supabase.from('reports').update({title:editCommentTitle,body:editCommentText,is_shared:!editCommentShared}).eq('id',id);
     if(error){toast?.('기록 수정에 실패했습니다','error');return;}
-    setPlanComments(p=>p.map(c=>c.id===id?{...c,title:editCommentTitle,body:editCommentText,is_shared:editCommentShared}:c));setEditingComment(null);setEditCommentText("");setEditCommentTitle("");
+    setPlanComments(p=>p.map(c=>c.id===id?{...c,title:editCommentTitle,body:editCommentText,is_shared:!editCommentShared}:c));setEditingComment(null);setEditCommentText("");setEditCommentTitle("");
   };
   const handleFileDrop=async(e)=>{e.preventDefault();setFileDrag(false);const files=e.dataTransfer?e.dataTransfer.files:e.target.files;if(!files||!files.length)return;setUploading(true);
     for(const file of files){
@@ -422,7 +422,7 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
             <div style={{marginBottom:10}}><label style={ls}>제목</label><input value={nT} onChange={e=>setNT(e.target.value)} style={is} placeholder="예: 3월 2주차 학습 정리"/></div>
             <div style={{marginBottom:10}}><label style={ls}>내용</label><textarea value={nB} onChange={e=>setNB(e.target.value)} style={{...is,height:120,resize:"vertical"}} placeholder="수업 내용, 학생 상태, 다음 계획 등을 자유롭게 기록하세요..."/></div>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <label style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:C.ts,cursor:"pointer"}}><input type="checkbox" checked={nS} onChange={e=>setNS(e.target.checked)}/>학부모 공유</label>
+              <label style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:C.ts,cursor:"pointer"}}><input type="checkbox" checked={nS} onChange={e=>setNS(e.target.checked)}/>비공개</label>
               <div style={{display:"flex",gap:8}}><button onClick={()=>setShowNew(false)} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:8,padding:"8px 14px",fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>취소</button><button onClick={addRp} style={{background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"8px 16px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>저장</button></div>
             </div>
           </div>)}
@@ -879,7 +879,7 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
               <div style={{marginBottom:10}}><label style={ls}>제목</label><input value={planRpTitle} onChange={e=>setPlanRpTitle(e.target.value)} style={is} placeholder="예: 2월 1~2주차 학습 리포트"/></div>
               <div style={{marginBottom:10}}><label style={ls}>내용</label><textarea value={planRpBody} onChange={e=>setPlanRpBody(e.target.value)} style={{...is,minHeight:120,resize:"vertical"}} placeholder="학습 진행 상황, 피드백, 계획 변경 등을 기록하세요..."/></div>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <label style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:C.ts,cursor:"pointer"}}><input type="checkbox" checked={planRpShared} onChange={e=>setPlanRpShared(e.target.checked)}/>학부모 공유</label>
+                <label style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:C.ts,cursor:"pointer"}}><input type="checkbox" checked={planRpShared} onChange={e=>setPlanRpShared(e.target.checked)}/>비공개</label>
                 <div style={{display:"flex",gap:8}}>
                   <button onClick={()=>setShowPlanReport(false)} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:8,padding:"8px 14px",fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>취소</button>
                   <button onClick={addPlanReport} style={{background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"8px 16px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>저장</button>
@@ -898,7 +898,7 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
                       <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
                         <span style={{fontSize:14,fontWeight:600,color:C.tp}}>{c.title||"리포트"}</span>
                         {c.is_shared?<span style={{background:C.as,color:C.ac,padding:"2px 8px",borderRadius:5,fontSize:10,fontWeight:600}}>공유됨</span>:<span style={{background:C.sfh,color:C.tt,padding:"2px 8px",borderRadius:5,fontSize:10}}>비공개</span>}
-                        {!isParent&&editingComment!==c.id&&<button onClick={()=>{setEditingComment(c.id);setEditCommentTitle(c.title||"");setEditCommentText(c.body||"");setEditCommentShared(!!c.is_shared);}} style={{background:"none",border:"none",fontSize:10,color:C.ac,cursor:"pointer",fontFamily:"inherit",padding:0}}>수정</button>}
+                        {!isParent&&editingComment!==c.id&&<button onClick={()=>{setEditingComment(c.id);setEditCommentTitle(c.title||"");setEditCommentText(c.body||"");setEditCommentShared(!c.is_shared);}} style={{background:"none",border:"none",fontSize:10,color:C.ac,cursor:"pointer",fontFamily:"inherit",padding:0}}>수정</button>}
                       </div>
                       <span style={{fontSize:12,color:C.tt,flexShrink:0}}>{c.date}</span>
                     </div>
@@ -906,7 +906,7 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
                       <div style={{marginBottom:8}}><label style={{...ls,marginBottom:4}}>제목</label><input value={editCommentTitle} onChange={e=>setEditCommentTitle(e.target.value)} style={{...is,fontSize:12}} placeholder="리포트 제목"/></div>
                       <div style={{marginBottom:8}}><label style={{...ls,marginBottom:4}}>내용</label><textarea value={editCommentText} onChange={e=>setEditCommentText(e.target.value)} style={{...is,minHeight:80,resize:"vertical",fontSize:12}}/></div>
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                        <label style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:C.ts,cursor:"pointer"}}><input type="checkbox" checked={editCommentShared} onChange={e=>setEditCommentShared(e.target.checked)}/>학부모 공유</label>
+                        <label style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:C.ts,cursor:"pointer"}}><input type="checkbox" checked={editCommentShared} onChange={e=>setEditCommentShared(e.target.checked)}/>비공개</label>
                         <div style={{display:"flex",gap:6}}>
                           <button onClick={()=>setEditingComment(null)} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:6,padding:"4px 10px",fontSize:10,cursor:"pointer",fontFamily:"inherit"}}>취소</button>
                           <button onClick={()=>updatePlanComment(c.id)} style={{background:C.pr,color:"#fff",border:"none",borderRadius:6,padding:"4px 10px",fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>저장</button>
