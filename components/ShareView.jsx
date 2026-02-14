@@ -71,6 +71,7 @@ export default function ShareView({ token }) {
   // Filter lessons to only show past lessons (not future ones)
   const today = new Date().toISOString().split('T')[0];
   const pastLessons = lessons.filter(l => l.date <= today);
+  const upcomingLessons = lessons.filter(l => l.date > today).sort((a, b) => a.date.localeCompare(b.date));
 
   // Homework aggregation (only from past lessons)
   const allHw = pastLessons.flatMap(l => (l.homework || []).map(h => ({ ...h, lesDate: l.date, lesSub: l.subject })));
@@ -107,7 +108,7 @@ export default function ShareView({ token }) {
   const tabs = [
     { id: "lessons", l: "수업이력", count: pastLessons.length },
     { id: "study", l: "학습관리", count: allHw.length + wrongs.length },
-    { id: "analysis", l: "분석", count: scores.length },
+    { id: "analysis", l: "학습 분석", count: scores.length },
     { id: "files", l: "자료실", count: lessonFiles.length + standaloneFiles.length },
   ];
 
@@ -139,6 +140,56 @@ export default function ShareView({ token }) {
 
       {/* Content */}
       <div style={{ maxWidth: 720, margin: "0 auto", padding: "20px 20px 60px" }}>
+
+        {/* Recent Report (always visible at top) */}
+        {(() => {
+          const allReports = [...planComments, ...reports].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+          const recentReport = allReports[0];
+          return recentReport ? (
+            <div style={{ marginBottom: 24 }}>
+              <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp, marginBottom: 12 }}>최근 학습 리포트</h3>
+              <div style={{ background: "linear-gradient(135deg, " + C.as + " 0%, " + C.sf + " 100%)", border: "2px solid " + C.ac, borderRadius: 14, padding: 20 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                  <span style={{ fontSize: 15, fontWeight: 700, color: C.tp }}>{recentReport.title || "리포트"}</span>
+                  <span style={{ fontSize: 12, color: C.tt }}>{recentReport.date}</span>
+                </div>
+                <div style={{ fontSize: 14, color: C.tp, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{recentReport.body}</div>
+              </div>
+            </div>
+          ) : null;
+        })()}
+
+        {/* Upcoming Lessons (월간뷰) */}
+        {upcomingLessons.length > 0 && (
+          <div style={{ marginBottom: 24 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp, marginBottom: 12 }}>예정 수업</h3>
+            <div style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 14, overflow: "hidden" }}>
+              {upcomingLessons.slice(0, 5).map((l, idx) => {
+                const sh = l.start_hour, sm = l.start_min, dur = l.duration;
+                const em = sh * 60 + sm + dur;
+                const dateObj = new Date(l.date + "T00:00:00");
+                const dayOfWeek = ["일", "월", "화", "수", "목", "금", "토"][dateObj.getDay()];
+                return (
+                  <div key={l.id} style={{ padding: "14px 18px", borderBottom: idx < upcomingLessons.length - 1 && idx < 4 ? "1px solid " + C.bl : "none" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <div style={{ textAlign: "center", flexShrink: 0 }}>
+                        <div style={{ fontSize: 11, color: C.tt }}>{l.date.split('-')[1]}/{l.date.split('-')[2]}</div>
+                        <div style={{ fontSize: 10, color: C.ts, marginTop: 2 }}>({dayOfWeek})</div>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: C.tp }}>{l.subject}{l.topic ? " · " + l.topic : ""}</div>
+                        <div style={{ fontSize: 12, color: C.ts, marginTop: 2 }}>{m2s(sh * 60 + sm)}~{m2s(em)}</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {upcomingLessons.length > 5 && (
+              <div style={{ marginTop: 8, fontSize: 12, color: C.tt, textAlign: "center" }}>외 {upcomingLessons.length - 5}건 더</div>
+            )}
+          </div>
+        )}
 
         {/* === 수업이력 === */}
         {tab === "lessons" && (<div>
@@ -218,7 +269,7 @@ export default function ShareView({ token }) {
           </div>
           {allHw.length === 0 ? <Empty text="숙제 기록이 없습니다" /> : (<>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginBottom: showHwDetail ? 16 : 28 }}>
-              <StatCard label="평균 완료율" value={hwAvg + "%"} color={C.ac} />
+              <StatCard label="완료율" value={hwAvg + "%"} color={C.ac} />
               <StatCard label="완료" value={hwDone + "건"} color={C.su} />
               <StatCard label="진행중" value={hwInProg + "건"} color={C.wn} />
               <StatCard label="미시작" value={hwNotStarted + "건"} color={C.tt} />
@@ -354,25 +405,7 @@ export default function ShareView({ token }) {
             <SwotCard label="⚠️ 위협 (T)" bg={C.wb} border="#FDE68A" color="#B45309" text={s.plan_threat} />
           </div>
 
-          {/* Recent Report */}
-          {(() => {
-            const allReports = [...planComments, ...reports].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
-            const recentReport = allReports[0];
-            return recentReport ? (
-              <div style={{ marginBottom: 24 }}>
-                <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp, marginBottom: 12 }}>최근 학습 리포트</h3>
-                <div style={{ background: C.sf, border: "2px solid " + C.ac, borderRadius: 14, padding: 20 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                    <span style={{ fontSize: 15, fontWeight: 700, color: C.tp }}>{recentReport.title || "리포트"}</span>
-                    <span style={{ fontSize: 12, color: C.tt }}>{recentReport.date}</span>
-                  </div>
-                  <div style={{ fontSize: 14, color: C.tp, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{recentReport.body}</div>
-                </div>
-              </div>
-            ) : null;
-          })()}
-
-          {/* Scores (moved to bottom) */}
+          {/* Scores */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
             <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp, margin: 0 }}>성적 추이</h3>
             {scores.length > 0 && (

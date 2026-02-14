@@ -82,7 +82,7 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
   const mainTabs=[
     {id:"class",l:"수업",subs:[{id:"timeline",l:"타임라인"},{id:"calendar",l:"일정"}]},
     {id:"study",l:"학습관리",subs:[{id:"homework",l:"숙제"},{id:"wrong",l:"오답관리"}]},
-    {id:"analysis",l:"분석",subs:[{id:"plan",l:"오버뷰"},{id:"scores",l:"성적"}]},
+    {id:"analysis",l:"학습 분석",subs:[{id:"plan",l:"오버뷰"},{id:"scores",l:"성적"}]},
     {id:"archive",l:"자료실",subs:[{id:"files",l:"자료"}]}
   ];
   const curMain=mainTabs.find(m=>m.id===mainTab);
@@ -812,11 +812,11 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
             {!isParent&&!planEditing&&<button onClick={()=>setPlanEditing(true)} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:8,padding:"6px 14px",fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>수정</button>}
           </div>
 
-          {/* 학업 전략 + SWOT */}
+          {/* 학습 전략 + SWOT */}
           {planEditing?(<>
             {/* 편집 모드 */}
             <div style={{background:C.sf,border:"2px solid "+C.ac,borderRadius:14,padding:20,marginBottom:16}}>
-              <div style={{fontSize:13,fontWeight:600,color:C.ac,marginBottom:10}}>🧭 학업 전략</div>
+              <div style={{fontSize:13,fontWeight:600,color:C.ac,marginBottom:10}}>🧭 학습 전략</div>
               <textarea value={planStrategy} onChange={e=>{setPlanStrategy(e.target.value);e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px';}} onKeyDown={e=>bk(e,planStrategy,setPlanStrategy)} ref={el=>{if(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}}} style={{...is,minHeight:80,resize:"none",fontSize:13,lineHeight:1.7,overflow:"hidden"}} placeholder="학생의 전반적인 학습 방향과 전략을 작성하세요..."/>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
@@ -844,7 +844,7 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
           </>):(<>
             {/* 읽기 모드 */}
             <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:20,marginBottom:16}}>
-              <div style={{fontSize:13,fontWeight:600,color:C.ac,marginBottom:10}}>🧭 학업 전략</div>
+              <div style={{fontSize:13,fontWeight:600,color:C.ac,marginBottom:10}}>🧭 학습 전략</div>
               <div style={{fontSize:13,color:planStrategy?C.tp:C.tt,lineHeight:1.7,whiteSpace:"pre-wrap",minHeight:20}}>{planStrategy||"아직 작성된 전략이 없습니다"}</div>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}>
