@@ -62,9 +62,9 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
 
   // Tabs: 리포트를 수업 안 "기록" 서브탭으로, 계획 제거, 분석에서 리포트 제거
   const mainTabs=[
-    {id:"class",l:"수업",subs:[{id:"timeline",l:"타임라인"},{id:"calendar",l:"일정"},{id:"notes",l:"레포트"}]},
+    {id:"class",l:"수업",subs:[{id:"timeline",l:"타임라인"},{id:"calendar",l:"일정"}]},
     {id:"study",l:"학습관리",subs:[{id:"homework",l:"숙제"},{id:"wrong",l:"오답관리"}]},
-    {id:"analysis",l:"분석",subs:[{id:"scores",l:"성적"},{id:"plan",l:"계획"}]},
+    {id:"analysis",l:"분석",subs:[{id:"plan",l:"오버뷰"},{id:"scores",l:"성적"}]},
     {id:"archive",l:"자료실",subs:[{id:"files",l:"자료"}]}
   ];
   const curMain=mainTabs.find(m=>m.id===mainTab);
@@ -656,7 +656,7 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
 
         {/* PLAN */}
         {subTab==="plan"&&(<div>
-          <h3 style={{fontSize:16,fontWeight:700,color:C.tp,marginBottom:16}}>학습 계획</h3>
+          <h3 style={{fontSize:16,fontWeight:700,color:C.tp,marginBottom:16}}>학습 오버뷰</h3>
 
           {/* Editable plan fields */}
           <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:20,marginBottom:16}}>
@@ -674,21 +674,21 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
             </div>
           </div>
           {!isParent&&<div style={{textAlign:"right",marginBottom:20}}>
-            <button onClick={savePlanFields} style={{background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"8px 20px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",opacity:planSaving?.6:1}}>{planSaving?"저장 중...":"계획 저장"}</button>
+            <button onClick={savePlanFields} style={{background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"8px 20px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",opacity:planSaving?.6:1}}>{planSaving?"저장 중...":"저장"}</button>
           </div>}
 
           {/* Timeline comments */}
           <div style={{borderTop:"1px solid "+C.bd,paddingTop:20}}>
-            <div style={{fontSize:14,fontWeight:600,color:C.tp,marginBottom:14}}>기록</div>
+            <div style={{fontSize:14,fontWeight:600,color:C.tp,marginBottom:14}}>학업 리포트</div>
 
             {/* New comment input */}
             {!isParent&&(<div style={{display:"flex",gap:8,marginBottom:16}}>
-              <textarea value={planComment} onChange={e=>setPlanComment(e.target.value)} style={{...is,height:50,resize:"none",fontSize:12,flex:1}} placeholder="진행 상황, 피드백, 계획 변경 등을 기록하세요..."/>
+              <textarea value={planComment} onChange={e=>setPlanComment(e.target.value)} style={{...is,width:"auto",height:80,resize:"none",fontSize:12,flex:1,minWidth:0}} placeholder="진행 상황, 피드백, 계획 변경 등을 기록하세요..."/>
               <button onClick={addPlanComment} style={{background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"8px 14px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",alignSelf:"flex-end",flexShrink:0}}>등록</button>
             </div>)}
 
             {/* Comment timeline */}
-            {planComments.length===0?(<div style={{textAlign:"center",padding:24,color:C.tt,fontSize:12}}>아직 기록이 없습니다</div>):(
+            {planComments.length===0?(<div style={{textAlign:"center",padding:24,color:C.tt,fontSize:12}}>아직 학업 리포트가 없습니다</div>):(
               <div style={{position:"relative",paddingLeft:20}}>
                 <div style={{position:"absolute",left:5,top:4,bottom:4,width:2,background:C.bl}}/>
                 {planComments.map((c,i)=>(<div key={c.id} style={{position:"relative",marginBottom:12}}>
