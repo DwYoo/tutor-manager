@@ -45,15 +45,13 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
     try{const s=localStorage.getItem('dash-layout');if(s){const p=JSON.parse(s);const all=new Set(Object.keys(BN));const has=new Set([...(p.left||[]),...(p.right||[]),...(p.bottom||[]),...(p.hidden||[])]);
     const miss=[...all].filter(b=>!has.has(b));if(miss.length)p.right=[...(p.right||[]),...miss];
     p.left=(p.left||[]).filter(b=>all.has(b));p.right=(p.right||[]).filter(b=>all.has(b));p.bottom=(p.bottom||[]).filter(b=>all.has(b));p.hidden=(p.hidden||[]).filter(b=>all.has(b));
-    /* studentList는 항상 bottom(풀너비) */
-    const FULL=['studentList'];FULL.forEach(fid=>{if(!p.hidden.includes(fid)){p.left=p.left.filter(b=>b!==fid);p.right=p.right.filter(b=>b!==fid);if(!p.bottom.includes(fid))p.bottom.push(fid);}});
     setLayout(p);}}catch{}
   },[]);
   const saveLay=l=>{setLayout(l);try{localStorage.setItem('dash-layout',JSON.stringify(l));}catch{}};
   const hideBlock=id=>{saveLay({left:layout.left.filter(b=>b!==id),right:layout.right.filter(b=>b!==id),bottom:(layout.bottom||[]).filter(b=>b!==id),hidden:[...(layout.hidden||[]),id]});};
-  const FULL_W=new Set(['studentList']);
-  const restoreBlock=id=>{const col=FULL_W.has(id)?'bottom':'right';saveLay({...layout,[col]:[...layout[col],id],hidden:(layout.hidden||[]).filter(b=>b!==id)});};
-  const doDrop=()=>{if(!dragId||!dropTgt)return;const nl={left:[...layout.left],right:[...layout.right],bottom:[...(layout.bottom||[])],hidden:[...(layout.hidden||[])]};nl.left=nl.left.filter(b=>b!==dragId);nl.right=nl.right.filter(b=>b!==dragId);nl.bottom=nl.bottom.filter(b=>b!==dragId);nl.hidden=nl.hidden.filter(b=>b!==dragId);const tgtCol=FULL_W.has(dragId)?'bottom':dropTgt.col;const tgtIdx=tgtCol!==dropTgt.col?nl[tgtCol].length:dropTgt.idx;nl[tgtCol].splice(tgtIdx,0,dragId);saveLay(nl);setDragId(null);setDropTgt(null);};
+  const BOTTOM_DEF=new Set(['studentList']);
+  const restoreBlock=id=>{const col=BOTTOM_DEF.has(id)?'bottom':'right';saveLay({...layout,[col]:[...layout[col],id],hidden:(layout.hidden||[]).filter(b=>b!==id)});};
+  const doDrop=()=>{if(!dragId||!dropTgt)return;const nl={left:[...layout.left],right:[...layout.right],bottom:[...(layout.bottom||[])],hidden:[...(layout.hidden||[])]};nl.left=nl.left.filter(b=>b!==dragId);nl.right=nl.right.filter(b=>b!==dragId);nl.bottom=nl.bottom.filter(b=>b!==dragId);nl.hidden=nl.hidden.filter(b=>b!==dragId);nl[dropTgt.col].splice(dropTgt.idx,0,dragId);saveLay(nl);setDragId(null);setDropTgt(null);};
 
   const mkLes=l=>({...l,sh:l.start_hour,sm:l.start_min,dur:l.duration,sub:l.subject,top:l.topic,rep:l.is_recurring,tMemo:l.private_memo||"",hw:l.homework||[],files:l.files||[]});
   const updDetail=async(id,data)=>{
@@ -346,11 +344,13 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
         })}
       </div>
       {/* Bottom full-width */}
-      {(layout.bottom||[]).length>0&&(
+      {((layout.bottom||[]).length>0||editMode)&&(
         <div
           onDragOver={e=>{e.preventDefault();if(editMode&&!e.target.closest('[draggable]'))setDropTgt({col:'bottom',idx:(layout.bottom||[]).length});}}
           onDrop={e=>{e.preventDefault();doDrop();}}
-          style={{marginTop:20,display:"flex",flexDirection:"column",gap:16,minHeight:editMode?60:'auto'}}>
+          style={{marginTop:20,display:"flex",flexDirection:"column",gap:16,minHeight:editMode?60:'auto',
+            ...(editMode&&(layout.bottom||[]).length===0?{border:`2px dashed ${C.bd}`,borderRadius:12,padding:16,alignItems:'center',justifyContent:'center'}:{})}}>
+          {editMode&&(layout.bottom||[]).length===0&&<div style={{fontSize:12,color:C.tt}}>여기에 놓으면 풀너비</div>}
           {(layout.bottom||[]).map((id,idx)=>renderBlock(id,'bottom',idx))}
           {editMode&&dropTgt&&dropTgt.col==='bottom'&&dropTgt.idx>=(layout.bottom||[]).length&&<div style={{height:3,background:C.ac,borderRadius:2}}/>}
         </div>
