@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/components/AuthProvider';
 import { supabase } from '@/lib/supabase';
+import { useToast } from '@/components/Toast';
 
 const C={bg:"#FAFAF9",sf:"#FFFFFF",sfh:"#F5F5F4",bd:"#E7E5E4",bl:"#F0EFED",pr:"#1A1A1A",ac:"#2563EB",al:"#DBEAFE",as:"#EFF6FF",tp:"#1A1A1A",ts:"#78716C",tt:"#A8A29E",su:"#16A34A",sb:"#F0FDF4",dn:"#DC2626",db:"#FEF2F2",wn:"#F59E0B",wb:"#FFFBEB"};
 const SC=[{bg:"#DBEAFE",t:"#1E40AF",b:"#93C5FD"},{bg:"#FCE7F3",t:"#9D174D",b:"#F9A8D4"},{bg:"#D1FAE5",t:"#065F46",b:"#6EE7B7"},{bg:"#FEF3C7",t:"#92400E",b:"#FCD34D"},{bg:"#EDE9FE",t:"#5B21B6",b:"#C4B5FD"},{bg:"#FFE4E6",t:"#9F1239",b:"#FDA4AF"},{bg:"#CCFBF1",t:"#115E59",b:"#5EEAD4"},{bg:"#FEE2E2",t:"#991B1B",b:"#FCA5A5"}];
@@ -18,6 +19,7 @@ const IcBack=()=><svg width="18" height="18" viewBox="0 0 24 24" fill="none" str
 export default function Students({onDetail,menuBtn}){
   const tog=menuBtn;
   const{user}=useAuth();
+  const toast=useToast();
   const[students,setStudents]=useState([]);
   const[lessons,setLessons]=useState([]);
   const[showArchived,setShowArchived]=useState(false);
@@ -30,7 +32,7 @@ export default function Students({onDetail,menuBtn}){
   const[form,setForm]=useState({name:'',grade:'',subject:'',school:'',phone:'',parent_phone:'',fee:'',fee_per_class:''});
 
   useEffect(()=>{fetchStudents();},[]);
-  const fetchStudents=async()=>{const[sRes,lRes]=await Promise.all([supabase.from('students').select('*').order('created_at'),supabase.from('lessons').select('*').order('date')]);setStudents(sRes.data||[]);setLessons(lRes.data||[]);setLoading(false);};
+  const fetchStudents=async()=>{const[sRes,lRes]=await Promise.all([supabase.from('students').select('*').order('created_at'),supabase.from('lessons').select('*').order('date')]);if(sRes.error||lRes.error){toast?.('데이터를 불러오지 못했습니다','error');}setStudents(sRes.data||[]);setLessons(lRes.data||[]);setLoading(false);};
 
   const lessonOnDate=(l,date)=>{const ds=fd(date),dw=date.getDay()===0?7:date.getDay();if(l.is_recurring&&l.recurring_exceptions&&l.recurring_exceptions.includes(ds))return false;if(l.date===ds)return true;if(l.is_recurring&&l.recurring_day===dw){if(ds<l.date)return false;if(l.recurring_end_date&&ds>=l.recurring_end_date)return false;return true;}return false;};
   const getNextClass=(sid)=>{const now=new Date();for(let offset=0;offset<14;offset++){const d=new Date(now);d.setDate(now.getDate()+offset);const sLessons=lessons.filter(l=>l.student_id===sid&&lessonOnDate(l,d));for(const l of sLessons){const lm=l.start_hour*60+l.start_min;if(offset===0&&lm<=now.getHours()*60+now.getMinutes())continue;return `${DK[d.getDay()]} ${p2(l.start_hour)}:${p2(l.start_min)}`;}}return null;};
@@ -45,17 +47,19 @@ export default function Students({onDetail,menuBtn}){
     const full={...form,fee:parseInt(form.fee)||0,fee_per_class:parseInt(form.fee_per_class)||0};
     if(editStu){
       const{error}=await supabase.from('students').update(full).eq('id',editStu.id);
-      if(!error)fetchStudents();
+      if(error){toast?.('학생 정보 저장에 실패했습니다','error');return;}
+      toast?.('학생 정보가 저장되었습니다');fetchStudents();
     }else{
       const{error}=await supabase.from('students').insert({...full,color_index:students.length%8,fee_status:'unpaid',user_id:user.id});
-      if(!error)fetchStudents();
+      if(error){toast?.('학생 추가에 실패했습니다','error');return;}
+      toast?.('학생이 추가되었습니다');fetchStudents();
     }
     setShowAdd(false);setEditStu(null);
   };
 
-  const deleteStudent=async(id,e)=>{e.stopPropagation();if(!confirm('정말 삭제하시겠습니까?'))return;await supabase.from('students').delete().eq('id',id);fetchStudents();};
-  const archiveStudent=async(id,e)=>{e.stopPropagation();await supabase.from('students').update({archived:true}).eq('id',id);fetchStudents();};
-  const restoreStudent=async(id,e)=>{e.stopPropagation();await supabase.from('students').update({archived:false}).eq('id',id);fetchStudents();};
+  const deleteStudent=async(id,e)=>{e.stopPropagation();if(!confirm('정말 삭제하시겠습니까?'))return;const{error}=await supabase.from('students').delete().eq('id',id);if(error){toast?.('삭제에 실패했습니다','error');return;}toast?.('학생이 삭제되었습니다');fetchStudents();};
+  const archiveStudent=async(id,e)=>{e.stopPropagation();const{error}=await supabase.from('students').update({archived:true}).eq('id',id);if(error){toast?.('보관 처리에 실패했습니다','error');return;}toast?.('보관함으로 이동했습니다');fetchStudents();};
+  const restoreStudent=async(id,e)=>{e.stopPropagation();const{error}=await supabase.from('students').update({archived:false}).eq('id',id);if(error){toast?.('복원에 실패했습니다','error');return;}toast?.('학생이 복원되었습니다');fetchStudents();};
 
   const activeStudents=students.filter(s=>!s.archived).sort((a,b)=>(a.sort_order??Infinity)-(b.sort_order??Infinity));
   const archivedStudents=students.filter(s=>!!s.archived);
