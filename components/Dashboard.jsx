@@ -84,6 +84,8 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
     return cnt;
   };
 
+  const autoStatus=(amt,due)=>amt>=due?"paid":amt>0?"partial":"unpaid";
+
   const monthRecs=activeStudents.map(s=>{
     const rec=tuitions.find(t=>t.student_id===s.id&&t.month===curMonth);
     const lessonCnt=countMonthLessons(s.id);
@@ -93,14 +95,14 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
     // fee_override 반영 (Tuition 탭과 동일 로직)
     const totalDue=(rec&&rec.fee_override!=null)?rec.fee_override:autoTotalDue;
     const paidAmount=rec?.amount||0;
-    const status=rec?.status||"unpaid";
+    const status=autoStatus(paidAmount,totalDue);
     return{student:s,totalDue,paidAmount,status};
   });
 
   const totalFee=monthRecs.reduce((a,r)=>a+r.totalDue,0);
   const totalPaid=monthRecs.reduce((a,r)=>a+r.paidAmount,0);
   const unpaidRecs=monthRecs.filter(r=>r.status!=="paid");
-  const unpaidAmount=Math.max(0,totalFee-totalPaid);
+  const unpaidAmount=monthRecs.reduce((a,r)=>r.status!=="paid"?a+Math.max(0,r.totalDue-r.paidAmount):a,0);
 
   // ── Homework stats (최근 30일) ──
   const allHomework=lessons.flatMap(l=>(l.homework||[]).map(h=>({...h,lesson:l})));
