@@ -7,7 +7,7 @@ const ls={display:"block",fontSize:12,fontWeight:500,color:C.tt,marginBottom:6};
 const is={width:"100%",padding:"9px 12px",borderRadius:8,border:`1px solid ${C.bd}`,fontSize:14,color:C.tp,background:C.sf,outline:"none",fontFamily:"inherit"};
 const p2=n=>String(n).padStart(2,"0");
 const m2s=m=>`${p2(Math.floor(m/60))}:${p2(m%60)}`;
-const bk=(e,val,set,df)=>{const ta=e.target,pos=ta.selectionStart;if(e.key==='*'){const ls=val.lastIndexOf('\n',pos-1)+1;if(val.substring(ls,pos).trim()===''){e.preventDefault();const nv=val.substring(0,ls)+'• '+val.substring(pos);set(nv);df?.();requestAnimationFrame(()=>{ta.selectionStart=ta.selectionEnd=ls+2;});}}if(e.key==='Enter'){const lines=val.substring(0,pos).split('\n'),cl=lines[lines.length-1];if(cl.startsWith('• ')){e.preventDefault();if(cl.trim()==='•'){const ls=pos-cl.length;const nv=val.substring(0,ls)+val.substring(pos);set(nv);df?.();requestAnimationFrame(()=>{ta.selectionStart=ta.selectionEnd=ls;});}else{const nv=val.substring(0,pos)+'\n• '+val.substring(pos);set(nv);df?.();requestAnimationFrame(()=>{ta.selectionStart=ta.selectionEnd=pos+3;});}}}};
+const bk=(e,val,set,df)=>{if(e.nativeEvent?.isComposing||e.isComposing)return;const ta=e.target,pos=ta.selectionStart;if(e.key==='*'){const ls=val.lastIndexOf('\n',pos-1)+1;if(val.substring(ls,pos).trim()===''){e.preventDefault();const nv=val.substring(0,ls)+'• '+val.substring(pos);set(nv);df?.();requestAnimationFrame(()=>{ta.selectionStart=ta.selectionEnd=ls+2;});}}if(e.key==='Enter'){const lines=val.substring(0,pos).split('\n'),cl=lines[lines.length-1];if(cl.startsWith('• ')){e.preventDefault();if(cl.trim()==='•'){const ls=pos-cl.length;const nv=val.substring(0,ls)+val.substring(pos);set(nv);df?.();requestAnimationFrame(()=>{ta.selectionStart=ta.selectionEnd=ls;});}else{const nv=val.substring(0,pos)+'\n• '+val.substring(pos);set(nv);df?.();requestAnimationFrame(()=>{ta.selectionStart=ta.selectionEnd=pos+3;});}}}};
 
 const IcX=()=><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
 const IcLock=()=><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>;
@@ -117,7 +117,7 @@ export default function LessonDetailModal({ les, student, onUpdate, onClose }) {
                         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                             <span style={{ fontSize: 12, color: C.tt, fontWeight: 600, background: C.sfh, borderRadius: 6, padding: "2px 8px" }}>#{i + 1}</span>
-                            <span style={{ fontSize: 14, fontWeight: 600, color: C.tp }}>{h.title}</span>
+                            <input value={h.title||""} onChange={e => { updHw(h.id, "title", e.target.value); }} style={{ fontSize: 14, fontWeight: 600, color: C.tp, border: "none", outline: "none", background: "transparent", padding: 0, fontFamily: "inherit", minWidth: 0, flex: 1 }} placeholder="숙제 제목..." />
                           </div>
                           <button onClick={() => delHw(h.id)} style={{ background: "none", border: "none", cursor: "pointer", color: C.tt, padding: 4 }}>✕</button>
                         </div>
@@ -126,7 +126,10 @@ export default function LessonDetailModal({ les, student, onUpdate, onClose }) {
                             <span style={{ fontSize: 12, color: C.tt }}>완성도</span>
                             <span style={{ fontSize: 13, fontWeight: 700, color: pc, background: pbg, padding: "2px 8px", borderRadius: 6 }}>{(h.completion_pct||0)}%</span>
                           </div>
-                          <input type="range" min="0" max="100" step="5" value={(h.completion_pct||0)} onChange={e => updHw(h.id, "completion_pct", +e.target.value)} style={{ width: "100%", accentColor: pc, cursor: "pointer" }} />
+                          <div onMouseDown={e=>{e.preventDefault();const bar=e.currentTarget;const calc=ev=>{const r=bar.getBoundingClientRect();const v=Math.max(0,Math.min(100,Math.round((ev.clientX-r.left)/r.width*20)*5));updHw(h.id,"completion_pct",v);};calc(e);const mv=ev=>calc(ev);const up=()=>{window.removeEventListener("mousemove",mv);window.removeEventListener("mouseup",up);};window.addEventListener("mousemove",mv);window.addEventListener("mouseup",up);}} style={{ width: "100%", height: 10, background: C.bl, borderRadius: 5, cursor: "pointer", position: "relative" }}>
+                            <div style={{ height: "100%", width: (h.completion_pct||0)+"%", background: pc, borderRadius: 5, transition: "width .15s", pointerEvents: "none" }}/>
+                            <div style={{ position: "absolute", top: "50%", left: (h.completion_pct||0)+"%", transform: "translate(-50%,-50%)", width: 18, height: 18, borderRadius: "50%", background: "#fff", border: "3px solid "+pc, boxShadow: "0 1px 4px rgba(0,0,0,.15)", pointerEvents: "none", transition: "left .15s" }}/>
+                          </div>
                         </div>
                         <div>
                           <label style={{ fontSize: 11, color: C.tt, display: "block", marginBottom: 4 }}>메모</label>

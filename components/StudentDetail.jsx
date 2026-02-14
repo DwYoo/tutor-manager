@@ -11,7 +11,7 @@ const REASON_COLORS=["#2563EB","#DC2626","#F59E0B","#16A34A","#8B5CF6","#EC4899"
 const p2=n=>String(n).padStart(2,"0");
 const fd=d=>d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate());
 const m2s=m=>`${p2(Math.floor(m/60))}:${p2(m%60)}`;
-const bk=(e,val,set,df)=>{const ta=e.target,pos=ta.selectionStart;if(e.key==='*'){const ls=val.lastIndexOf('\n',pos-1)+1;if(val.substring(ls,pos).trim()===''){e.preventDefault();const nv=val.substring(0,ls)+'• '+val.substring(pos);set(nv);df?.();requestAnimationFrame(()=>{ta.selectionStart=ta.selectionEnd=ls+2;});}}if(e.key==='Enter'){const lines=val.substring(0,pos).split('\n'),cl=lines[lines.length-1];if(cl.startsWith('• ')){e.preventDefault();if(cl.trim()==='•'){const ls=pos-cl.length;const nv=val.substring(0,ls)+val.substring(pos);set(nv);df?.();requestAnimationFrame(()=>{ta.selectionStart=ta.selectionEnd=ls;});}else{const nv=val.substring(0,pos)+'\n• '+val.substring(pos);set(nv);df?.();requestAnimationFrame(()=>{ta.selectionStart=ta.selectionEnd=pos+3;});}}}};
+const bk=(e,val,set,df)=>{if(e.nativeEvent?.isComposing||e.isComposing)return;const ta=e.target,pos=ta.selectionStart;if(e.key==='*'){const ls=val.lastIndexOf('\n',pos-1)+1;if(val.substring(ls,pos).trim()===''){e.preventDefault();const nv=val.substring(0,ls)+'• '+val.substring(pos);set(nv);df?.();requestAnimationFrame(()=>{ta.selectionStart=ta.selectionEnd=ls+2;});}}if(e.key==='Enter'){const lines=val.substring(0,pos).split('\n'),cl=lines[lines.length-1];if(cl.startsWith('• ')){e.preventDefault();if(cl.trim()==='•'){const ls=pos-cl.length;const nv=val.substring(0,ls)+val.substring(pos);set(nv);df?.();requestAnimationFrame(()=>{ta.selectionStart=ta.selectionEnd=ls;});}else{const nv=val.substring(0,pos)+'\n• '+val.substring(pos);set(nv);df?.();requestAnimationFrame(()=>{ta.selectionStart=ta.selectionEnd=pos+3;});}}}};
 const ls={display:"block",fontSize:12,fontWeight:500,color:C.tt,marginBottom:6};
 const is={width:"100%",padding:"9px 12px",borderRadius:8,border:"1px solid "+C.bd,fontSize:14,color:C.tp,background:C.sf,outline:"none",fontFamily:"inherit"};
 const IcBack=()=>(<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>);
@@ -106,6 +106,18 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
   const chapterData=Object.entries(chapterMap).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([name,count],i)=>({name,count,fill:REASON_COLORS[i%REASON_COLORS.length]}));
 
   const updHw=async(hwId,key,val)=>{await supabase.from('homework').update({[key]:val}).eq('id',hwId);setLessons(prev=>prev.map(l=>({...l,homework:(l.homework||[]).map(h=>h.id===hwId?{...h,[key]:val}:h)})));};
+  const materialize=async(l,viewDate)=>{
+    const{data,error}=await supabase.from('lessons').insert({student_id:l.student_id,date:viewDate,start_hour:l.start_hour,start_min:l.start_min,duration:l.duration,subject:l.subject,topic:"",is_recurring:false,recurring_day:null,user_id:user.id}).select('*, homework(*), files(*)').single();
+    if(error||!data)return null;
+    const exc=[...(l.recurring_exceptions||[]),viewDate];
+    await supabase.from('lessons').update({recurring_exceptions:exc}).eq('id',l.id);
+    setLessons(p=>[...p.map(x=>x.id===l.id?{...x,recurring_exceptions:exc}:x),data]);
+    return data;
+  };
+  const openLesson=async(l,viewDate)=>{
+    if(l.is_recurring&&l.date!==viewDate){const d=await materialize(l,viewDate);if(d)setLesDetailData(d);}
+    else setLesDetailData(l);
+  };
   const addWrong=async()=>{if(!wForm.problem_num.trim())return;const{data,error}=await supabase.from('wrong_answers').insert({student_id:s.id,...wForm,user_id:user.id}).select().single();if(!error&&data){setWrongs(p=>[data,...p]);setWForm(f=>({...f,problem_num:"",reason:"",note:""}));setWPage(0);}};
   const delWrong=async(id)=>{await supabase.from('wrong_answers').delete().eq('id',id);setWrongs(p=>p.filter(w=>w.id!==id));};
   const addRp=async()=>{if(!nT.trim())return;const{data,error}=await supabase.from('reports').insert({student_id:s.id,title:nT,body:nB,is_shared:nS,date:fd(new Date()),user_id:user.id}).select().single();if(!error&&data){setReports(p=>[data,...p]);setNT("");setNB("");setNS(false);setShowNew(false);}};
@@ -283,7 +295,7 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
                   const dl=date?gLD(date):[];
                   const isSat=i%7===5,isSun=i%7===6;
                   return(
-                    <div key={i} onClick={()=>{if(dl.length===1)setLesDetailData(dl[0]);}} style={{textAlign:"center",padding:"6px 2px",minHeight:52,borderRadius:8,background:isToday?C.as:"transparent",cursor:dl.length===1?"pointer":"default",opacity:c.cur?1:.3}}>
+                    <div key={i} onClick={()=>{if(dl.length===1&&date)openLesson(dl[0],fd(date));}} style={{textAlign:"center",padding:"6px 2px",minHeight:52,borderRadius:8,background:isToday?C.as:"transparent",cursor:dl.length===1?"pointer":"default",opacity:c.cur?1:.3}}>
                       <div style={{fontSize:13,fontWeight:isToday?700:400,width:isToday?28:undefined,height:isToday?28:undefined,lineHeight:isToday?"28px":undefined,borderRadius:"50%",background:isToday?C.ac:"transparent",color:isToday?"#fff":isSun?"#DC2626":isSat?C.ac:C.tp,display:"inline-flex",alignItems:"center",justifyContent:"center",margin:"0 auto"}}>{c.d}</div>
                       {dl.length>0&&(<div style={{display:"flex",gap:3,justifyContent:"center",marginTop:4}}>
                         {dl.slice(0,3).map((_,j)=><div key={j} style={{width:6,height:6,borderRadius:"50%",background:col.b}}/>)}
@@ -303,7 +315,7 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
                 <div style={{fontSize:13,fontWeight:600,color:C.tp,marginBottom:10}}>{cm+1}월 수업 목록</div>
                 <div style={{display:"flex",flexDirection:"column",gap:6}}>
                   {upcoming.map((l,i)=>(
-                    <div key={l.id+"-"+l._d+"-"+i} onClick={()=>setLesDetailData(l)} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",background:C.sf,border:"1px solid "+C.bd,borderRadius:10,cursor:"pointer",borderLeft:"3px solid "+col.b}} className="hcard">
+                    <div key={l.id+"-"+l._d+"-"+i} onClick={()=>openLesson(l,l._d)} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",background:C.sf,border:"1px solid "+C.bd,borderRadius:10,cursor:"pointer",borderLeft:"3px solid "+col.b}} className="hcard">
                       <span style={{fontSize:12,color:C.tt,minWidth:70}}>{l._d}</span>
                       <span style={{fontSize:12,color:C.ts}}>{p2(l.start_hour)}:{p2(l.start_min)}</span>
                       <span style={{fontSize:13,fontWeight:600,color:C.tp,flex:1}}>{l.topic||l.subject||"-"}</span>
@@ -399,12 +411,13 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
                       return(
                         <div key={h.id} style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:12,padding:"14px 18px"}}>
                           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-                            <span style={{fontSize:14,fontWeight:600,color:C.tp}}>{h.title||"숙제"}</span>
+                            <input value={h.title||""} onChange={e=>updHw(h.id,"title",e.target.value)} style={{fontSize:14,fontWeight:600,color:C.tp,border:"none",outline:"none",background:"transparent",padding:0,fontFamily:"inherit",minWidth:0,flex:1}} placeholder="숙제" disabled={isParent}/>
                             <span style={{fontSize:10,background:pb,color:pc,padding:"2px 8px",borderRadius:5,fontWeight:600}}>{sl}</span>
                           </div>
                           <div style={{display:"flex",alignItems:"center",gap:10}}>
-                            <div onMouseDown={barDrag} style={{flex:1,height:10,background:C.bl,borderRadius:5,overflow:"hidden",cursor:isParent?"default":"pointer",position:"relative"}}>
+                            <div onMouseDown={barDrag} style={{flex:1,height:10,background:C.bl,borderRadius:5,cursor:isParent?"default":"pointer",position:"relative"}}>
                               <div style={{height:"100%",width:pct+"%",background:pc,borderRadius:5,transition:"width .15s",pointerEvents:"none"}}/>
+                              <div style={{position:"absolute",top:"50%",left:pct+"%",transform:"translate(-50%,-50%)",width:18,height:18,borderRadius:"50%",background:"#fff",border:"3px solid "+pc,boxShadow:"0 1px 4px rgba(0,0,0,.15)",pointerEvents:"none",transition:"left .15s"}}/>
                             </div>
                             <span style={{fontSize:13,fontWeight:700,color:pc,minWidth:36,textAlign:"right"}}>{pct}%</span>
                           </div>

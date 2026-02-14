@@ -63,7 +63,8 @@ export default function Schedule({menuBtn}){
   const[students,setStudents]=useState([]);
   const[loading,setLoading]=useState(true);
   const[mOpen,setMO]=useState(false);const[eLes,setEL]=useState(null);const[dLes,setDL]=useState(null);
-  const[stH,setStH]=useState(9);const[enH,setEnH]=useState(22);
+  const[stH,setStH]=useState(()=>{try{const v=localStorage.getItem('sch_stH');return v?+v:9;}catch{return 9;}});
+  const[enH,setEnH]=useState(()=>{try{const v=localStorage.getItem('sch_enH');return v?+v:22;}catch{return 22;}});
   const[dcState,setDC]=useState(null);
   const gridRef=useRef(null);const dragRef=useRef(null);const movedRef=useRef(false);
   const today=new Date();const wk=gwd(cur);
@@ -138,17 +139,31 @@ export default function Schedule({menuBtn}){
   const y2m=y=>stH*60+Math.round(y/SHT)*SMN;
   const x2d=(x,r)=>{const cw=(r.width-60)/7;return Math.max(0,Math.min(6,Math.floor((x-60)/cw)));};
 
-  const onLD=(e,l)=>{
+  const materialize=async(l,viewDate)=>{
+    const{data,error}=await supabase.from('lessons').insert({student_id:l.student_id,date:viewDate,start_hour:l.start_hour,start_min:l.start_min,duration:l.duration,subject:l.subject,topic:"",is_recurring:false,recurring_day:null,user_id:user.id}).select('*, homework(*), files(*)').single();
+    if(error||!data)return null;
+    const exc=[...(l.recurring_exceptions||[]),viewDate];
+    await supabase.from('lessons').update({recurring_exceptions:exc}).eq('id',l.id);
+    setLessons(p=>[...p.map(x=>x.id===l.id?{...x,recurring_exceptions:exc}:x),data]);
+    return data;
+  };
+  const openDetail=async(lesData,viewDate)=>{
+    let d=lesData;
+    if(lesData.is_recurring&&lesData.date!==viewDate){d=await materialize(lesData,viewDate);if(!d)return;}
+    setDL({...d,sh:d.start_hour,sm:d.start_min,dur:d.duration,sub:d.subject,top:d.topic,rep:d.is_recurring,tMemo:d.private_memo||"",hw:d.homework||[],files:d.files||[]});
+  };
+  const onLD=(e,l,vd)=>{
     if(e.button!==0){e.stopPropagation();return;}e.preventDefault();e.stopPropagation();
     const g=gridRef.current;if(!g)return;const r=g.getBoundingClientRect(),y=e.clientY-r.top+g.scrollTop;
     const cm=y2m(y),lm=l.start_hour*60+l.start_min,off=cm-lm;movedRef.current=false;
+    const viewDate=fd(vd);
     dragRef.current={t:"m",id:l.id,off,r};let lastPos=null;
     const mv=ev=>{movedRef.current=true;const gy=ev.clientY-r.top+g.scrollTop,gx=ev.clientX-r.left;const raw=y2m(gy)-off,sn=s5(raw);const nh=Math.floor(sn/60),nm=sn%60;const di=x2d(gx,r),nd=fd(wk[di]),dw=wk[di].getDay();
       lastPos={start_hour:Math.max(0,Math.min(23,nh)),start_min:Math.max(0,nm),date:nd,recurring_day:l.is_recurring?(dw===0?7:dw):l.recurring_day};
       setLessons(p=>p.map(x=>x.id===l.id?{...x,...lastPos}:x));};
     const up=async()=>{const did=movedRef.current;dragRef.current=null;window.removeEventListener("mousemove",mv);window.removeEventListener("mouseup",up);
       if(!did){
-        const lesData=lessons.find(x=>x.id===l.id);if(lesData)setDL({...lesData,sh:lesData.start_hour,sm:lesData.start_min,dur:lesData.duration,sub:lesData.subject,top:lesData.topic,rep:lesData.is_recurring,tMemo:lesData.private_memo||"",hw:lesData.homework||[],files:lesData.files||[]});
+        const lesData=lessons.find(x=>x.id===l.id);if(lesData)await openDetail(lesData,viewDate);
       }else if(lastPos){
         await supabase.from('lessons').update(lastPos).eq('id',l.id);
       }
@@ -190,9 +205,9 @@ export default function Schedule({menuBtn}){
           {students.slice(0,6).map(st=>{const c=SC[(st.color_index||0)%8];return(<div key={st.id} style={{display:"flex",alignItems:"center",gap:6,padding:"3px 8px",borderRadius:6,background:c.bg,fontSize:11,fontWeight:500,color:c.t}}><div style={{width:7,height:7,borderRadius:"50%",background:c.b}}/>{st.name}</div>);})}
           <span style={{fontSize:10,color:C.tt,background:C.sfh,padding:"3px 8px",borderRadius:4}}>좌클릭: 상세 · 우클릭: 수정 · 드래그: 이동/생성</span>
           <div style={{display:"flex",alignItems:"center",gap:4,marginLeft:"auto",fontSize:11,color:C.ts}}>
-            <select value={stH} onChange={e=>{const v=+e.target.value;setStH(v);if(v>=enH)setEnH(v+1);}} style={{padding:"2px 4px",borderRadius:4,border:`1px solid ${C.bd}`,fontSize:11,color:C.ts,background:C.sf,fontFamily:"inherit",cursor:"pointer"}}>{Array.from({length:24},(_,i)=>i).map(h=><option key={h} value={h}>{p2(h)}:00</option>)}</select>
+            <select value={stH} onChange={e=>{const v=+e.target.value;setStH(v);localStorage.setItem('sch_stH',v);if(v>=enH){setEnH(v+1);localStorage.setItem('sch_enH',v+1);}}} style={{padding:"2px 4px",borderRadius:4,border:`1px solid ${C.bd}`,fontSize:11,color:C.ts,background:C.sf,fontFamily:"inherit",cursor:"pointer"}}>{Array.from({length:24},(_,i)=>i).map(h=><option key={h} value={h}>{p2(h)}:00</option>)}</select>
             <span>~</span>
-            <select value={enH} onChange={e=>setEnH(+e.target.value)} style={{padding:"2px 4px",borderRadius:4,border:`1px solid ${C.bd}`,fontSize:11,color:C.ts,background:C.sf,fontFamily:"inherit",cursor:"pointer"}}>{Array.from({length:24-stH},(_,i)=>i+stH+1).map(h=><option key={h} value={h}>{p2(h)}:00</option>)}</select>
+            <select value={enH} onChange={e=>{const v=+e.target.value;setEnH(v);localStorage.setItem('sch_enH',v);}} style={{padding:"2px 4px",borderRadius:4,border:`1px solid ${C.bd}`,fontSize:11,color:C.ts,background:C.sf,fontFamily:"inherit",cursor:"pointer"}}>{Array.from({length:24-stH},(_,i)=>i+stH+1).map(h=><option key={h} value={h}>{p2(h)}:00</option>)}</select>
           </div>
         </div>
       </div>
@@ -225,7 +240,7 @@ export default function Schedule({menuBtn}){
                 )}
                 {dl.map(l=>{const co=gCo(l.student_id);const st=getStu(l.student_id);const tp=((l.start_hour*60+l.start_min)-stH*60)/SMN*SHT;const hp=Math.max(l.duration/SMN*SHT,SHT);
                   return(
-                    <div key={l.id} className="lb" onMouseDown={e=>onLD(e,l)} onContextMenu={e=>onRC(e,l,date)} style={{position:"absolute",top:tp,left:3,right:3,height:hp-2,borderRadius:8,background:co.bg,borderLeft:`3px solid ${co.b}`,padding:"4px 8px",overflow:"hidden",zIndex:3}}>
+                    <div key={l.id} className="lb" onMouseDown={e=>onLD(e,l,date)} onContextMenu={e=>onRC(e,l,date)} style={{position:"absolute",top:tp,left:3,right:3,height:hp-2,borderRadius:8,background:co.bg,borderLeft:`3px solid ${co.b}`,padding:"4px 8px",overflow:"hidden",zIndex:3}}>
                       <div style={{display:"flex",alignItems:"center",gap:4}}><span style={{fontSize:11,fontWeight:600,color:co.t}}>{st?.name||""}</span>{(l.homework||[]).length>0&&<span style={{fontSize:9,background:co.t,color:co.bg,borderRadius:4,padding:"0 4px",fontWeight:600}}>{(l.homework||[]).length}</span>}</div>
                       {hp>32&&<div style={{fontSize:10,color:co.t,opacity:.7,marginTop:1}}>{l.topic||""}</div>}
                       {hp>48&&<div style={{fontSize:10,color:co.t,opacity:.6,marginTop:1}}>{p2(l.start_hour)}:{p2(l.start_min)} · {l.duration}분</div>}
