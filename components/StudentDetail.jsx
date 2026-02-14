@@ -42,6 +42,9 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
   const PER_PAGE=20;
   const [showAddScore,setShowAddScore]=useState(false);
   const [scoreForm,setScoreForm]=useState({date:"",score:"",label:""});
+  const [editScore,setEditScore]=useState(null);
+  const [editScoreForm,setEditScoreForm]=useState({date:"",score:"",label:""});
+  useEffect(()=>{if(!editScore)return;const h=e=>{if(e.key==="Escape")setEditScore(null);};window.addEventListener("keydown",h);return()=>window.removeEventListener("keydown",h);},[editScore]);
   const [reasonBook,setReasonBook]=useState("");
   const [chapterBook,setChapterBook]=useState("");
   const [planStrategy,setPlanStrategy]=useState("");
@@ -122,6 +125,8 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
   const delWrong=async(id)=>{await supabase.from('wrong_answers').delete().eq('id',id);setWrongs(p=>p.filter(w=>w.id!==id));};
   const addRp=async()=>{if(!nT.trim())return;const{data,error}=await supabase.from('reports').insert({student_id:s.id,title:nT,body:nB,is_shared:nS,date:fd(new Date()),user_id:user.id}).select().single();if(!error&&data){setReports(p=>[data,...p]);setNT("");setNB("");setNS(false);setShowNew(false);}};
   const addScore=async()=>{if(!scoreForm.score)return;const{data,error}=await supabase.from('scores').insert({student_id:s.id,date:scoreForm.date,score:parseInt(scoreForm.score),label:scoreForm.label,user_id:user.id}).select().single();if(!error&&data){setScores(p=>[...p,data]);setScoreForm({date:"",score:"",label:""});setShowAddScore(false);}};
+  const openEditScore=(sc)=>{setEditScore(sc);setEditScoreForm({date:sc.date||"",score:String(sc.score),label:sc.label||""});};
+  const saveEditScore=async()=>{if(!editScore||!editScoreForm.score)return;const{error}=await supabase.from('scores').update({date:editScoreForm.date,score:parseInt(editScoreForm.score),label:editScoreForm.label}).eq('id',editScore.id);if(!error){setScores(p=>p.map(x=>x.id===editScore.id?{...x,date:editScoreForm.date,score:parseInt(editScoreForm.score),label:editScoreForm.label}:x));setEditScore(null);}};
   const savePlanFields=async()=>{setPlanSaving(true);await supabase.from('students').update({plan_strategy:planStrategy,plan_strength:planStrength,plan_weakness:planWeakness}).eq('id',s.id);setPlanSaving(false);};
   const addPlanComment=async()=>{if(!planComment.trim())return;const{data,error}=await supabase.from('reports').insert({student_id:s.id,title:"",body:planComment,type:"plan",date:fd(new Date()),user_id:user.id}).select().single();if(!error&&data){setPlanComments(p=>[data,...p]);setPlanComment("");}};
   const updatePlanComment=async(id)=>{if(!editCommentText.trim())return;await supabase.from('reports').update({body:editCommentText}).eq('id',id);setPlanComments(p=>p.map(c=>c.id===id?{...c,body:editCommentText}:c));setEditingComment(null);setEditCommentText("");};
@@ -602,9 +607,10 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
                   const mLabel=d?`${d.getMonth()+1}월`:"";
                   const barColor=sc.score>=85?C.su:sc.score>=70?C.wn:C.dn;
                   const barBg=sc.score>=85?C.sb:sc.score>=70?C.wb:C.db;
-                  return(<div key={sc.id} style={{display:"flex",alignItems:"center",gap:12}}>
+                  return(<div key={sc.id} style={{display:"flex",alignItems:"center",gap:12,cursor:isParent?undefined:"pointer",borderRadius:8,padding:"4px 0",transition:"background .15s"}} onClick={()=>{if(!isParent)openEditScore(sc);}} onMouseEnter={e=>{if(!isParent)e.currentTarget.style.background=C.sfh;}} onMouseLeave={e=>{e.currentTarget.style.background="transparent";}}>
                     <div style={{minWidth:70,flexShrink:0}}>
-                      <div style={{fontSize:13,fontWeight:600,color:C.tp}}>{i===0?"최근":sc.label||`${sorted.length-i}차`}</div>
+                      {i===0&&<div style={{fontSize:9,color:C.ac,fontWeight:600,marginBottom:1}}>최근</div>}
+                      <div style={{fontSize:13,fontWeight:600,color:C.tp}}>{sc.label||`${sorted.length-i}차`}</div>
                       <div style={{fontSize:10,color:C.tt}}>{mLabel}</div>
                     </div>
                     <div style={{flex:1,height:28,background:C.bl,borderRadius:6,overflow:"hidden",position:"relative"}}>
@@ -613,12 +619,27 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
                       </div>
                     </div>
                     <div style={{minWidth:44,textAlign:"right",fontSize:15,fontWeight:700,color:barColor}}>{sc.score}<span style={{fontSize:11,fontWeight:500}}>점</span></div>
-                    {!isParent&&<button onClick={()=>delScore(sc.id)} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,fontSize:12,padding:4,flexShrink:0,opacity:.5}} title="삭제">x</button>}
+                    {!isParent&&<button onClick={e=>{e.stopPropagation();delScore(sc.id);}} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,fontSize:12,padding:4,flexShrink:0,opacity:.5}} title="삭제">x</button>}
                   </div>);
                 })}
               </div>
             </div>
           </>)}
+          {/* Edit Score Modal */}
+          {editScore&&!isParent&&(<div style={{position:"fixed",inset:0,zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,.35)"}} onClick={()=>setEditScore(null)}>
+            <div onClick={e=>e.stopPropagation()} style={{background:C.sf,borderRadius:16,width:"100%",maxWidth:380,padding:28,boxShadow:"0 20px 60px rgba(0,0,0,.15)"}}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:20}}><h2 style={{fontSize:18,fontWeight:700,color:C.tp}}>성적 수정</h2><button onClick={()=>setEditScore(null)} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,fontSize:18}}>✕</button></div>
+              <div style={{display:"flex",flexDirection:"column",gap:12}}>
+                <div><label style={ls}>날짜</label><input type="date" value={editScoreForm.date} onChange={e=>setEditScoreForm(p=>({...p,date:e.target.value}))} style={is}/></div>
+                <div><label style={ls}>시험명</label><input value={editScoreForm.label} onChange={e=>setEditScoreForm(p=>({...p,label:e.target.value}))} style={is} placeholder="예: 3월 모의고사"/></div>
+                <div><label style={ls}>점수</label><input type="number" value={editScoreForm.score} onChange={e=>setEditScoreForm(p=>({...p,score:e.target.value}))} style={is} placeholder="100"/></div>
+              </div>
+              <div style={{display:"flex",gap:10,marginTop:20,justifyContent:"flex-end"}}>
+                <button onClick={()=>setEditScore(null)} style={{background:C.sfh,color:C.ts,border:`1px solid ${C.bd}`,borderRadius:8,padding:"10px 20px",fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>취소</button>
+                <button onClick={saveEditScore} style={{background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"10px 24px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>저장</button>
+              </div>
+            </div>
+          </div>)}
         </div>);})()}
 
         {/* PLAN */}

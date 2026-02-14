@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { supabase } from '@/lib/supabase'
 
@@ -18,12 +18,29 @@ const CustomTooltip = ({ active, payload }) => {
 export default function ScoresTab({ scores, studentId, onRefresh }) {
   const [showAdd, setShowAdd] = useState(false)
   const [form, setForm] = useState({ date: '', score: '', label: '' })
+  const [editScore, setEditScore] = useState(null)
+  const [editForm, setEditForm] = useState({ date: '', score: '', label: '' })
+
+  useEffect(() => {
+    if (!editScore) return
+    const h = e => { if (e.key === 'Escape') setEditScore(null) }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [editScore])
 
   const addScore = async () => {
     if (!form.score) return
     await supabase.from('scores').insert({ student_id: studentId, ...form, score: parseInt(form.score) })
     setForm({ date: '', score: '', label: '' })
     setShowAdd(false)
+    onRefresh()
+  }
+
+  const openEdit = (sc) => { setEditScore(sc); setEditForm({ date: sc.date || '', score: String(sc.score), label: sc.label || '' }) }
+  const saveEdit = async () => {
+    if (!editScore || !editForm.score) return
+    await supabase.from('scores').update({ date: editForm.date, score: parseInt(editForm.score), label: editForm.label }).eq('id', editScore.id)
+    setEditScore(null)
     onRefresh()
   }
 
@@ -117,8 +134,9 @@ export default function ScoresTab({ scores, studentId, onRefresh }) {
         <div>
           <div className="text-[13px] font-semibold text-tp mb-2.5">시험 기록</div>
           {[...scores].reverse().map((x, i) => (
-            <div key={i} className="flex items-center justify-between px-3.5 py-2.5 rounded-lg mb-1 hover:bg-sfh transition-colors">
+            <div key={i} className="flex items-center justify-between px-3.5 py-2.5 rounded-lg mb-1 hover:bg-sfh transition-colors cursor-pointer" onClick={() => openEdit(x)}>
               <div className="flex items-center gap-2.5">
+                {i === 0 && <span className="text-[9px] font-semibold text-ac">최근</span>}
                 <span className="text-[13px] font-semibold text-tp">{x.label || '-'}</span>
                 <span className="text-xs text-tt">{x.date}</span>
               </div>
@@ -130,6 +148,39 @@ export default function ScoresTab({ scores, studentId, onRefresh }) {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Edit Score Modal */}
+      {editScore && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center" style={{ background: 'rgba(0,0,0,.35)' }} onClick={() => setEditScore(null)}>
+          <div onClick={e => e.stopPropagation()} className="bg-sf rounded-2xl w-full max-w-[380px] p-7 shadow-xl">
+            <div className="flex justify-between mb-5">
+              <h2 className="text-lg font-bold text-tp">성적 수정</h2>
+              <button onClick={() => setEditScore(null)} className="bg-transparent border-none cursor-pointer text-tt text-lg">✕</button>
+            </div>
+            <div className="flex flex-col gap-3">
+              <div>
+                <label className="block text-xs text-tt mb-1">날짜</label>
+                <input type="date" value={editForm.date} onChange={e => setEditForm(p => ({ ...p, date: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg border border-bd text-sm outline-none" />
+              </div>
+              <div>
+                <label className="block text-xs text-tt mb-1">시험명</label>
+                <input value={editForm.label} onChange={e => setEditForm(p => ({ ...p, label: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg border border-bd text-sm outline-none" placeholder="예: 3월 모의고사" />
+              </div>
+              <div>
+                <label className="block text-xs text-tt mb-1">점수</label>
+                <input type="number" value={editForm.score} onChange={e => setEditForm(p => ({ ...p, score: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg border border-bd text-sm outline-none" placeholder="100" />
+              </div>
+            </div>
+            <div className="flex gap-2.5 mt-5 justify-end">
+              <button onClick={() => setEditScore(null)} className="bg-sfh text-ts border border-bd rounded-lg px-5 py-2.5 text-[13px] cursor-pointer">취소</button>
+              <button onClick={saveEdit} className="bg-pr text-white border-none rounded-lg px-6 py-2.5 text-[13px] font-semibold cursor-pointer">저장</button>
+            </div>
+          </div>
         </div>
       )}
     </div>
