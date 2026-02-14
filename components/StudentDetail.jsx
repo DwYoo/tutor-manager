@@ -393,7 +393,11 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
           return(<div>
             <h3 style={{fontSize:16,fontWeight:700,color:C.tp,marginBottom:16}}>숙제 현황</h3>
             {/* Summary stats */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:20}}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:20}}>
+              <div onClick={()=>setHwFilter(null)} style={{background:hwFilter===null?C.sfh:C.sf,border:hwFilter===null?"2px solid "+C.tp:"1px solid "+C.bd,borderRadius:12,padding:"14px 16px",textAlign:"center",cursor:"pointer",opacity:hwFilter===null?1:.5,transition:"all .15s"}}>
+                <div style={{fontSize:22,fontWeight:700,color:C.tp}}>{tHw}</div>
+                <div style={{fontSize:11,color:C.tt,marginTop:2}}>전체</div>
+              </div>
               <div onClick={()=>setHwFilter(hwFilter==="done"?null:"done")} style={{background:C.sb,border:hwFilter==="done"?"2px solid "+C.su:"1px solid #BBF7D0",borderRadius:12,padding:"14px 16px",textAlign:"center",cursor:"pointer",opacity:hwFilter&&hwFilter!=="done"?.5:1,transition:"all .15s"}}>
                 <div style={{fontSize:22,fontWeight:700,color:C.su}}>{dHw}</div>
                 <div style={{fontSize:11,color:C.su,marginTop:2}}>완료</div>
@@ -423,8 +427,8 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
                   <div style={{display:"flex",flexDirection:"column",gap:8}}>
                     {lhw.map(h=>{
                       const pct=h.completion_pct||0;
-                      const pc=pct>=100?C.su:pct>30?C.wn:pct>0?C.lo:C.dn;
-                      const pb=pct>=100?C.sb:pct>30?C.wb:pct>0?C.lob:C.db;
+                      const pc=pct>=100?C.su:pct>30?C.wn:pct>0?"#EA580C":C.dn;
+                      const pb=pct>=100?C.sb:pct>30?C.wb:pct>0?"#FFF7ED":C.db;
                       const sl=pct>=100?"완료":pct>0?"진행중":"미시작";
                       const barDrag=e=>{if(isParent)return;e.preventDefault();const bar=e.currentTarget;const calc=ev=>{const r=bar.getBoundingClientRect();const v=Math.max(0,Math.min(100,Math.round((ev.clientX-r.left)/r.width*10)*10));updHw(h.id,"completion_pct",v);};calc(e);const mv=ev=>calc(ev);const up=()=>{window.removeEventListener("mousemove",mv);window.removeEventListener("mouseup",up);};window.addEventListener("mousemove",mv);window.addEventListener("mouseup",up);};
                       return(
