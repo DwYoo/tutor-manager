@@ -96,6 +96,7 @@ export default function Tuition({menuBtn}){
     setEditId(r.record.id||r.student.id);
     setEditForm({
       fee:r.fee, // 현재 수업료 (자동 or 수동)
+      totalDue:r.totalDue,
       carryover:r.carryover,
       amount:r.paidAmount,
       status:r.record.status||"unpaid",
@@ -105,7 +106,9 @@ export default function Tuition({menuBtn}){
   const cancelEdit=()=>{setEditId(null);setEditForm({});};
 
   const saveEdit=async(studentId,autoFee)=>{
-    const feeVal=parseInt(editForm.fee)||0;
+    const carryoverVal=parseInt(editForm.carryover)||0;
+    const totalDueVal=parseInt(editForm.totalDue)||0;
+    const feeVal=totalDueVal-carryoverVal;
     // fee_override: 자동계산과 다르면 수동값 저장, 같으면 null
     const feeOverride=(feeVal!==autoFee)?feeVal:null;
     const existing=tuitions.find(t=>t.student_id===studentId&&t.month===curMonth);
@@ -113,7 +116,7 @@ export default function Tuition({menuBtn}){
       student_id:studentId,month:curMonth,
       status:editForm.status,
       amount:parseInt(editForm.amount)||0,
-      carryover:parseInt(editForm.carryover)||0,
+      carryover:carryoverVal,
       fee_override:feeOverride,
       memo:editForm.memo,
       paid_date:editForm.paid_date||null,
@@ -187,7 +190,7 @@ export default function Tuition({menuBtn}){
                     <td style={{padding:"10px 12px",fontWeight:600}}>{r.lessonCnt}회</td>
                     <td style={{padding:"10px 12px"}}>
                       {isEditing?(
-                        <input type="number" value={editForm.fee} onChange={e=>setEditForm(p=>({...p,fee:e.target.value}))} style={{...eis,width:100}}/>
+                        <input type="number" value={editForm.fee} onChange={e=>setEditForm(p=>{const feeVal=parseInt(e.target.value)||0;const carryoverVal=parseInt(p.carryover)||0;return{...p,fee:e.target.value,totalDue:feeVal+carryoverVal};})} style={{...eis,width:100}}/>
                       ):(
                         <div>
                           <span style={{fontWeight:500,color:C.tp}}>₩{r.fee.toLocaleString()}</span>
@@ -196,10 +199,12 @@ export default function Tuition({menuBtn}){
                       )}
                     </td>
                     <td style={{padding:"10px 12px"}}>
-                      {isEditing?<input type="number" value={editForm.carryover} onChange={e=>setEditForm(p=>({...p,carryover:e.target.value}))} style={{...eis,width:80}}/>:
+                      {isEditing?<input type="number" value={editForm.carryover} onChange={e=>setEditForm(p=>{const prevCarry=parseInt(p.carryover)||0;const nextCarry=parseInt(e.target.value)||0;const totalDueVal=(parseInt(p.totalDue)||0)+(nextCarry-prevCarry);return{...p,carryover:e.target.value,totalDue:totalDueVal,fee:totalDueVal-nextCarry};})} style={{...eis,width:80}}/>:
                       r.carryover!==0?<><span style={{color:r.carryover>0?C.dn:C.ac,fontWeight:600}}>{r.carryover>0?"+":"−"}₩{Math.abs(r.carryover).toLocaleString()}</span><div style={{fontSize:9,color:r.carryover>0?C.dn:C.ac}}>{r.carryover>0?"미납이월":"결석공제"}</div></>:<span style={{color:C.tt}}>-</span>}
                     </td>
-                    <td style={{padding:"10px 12px",fontWeight:700,color:C.tp}}>₩{r.totalDue.toLocaleString()}</td>
+                    <td style={{padding:"10px 12px",fontWeight:700,color:C.tp}}>
+                      {isEditing?<input type="number" value={editForm.totalDue} onChange={e=>setEditForm(p=>{const totalDueVal=parseInt(e.target.value)||0;const carryoverVal=parseInt(p.carryover)||0;return{...p,totalDue:e.target.value,fee:totalDueVal-carryoverVal};})} style={{...eis,width:95,fontWeight:700}}/>:<>₩{r.totalDue.toLocaleString()}</>}
+                    </td>
                     <td style={{padding:"10px 12px"}}>
                       {isEditing?<input type="number" value={editForm.amount} onChange={e=>setEditForm(p=>({...p,amount:e.target.value}))} style={{...eis,width:90}}/>:
                       <span style={{fontWeight:600,color:r.status==="paid"?C.su:r.status==="partial"?C.wn:C.tt}}>₩{r.paidAmount.toLocaleString()}</span>}
