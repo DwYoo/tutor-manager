@@ -126,7 +126,7 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
   const materialize=async(l,viewDate)=>{
     const{data,error}=await supabase.from('lessons').insert({student_id:l.student_id,date:viewDate,start_hour:l.start_hour,start_min:l.start_min,duration:l.duration,subject:l.subject,topic:"",is_recurring:false,recurring_day:null,user_id:user.id}).select('*, homework(*), files(*)').single();
     if(error||!data)return null;
-    const exc=[...(l.recurring_exceptions||[]),viewDate];
+    const prev=Array.isArray(l.recurring_exceptions)?l.recurring_exceptions:[];const exc=[...prev,viewDate];
     await supabase.from('lessons').update({recurring_exceptions:exc}).eq('id',l.id);
     setLessons(p=>[...p.map(x=>x.id===l.id?{...x,recurring_exceptions:exc}:x),data]);
     return data;
