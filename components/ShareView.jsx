@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { supabase } from '@/lib/supabase';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
 
@@ -23,8 +23,9 @@ export default function ShareView({ token }) {
   const [tab, setTab] = useState("lessons");
   const [expandedLesson, setExpandedLesson] = useState(null);
   const [showHwDetail, setShowHwDetail] = useState(false);
-  const [showProbNum, setShowProbNum] = useState(false);
+  const [showWrongList, setShowWrongList] = useState(false);
   const [chartMode, setChartMode] = useState("grade");
+  const [wExpanded, setWExpanded] = useState({});
 
   useEffect(() => {
     if (!token) return;
@@ -75,6 +76,7 @@ export default function ShareView({ token }) {
   const allHw = pastLessons.flatMap(l => (l.homework || []).map(h => ({ ...h, lesDate: l.date, lesSub: l.subject })));
   const hwDone = allHw.filter(h => (h.completion_pct || 0) >= 100).length;
   const hwInProg = allHw.filter(h => (h.completion_pct || 0) > 0 && (h.completion_pct || 0) < 100).length;
+  const hwNotStarted = allHw.filter(h => (h.completion_pct || 0) === 0).length;
   const hwAvg = allHw.length ? Math.round(allHw.reduce((s, h) => s + (h.completion_pct || 0), 0) / allHw.length) : 0;
 
   // Score stats
@@ -93,6 +95,11 @@ export default function ShareView({ token }) {
   const reasonMap = {};
   wrongs.forEach(w => { const r = w.reason || "미분류"; reasonMap[r] = (reasonMap[r] || 0) + 1; });
   const reasonData = Object.entries(reasonMap).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([name, count], i) => ({ name, count, fill: REASON_COLORS[i % REASON_COLORS.length] }));
+
+  // Group wrongs by book and chapter
+  const wBooks = [...new Set(wrongs.map(w => w.book).filter(Boolean))];
+  const reasonColorMap = {};
+  Object.entries(reasonMap).sort((a, b) => b[1] - a[1]).forEach(([r], i) => { reasonColorMap[r] = REASON_COLORS[i % REASON_COLORS.length]; });
 
   // All files (only from past lessons)
   const lessonFiles = pastLessons.flatMap(l => (l.files || []).map(f => ({ ...f, lesDate: l.date, lesTopic: l.topic || l.subject })));
@@ -210,10 +217,11 @@ export default function ShareView({ token }) {
             )}
           </div>
           {allHw.length === 0 ? <Empty text="숙제 기록이 없습니다" /> : (<>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: showHwDetail ? 16 : 28 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginBottom: showHwDetail ? 16 : 28 }}>
               <StatCard label="평균 완료율" value={hwAvg + "%"} color={C.ac} />
               <StatCard label="완료" value={hwDone + "건"} color={C.su} />
               <StatCard label="진행중" value={hwInProg + "건"} color={C.wn} />
+              <StatCard label="미시작" value={hwNotStarted + "건"} color={C.tt} />
             </div>
             {showHwDetail && (
               <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 28 }}>
@@ -239,14 +247,14 @@ export default function ShareView({ token }) {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
             <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp, margin: 0 }}>오답노트</h3>
             {wrongs.length > 0 && (
-              <button onClick={() => setShowProbNum(!showProbNum)} style={{ padding: "4px 12px", border: "1px solid " + C.bd, borderRadius: 8, background: C.sf, fontSize: 11, color: C.ts, cursor: "pointer", fontFamily: "inherit" }}>
-                {showProbNum ? "번호 숨김" : "번호 보기"}
+              <button onClick={() => setShowWrongList(!showWrongList)} style={{ padding: "4px 12px", border: "1px solid " + C.bd, borderRadius: 8, background: C.sf, fontSize: 11, color: C.ts, cursor: "pointer", fontFamily: "inherit" }}>
+                {showWrongList ? "리스트 숨김" : "리스트 보기"}
               </button>
             )}
           </div>
           {wrongs.length === 0 ? <Empty text="오답 기록이 없습니다" /> : (<>
             {reasonData.length > 0 && (
-              <div style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 14, padding: 20, marginBottom: 16 }}>
+              <div style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 14, padding: 20, marginBottom: showWrongList ? 16 : 28 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: C.tp, marginBottom: 12 }}>오답 유형 분포</div>
                 <div style={{ height: 180 }}>
                   <ResponsiveContainer width="100%" height="100%">
@@ -266,31 +274,68 @@ export default function ShareView({ token }) {
                 </div>
               </div>
             )}
-            <div style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 14, overflow: "hidden" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                <thead>
-                  <tr style={{ borderBottom: "1px solid " + C.bd }}>
-                    {["교재", "단원", ...(showProbNum ? ["번호"] : []), "틀린 이유", "메모"].map(h => (
-                      <th key={h} style={{ padding: "10px 12px", textAlign: "left", fontWeight: 600, color: C.tt, fontSize: 11 }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {wrongs.slice(0, 50).map(w => (
-                    <tr key={w.id} style={{ borderBottom: "1px solid " + C.bl }}>
-                      <td style={{ padding: "10px 12px", color: C.tp, fontWeight: 500 }}>{w.book}</td>
-                      <td style={{ padding: "10px 12px", color: C.ts }}>{w.chapter}</td>
-                      {showProbNum && <td style={{ padding: "10px 12px", color: C.ts }}>{w.problem_num}</td>}
-                      <td style={{ padding: "10px 12px" }}>
-                        {w.reason && <span style={{ background: C.as, color: C.ac, padding: "2px 8px", borderRadius: 4, fontSize: 11 }}>{w.reason}</span>}
-                      </td>
-                      <td style={{ padding: "10px 12px", color: C.ts, maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{w.note}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {wrongs.length > 50 && <div style={{ padding: 12, textAlign: "center", fontSize: 12, color: C.tt }}>외 {wrongs.length - 50}건 더</div>}
-            </div>
+            {showWrongList && (
+              <div style={{ marginBottom: 28 }}>
+                {[...wBooks, ...(wrongs.some(w => !w.book) ? [""] : [])].map(book => {
+                  const bk = book || "__no_book__";
+                  const items = [...wrongs.filter(w => book ? w.book === book : !w.book)].sort((a, b) => {
+                    const ac = a.chapter || "", bc = b.chapter || "";
+                    if (ac !== bc) return ac.localeCompare(bc, undefined, { numeric: true });
+                    const an = parseInt(a.problem_num) || 0, bn = parseInt(b.problem_num) || 0;
+                    return an - bn;
+                  });
+                  const exp = wExpanded[bk] !== false;
+                  return (
+                    <div key={bk} style={{ marginBottom: 12 }}>
+                      <div onClick={() => setWExpanded(p => ({ ...p, [bk]: !exp }))} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: C.sfh, borderRadius: 10, cursor: "pointer", marginBottom: exp ? 8 : 0 }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: book ? C.tp : C.tt }}>{book || "교재명 미지정"} <span style={{ fontWeight: 400, color: C.tt }}>({items.length})</span></span>
+                        <span style={{ fontSize: 12, color: C.tt }}>{exp ? "▲" : "▼"}</span>
+                      </div>
+                      {exp && (() => {
+                        const uCh = [];
+                        const seen = new Set();
+                        items.forEach(w => { const ch = w.chapter || ""; if (!seen.has(ch)) { seen.add(ch); uCh.push(ch); } });
+                        return (
+                          <div style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 10, overflow: "hidden" }}>
+                            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                              <thead><tr>{["번호", "사유", "메모"].map((h) => (<th key={h} style={{ padding: "8px 10px", textAlign: "left", color: C.tt, fontWeight: 500, borderBottom: "1px solid " + C.bd }}>{h}</th>))}</tr></thead>
+                              <tbody>{uCh.map(ch => {
+                                const ck = bk + "::" + (ch || "__no_ch__");
+                                const chExp = wExpanded[ck] !== false;
+                                const chItems = items.filter(w => (w.chapter || "") === ch);
+                                return (
+                                  <Fragment key={ck}>
+                                    <tr onClick={() => setWExpanded(p => ({ ...p, [ck]: !chExp }))} style={{ cursor: "pointer" }}>
+                                      <td colSpan={3} style={{ padding: "7px 8px", background: C.bl, borderBottom: "1px solid " + C.bd }}>
+                                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                          <span style={{ fontSize: 12, fontWeight: 500, color: ch ? C.ts : C.tt }}>{ch || "단원 미지정"}</span>
+                                          <span style={{ fontSize: 10, color: C.tt }}>({chItems.length})</span>
+                                          <span style={{ fontSize: 10, color: C.tt, marginLeft: "auto" }}>{chExp ? "▲" : "▼"}</span>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                    {chExp && chItems.map(w => {
+                                      const rc = reasonColorMap[w.reason || "미분류"] || "#888";
+                                      return (
+                                        <tr key={w.id} style={{ borderBottom: "1px solid " + C.bl }}>
+                                          <td style={{ padding: "6px 10px", fontWeight: 600, color: C.tp, fontSize: 12 }}>{w.problem_num}</td>
+                                          <td style={{ padding: "6px 10px" }}>{w.reason && <span style={{ background: rc + "20", color: rc, padding: "2px 8px", borderRadius: 5, fontSize: 10, fontWeight: 600 }}>{w.reason}</span>}</td>
+                                          <td style={{ padding: "6px 10px", color: C.ts, fontSize: 12 }}>{w.note || "-"}</td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </Fragment>
+                                );
+                              })}</tbody>
+                            </table>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </>)}
         </div>)}
 
@@ -309,21 +354,23 @@ export default function ShareView({ token }) {
             <SwotCard label="⚠️ 위협 (T)" bg={C.wb} border="#FDE68A" color="#B45309" text={s.plan_threat} />
           </div>
 
-          {/* Reports */}
-          <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp, marginBottom: 12 }}>학습 리포트</h3>
-          {planComments.length === 0 && reports.length === 0 ? <Empty text="리포트가 없습니다" /> : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 }}>
-              {[...planComments, ...reports].sort((a, b) => (b.date || "").localeCompare(a.date || "")).map(r => (
-                <div key={r.id} style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 14, padding: 18 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: C.tp }}>{r.title || "리포트"}</span>
-                    <span style={{ fontSize: 12, color: C.tt }}>{r.date}</span>
+          {/* Recent Report */}
+          {(() => {
+            const allReports = [...planComments, ...reports].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+            const recentReport = allReports[0];
+            return recentReport ? (
+              <div style={{ marginBottom: 24 }}>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp, marginBottom: 12 }}>최근 학습 리포트</h3>
+                <div style={{ background: C.sf, border: "2px solid " + C.ac, borderRadius: 14, padding: 20 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                    <span style={{ fontSize: 15, fontWeight: 700, color: C.tp }}>{recentReport.title || "리포트"}</span>
+                    <span style={{ fontSize: 12, color: C.tt }}>{recentReport.date}</span>
                   </div>
-                  <div style={{ fontSize: 13, color: C.ts, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{r.body}</div>
+                  <div style={{ fontSize: 14, color: C.tp, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{recentReport.body}</div>
                 </div>
-              ))}
-            </div>
-          )}
+              </div>
+            ) : null;
+          })()}
 
           {/* Scores (moved to bottom) */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
@@ -384,6 +431,28 @@ export default function ShareView({ token }) {
               </>
             )}
           </>)}
+
+          {/* Past Reports (below scores chart) */}
+          {(() => {
+            const allReports = [...planComments, ...reports].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+            const pastReports = allReports.slice(1); // All reports except the most recent one
+            return pastReports.length > 0 ? (
+              <div style={{ marginTop: 24 }}>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp, marginBottom: 12 }}>과거 학습 리포트</h3>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  {pastReports.map(r => (
+                    <div key={r.id} style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 14, padding: 18 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: C.tp }}>{r.title || "리포트"}</span>
+                        <span style={{ fontSize: 12, color: C.tt }}>{r.date}</span>
+                      </div>
+                      <div style={{ fontSize: 13, color: C.ts, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{r.body}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null;
+          })()}
         </div>)}
 
         {/* === 자료실 === */}
