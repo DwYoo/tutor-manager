@@ -91,6 +91,9 @@ export default function Tuition({menuBtn}){
     return{month:(d.getMonth()+1)+"월",income:sum};
   });
 
+  /* Auto status */
+  const autoStatus=(amt,due)=>amt>=due?"paid":amt>0?"partial":"unpaid";
+
   /* CRUD */
   const startEdit=(r)=>{
     setEditId(r.record.id||r.student.id);
@@ -98,7 +101,7 @@ export default function Tuition({menuBtn}){
       totalDue:r.totalDue,
       carryover:r.carryover,
       amount:r.paidAmount,
-      status:r.record.status||"unpaid",
+      status:autoStatus(r.paidAmount,r.totalDue),
       memo:r.record.memo||"",
     });
   };
@@ -193,7 +196,7 @@ export default function Tuition({menuBtn}){
                     </td>
                     <td style={{padding:"10px 12px"}}>
                       {isEditing?(
-                        <input type="number" value={editForm.totalDue} onChange={e=>{const td=e.target.value;const t=parseInt(td)||0;const a=parseInt(editForm.amount)||0;setEditForm(p=>({...p,totalDue:td,status:a>=t&&t>0?"paid":a>0?"partial":"unpaid"}));}} style={{...eis,width:100}}/>
+                        <input type="number" value={editForm.totalDue} onChange={e=>{const td=e.target.value;const t=parseInt(td)||0;const a=parseInt(editForm.amount)||0;setEditForm(p=>({...p,totalDue:td,status:autoStatus(a,t)}));}} style={{...eis,width:100}}/>
                       ):(
                         <div>
                           <span style={{fontWeight:700,color:C.tp}}>₩{r.totalDue.toLocaleString()}</span>
@@ -202,7 +205,7 @@ export default function Tuition({menuBtn}){
                       )}
                     </td>
                     <td style={{padding:"10px 12px"}}>
-                      {isEditing?<input type="number" value={editForm.amount} onChange={e=>{const amt=e.target.value;const a=parseInt(amt)||0;const t=parseInt(editForm.totalDue)||0;setEditForm(p=>({...p,amount:amt,status:a>=t&&t>0?"paid":a>0?"partial":"unpaid"}));}} style={{...eis,width:90}}/>:
+                      {isEditing?<input type="number" value={editForm.amount} onChange={e=>{const amt=e.target.value;const a=parseInt(amt)||0;const t=parseInt(editForm.totalDue)||0;setEditForm(p=>({...p,amount:amt,status:autoStatus(a,t)}));}} style={{...eis,width:90}}/>:
                       <span style={{fontWeight:600,color:r.status==="paid"?C.su:r.status==="partial"?C.wn:C.tt}}>₩{r.paidAmount.toLocaleString()}</span>}
                     </td>
                     <td style={{padding:"10px 12px"}}>
