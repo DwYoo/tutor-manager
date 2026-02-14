@@ -406,7 +406,7 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
                       <div style={{fontSize:13,fontWeight:isToday?700:400,color:isToday?C.ac:isSun?"#DC2626":isSat?C.ac:C.tp,marginBottom:4}}>{c.d}</div>
                       {dl.length>0&&dl.map(l=>(
                         <div key={l.id} onClick={()=>openLesson(l,fd(date))} style={{fontSize:9,padding:"2px 4px",borderRadius:4,fontWeight:500,marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",background:col.bg,color:col.t,cursor:"pointer"}}>
-                          {p2(l.start_hour||0)}:{p2(l.start_min||0)} {l.topic||l.subject}
+                          {p2(l.start_hour||0)}:{p2(l.start_min||0)}<span className="cal-lesson-text"> {l.topic||l.subject}</span>
                         </div>
                       ))}
                     </div>

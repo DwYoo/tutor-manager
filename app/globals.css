@@ -107,3 +107,13 @@ input, textarea, select {
     -webkit-overflow-scrolling: touch;
   }
 }
+
+/* Hide lesson titles on mobile in mini calendars */
+@media (max-width: 768px) {
+  .cal-lesson-text {
+    display: none !important;
+  }
+  .cal-cell {
+    min-height: 52px !important;
+  }
+}

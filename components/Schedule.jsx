@@ -78,7 +78,7 @@ export default function Schedule({menuBtn}){
   const[animKey,setAnim]=useState(0);
   const[activeStu,setActive]=useState(null);
   const[durPresets,setDP]=useState(()=>{try{const v=localStorage.getItem('sch_durPresets');return v?JSON.parse(v):[120,150,180];}catch{return [120,150,180];}});
-  const[dpEdit,setDPE]=useState(false);
+  const[dpEdit,setDPE]=useState(false);const[compact,setCompact]=useState(false);
   const gridRef=useRef(null);const dragRef=useRef(null);const movedRef=useRef(false);const swipeRef=useRef(null);
   const today=new Date();const wk=gwd(cur);
   const hrs=Array.from({length:enH-stH},(_,i)=>i+stH);const tH=(enH-stH)*4*SHT;
@@ -96,6 +96,7 @@ export default function Schedule({menuBtn}){
     setLoading(false);
   },[]);
   useEffect(()=>{fetchData();},[fetchData]);
+  useEffect(()=>{const mq=window.matchMedia('(max-width:768px)');if(mq.matches)setCompact(true);},[]);
 
   const nW=d=>{setSlide(d>0?'r':'l');setAnim(k=>k+1);if(viewMode==='month'){const t=new Date(cur);t.setMonth(t.getMonth()+d);setCur(t);}else{const t=new Date(cur);t.setDate(t.getDate()+d*7);setCur(t);}};
   const gL=date=>{const ds=fd(date),dw=date.getDay()===0?7:date.getDay();return lessons.filter(l=>{const ld=(l.date||"").slice(0,10);if(l.is_recurring&&l.recurring_exceptions&&l.recurring_exceptions.includes(ds))return false;if(ld===ds)return true;if(l.is_recurring&&+l.recurring_day===dw){if(ds<ld)return false;if(l.recurring_end_date&&ds>=(l.recurring_end_date+"").slice(0,10))return false;return true;}return false;});};
@@ -272,6 +273,7 @@ export default function Schedule({menuBtn}){
               <button onClick={()=>changeViewMode('week')} style={{padding:"5px 10px",fontSize:11,fontWeight:viewMode==='week'?700:500,border:"none",cursor:"pointer",fontFamily:"inherit",background:viewMode==='week'?C.pr:'transparent',color:viewMode==='week'?'#fff':C.ts,minHeight:44}}>주간</button>
               <button onClick={()=>changeViewMode('month')} style={{padding:"5px 10px",fontSize:11,fontWeight:viewMode==='month'?700:500,border:"none",cursor:"pointer",fontFamily:"inherit",background:viewMode==='month'?C.pr:'transparent',color:viewMode==='month'?'#fff':C.ts,borderLeft:`1px solid ${C.bd}`,minHeight:44}}>월간</button>
             </div>
+            {viewMode==='month'&&<button onClick={()=>setCompact(!compact)} style={{padding:"5px 10px",fontSize:11,fontWeight:500,border:`1px solid ${C.bd}`,cursor:"pointer",fontFamily:"inherit",background:compact?C.al:'transparent',color:compact?C.ac:C.ts,borderRadius:8,minHeight:44}}>{compact?"확대":"축소"}</button>}
             <button onClick={()=>{setEL(null);setMO(true);}} style={{display:"flex",alignItems:"center",gap:4,background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"7px 16px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",minHeight:44}}><IcP/> 수업 추가</button>
           </div>
         </div>
@@ -298,17 +300,18 @@ export default function Schedule({menuBtn}){
           <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:0,border:`1px solid ${C.bd}`,borderRadius:12,overflow:"hidden",background:C.sf}}>
             {DK.map(d=><div key={d} style={{padding:"8px 0",textAlign:"center",fontSize:12,fontWeight:600,color:C.tt,background:C.sfh,borderBottom:`1px solid ${C.bd}`}}>{d}</div>)}
             {mDays.map((d,i)=>{const isM=d.getMonth()===cm;const it=sdy(d,today);const ds=fd(d);const dl=gL(d);const cnt=dl.filter(l=>effSt(l,ds)!=='cancelled'&&(!activeStu||l.student_id===activeStu)).length;
-              return(<div key={i} onClick={()=>{setCur(d);changeViewMode('week');}} style={{minHeight:90,padding:6,borderRight:(i%7<6)?`1px solid ${C.bl}`:"none",borderBottom:`1px solid ${C.bl}`,background:it?C.as:isM?"transparent":"#FAFAF8",cursor:"pointer",transition:"background .1s"}} onMouseEnter={e=>e.currentTarget.style.background=it?C.as:C.sfh} onMouseLeave={e=>e.currentTarget.style.background=it?C.as:isM?"transparent":"#FAFAF8"}>
+              return(<div key={i} onClick={()=>{setCur(d);changeViewMode('week');}} style={{minHeight:compact?44:90,padding:compact?4:6,borderRight:(i%7<6)?`1px solid ${C.bl}`:"none",borderBottom:`1px solid ${C.bl}`,background:it?C.as:isM?"transparent":"#FAFAF8",cursor:"pointer",transition:"background .1s"}} onMouseEnter={e=>e.currentTarget.style.background=it?C.as:C.sfh} onMouseLeave={e=>e.currentTarget.style.background=it?C.as:isM?"transparent":"#FAFAF8"}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
                   <span style={{fontSize:13,fontWeight:it?700:isM?500:400,color:it?C.ac:isM?C.tp:C.tt,width:it?24:undefined,height:it?24:undefined,borderRadius:"50%",background:it?C.ac:"transparent",color:it?"#fff":isM?C.tp:C.tt,display:"inline-flex",alignItems:"center",justifyContent:"center"}}>{d.getDate()}</span>
                   {cnt>0&&<span style={{fontSize:10,fontWeight:600,color:C.ac,background:C.al,borderRadius:4,padding:"1px 5px"}}>{cnt}건</span>}
                 </div>
-                {isM&&<div style={{display:"flex",flexDirection:"column",gap:2}}>
+                {isM&&!compact&&<div style={{display:"flex",flexDirection:"column",gap:2}}>
                   {dl.sort((a,b)=>(a.start_hour*60+a.start_min)-(b.start_hour*60+b.start_min)).slice(0,3).map(l=>{const co=gCo(l.student_id);const st=getStu(l.student_id);const ls=effSt(l,ds);const isCan=ls==='cancelled';const dim=activeStu&&l.student_id!==activeStu;return(
                     <div key={l.id} style={{fontSize:10,padding:"1px 4px",borderRadius:4,background:isCan||dim?C.sfh:co.bg,color:isCan||dim?C.tt:co.t,fontWeight:500,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",opacity:isCan?.5:dim?.3:1,textDecoration:isCan?'line-through':'none'}}>{p2(l.start_hour)}:{p2(l.start_min)} {st?.name||""}{ls==='completed'?' ✓':''}</div>);
                   })}
                   {dl.length>3&&<div style={{fontSize:9,color:C.tt,paddingLeft:4}}>+{dl.length-3}건</div>}
                 </div>}
+                {isM&&compact&&cnt>0&&<div style={{display:"flex",gap:3,flexWrap:"wrap",marginTop:2}}>{dl.filter(l=>(!activeStu||l.student_id===activeStu)&&effSt(l,ds)!=='cancelled').slice(0,4).map((l,idx)=>{const co=gCo(l.student_id);return <div key={l.id+'-'+idx} style={{width:6,height:6,borderRadius:"50%",background:co.b}}/>;})}{dl.filter(l=>(!activeStu||l.student_id===activeStu)&&effSt(l,ds)!=='cancelled').length>4&&<span style={{fontSize:8,color:C.tt}}>+</span>}</div>}
               </div>);
             })}
           </div>

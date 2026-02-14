@@ -335,6 +335,7 @@ export default function ShareView({ token }) {
                       {cells.map((c, i) => (
                         <div
                           key={i}
+                          className="cal-cell"
                           style={{
                             minHeight: 72,
                             padding: 6,
@@ -362,7 +363,7 @@ export default function ShareView({ token }) {
                                     color: col.t,
                                   }}
                                 >
-                                  {p2(l.start_hour || 0)}:{p2(l.start_min || 0)} {l.topic || l.subject}
+                                  {p2(l.start_hour || 0)}:{p2(l.start_min || 0)}<span className="cal-lesson-text"> {l.topic || l.subject}</span>
                                 </div>
                               ))}
                             </div>
