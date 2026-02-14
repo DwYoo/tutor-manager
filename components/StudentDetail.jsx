@@ -10,6 +10,7 @@ const SC=[{bg:"#DBEAFE",t:"#1E40AF",b:"#93C5FD"},{bg:"#FCE7F3",t:"#9D174D",b:"#F
 const REASON_COLORS=["#2563EB","#DC2626","#F59E0B","#16A34A","#8B5CF6","#EC4899","#06B6D4","#F97316"];
 const p2=n=>String(n).padStart(2,"0");
 const fd=d=>d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate());
+const m2s=m=>`${p2(Math.floor(m/60))}:${p2(m%60)}`;
 const ls={display:"block",fontSize:12,fontWeight:500,color:C.tt,marginBottom:6};
 const is={width:"100%",padding:"9px 12px",borderRadius:8,border:"1px solid "+C.bd,fontSize:14,color:C.tp,background:C.sf,outline:"none",fontFamily:"inherit"};
 const IcBack=()=>(<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>);
@@ -183,17 +184,58 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
             <span style={{fontSize:12,color:C.tt}}>총 {lessons.length}회</span>
           </div>
           {lessons.length===0?(<div style={{textAlign:"center",padding:40,color:C.tt,background:C.sf,border:"1px solid "+C.bd,borderRadius:14}}><div style={{fontSize:14}}>수업 기록이 없습니다</div></div>):(
-            <div style={{display:"flex",flexDirection:"column",gap:8}}>
-              {lessons.map(l=>{const hwDone=(l.homework||[]).filter(h=>(h.completion_pct||0)>=100).length;const hwTotal=(l.homework||[]).length;return(
-                <div key={l.id} onClick={()=>setLesDetailData(l)} style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:12,padding:"14px 18px",cursor:"pointer",borderLeft:"3px solid "+col.b}} className="hcard">
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                    <div><span style={{fontSize:14,fontWeight:600,color:C.tp}}>{l.topic||l.subject||"-"}</span><span style={{fontSize:12,color:C.tt,marginLeft:8}}>{l.date} {p2(l.start_hour)}:{p2(l.start_min)}</span></div>
-                    <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                      {hwTotal>0&&<span style={{fontSize:10,background:hwDone===hwTotal?C.sb:C.wb,color:hwDone===hwTotal?C.su:C.wn,padding:"2px 8px",borderRadius:5,fontWeight:600}}>숙제 {hwDone}/{hwTotal}</span>}
-                      {l.content&&<span style={{fontSize:10,background:C.sfh,color:C.ts,padding:"2px 8px",borderRadius:5}}>메모</span>}
+            <div style={{position:"relative",paddingLeft:28}}>
+              <div style={{position:"absolute",left:7,top:16,bottom:16,width:2,background:C.bl}}/>
+              {lessons.map((l,i)=>{
+                const hw=l.homework||[],hwDone=hw.filter(h=>(h.completion_pct||0)>=100).length,hwTotal=hw.length;
+                const em=l.start_hour*60+l.start_min+l.duration;
+                const hasSections=l.content||l.feedback||hwTotal>0||l.plan_shared;
+                return(
+                  <div key={l.id} style={{position:"relative",marginBottom:16}}>
+                    <div style={{position:"absolute",left:-28+3,top:18,width:10,height:10,borderRadius:"50%",background:i===0?col.b:C.bd,border:"2px solid "+C.sf,zIndex:1}}/>
+                    <div onClick={()=>setLesDetailData(l)} style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,overflow:"hidden",cursor:"pointer",borderLeft:"3px solid "+col.b}} className="hcard">
+                      {/* Header */}
+                      <div style={{padding:"16px 20px "+(hasSections?"12px":"16px")}}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+                          <div style={{flex:1}}>
+                            <div style={{fontSize:12,color:C.tt,marginBottom:4}}>{l.date} {p2(l.start_hour)}:{p2(l.start_min)} ~ {m2s(em)} ({l.duration}분)</div>
+                            <div style={{fontSize:16,fontWeight:700,color:C.tp}}>{l.topic||l.subject||"-"}</div>
+                          </div>
+                          <div style={{display:"flex",gap:5,alignItems:"center",flexShrink:0,flexWrap:"wrap",justifyContent:"flex-end"}}>
+                            <span style={{background:col.bg,color:col.t,padding:"3px 10px",borderRadius:6,fontSize:11,fontWeight:600}}>{l.subject||s.subject}</span>
+                            {hwTotal>0&&<span style={{fontSize:10,background:hwDone===hwTotal?C.sb:C.wb,color:hwDone===hwTotal?C.su:C.wn,padding:"3px 8px",borderRadius:5,fontWeight:600}}>숙제 {hwDone}/{hwTotal}</span>}
+                            {l.content&&<span style={{fontSize:10,background:C.sfh,color:C.ts,padding:"3px 8px",borderRadius:5}}>내용</span>}
+                            {l.feedback&&<span style={{fontSize:10,background:C.as,color:C.ac,padding:"3px 8px",borderRadius:5}}>피드백</span>}
+                          </div>
+                        </div>
+                      </div>
+                      {/* Section previews */}
+                      {hasSections&&(<div style={{padding:"0 20px 16px",display:"flex",flexDirection:"column",gap:8}}>
+                        {l.content&&(<div style={{background:C.sfh,borderRadius:10,padding:"10px 14px"}}>
+                          <div style={{fontSize:11,fontWeight:600,color:C.tt,marginBottom:4}}>수업 내용</div>
+                          <div style={{fontSize:13,color:C.ts,lineHeight:1.5,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{l.content}</div>
+                        </div>)}
+                        {l.feedback&&(<div style={{background:C.as,borderRadius:10,padding:"10px 14px"}}>
+                          <div style={{fontSize:11,fontWeight:600,color:C.ac,marginBottom:4}}>피드백</div>
+                          <div style={{fontSize:13,color:C.ts,lineHeight:1.5,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{l.feedback}</div>
+                        </div>)}
+                        {hwTotal>0&&(<div style={{background:C.sfh,borderRadius:10,padding:"10px 14px"}}>
+                          <div style={{fontSize:11,fontWeight:600,color:C.tt,marginBottom:6}}>숙제</div>
+                          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                            {hw.map(h=>{const pct=h.completion_pct||0;const done=pct>=100;return(
+                              <span key={h.id} style={{fontSize:11,padding:"3px 10px",borderRadius:6,fontWeight:500,background:done?C.sb:pct>=50?C.wb:C.db,color:done?C.su:pct>=50?C.wn:C.dn}}>{h.title} {pct}%</span>
+                            );})}
+                          </div>
+                        </div>)}
+                        {l.plan_shared&&(<div style={{background:C.wb,borderRadius:10,padding:"10px 14px"}}>
+                          <div style={{fontSize:11,fontWeight:600,color:C.wn,marginBottom:4}}>다음 수업 계획</div>
+                          <div style={{fontSize:13,color:C.ts,lineHeight:1.5,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{l.plan_shared}</div>
+                        </div>)}
+                      </div>)}
                     </div>
                   </div>
-                </div>);})}
+                );
+              })}
             </div>
           )}
         </div>)}
@@ -233,25 +275,77 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
         </div>)}
 
         {/* HOMEWORK */}
-        {subTab==="homework"&&(<div>
-          <h3 style={{fontSize:16,fontWeight:700,color:C.tp,marginBottom:16}}>숙제 현황</h3>
-          {lessons.filter(l=>(l.homework||[]).length>0).length===0?(<div style={{textAlign:"center",padding:40,color:C.tt,background:C.sf,border:"1px solid "+C.bd,borderRadius:14}}><div style={{fontSize:14}}>숙제가 없습니다</div></div>):(
-            lessons.filter(l=>(l.homework||[]).length>0).map(l=>(<div key={l.id} style={{marginBottom:16}}>
-              <div style={{fontSize:13,fontWeight:600,color:C.tp,marginBottom:8}}>{l.date} · {l.topic||l.subject}</div>
-              {(l.homework||[]).map(h=>{const pct=h.completion_pct||0;return(
-                <div key={h.id} style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:10,padding:"10px 14px",marginBottom:6}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-                    <span style={{fontSize:13,color:C.tp}}>{h.title||"숙제"}</span>
+        {subTab==="homework"&&(()=>{
+          const aHw=lessons.flatMap(l=>(l.homework||[]).map(h=>({...h,_ld:l.date,_lt:l.topic||l.subject})));
+          const tHw=aHw.length,dHw=aHw.filter(h=>(h.completion_pct||0)>=100).length;
+          const pHw=aHw.filter(h=>{const p=h.completion_pct||0;return p>0&&p<100;}).length;
+          const avgP=tHw>0?Math.round(aHw.reduce((a,h)=>a+(h.completion_pct||0),0)/tHw):0;
+          const avgC=avgP>=80?C.su:avgP>=40?C.wn:C.dn;
+          return(<div>
+            <h3 style={{fontSize:16,fontWeight:700,color:C.tp,marginBottom:16}}>숙제 현황</h3>
+            {/* Summary stats */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:20}}>
+              <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:12,padding:"14px 16px",textAlign:"center"}}>
+                <div style={{fontSize:22,fontWeight:700,color:C.tp}}>{tHw}</div>
+                <div style={{fontSize:11,color:C.tt,marginTop:2}}>전체 숙제</div>
+              </div>
+              <div style={{background:C.sb,border:"1px solid #BBF7D0",borderRadius:12,padding:"14px 16px",textAlign:"center"}}>
+                <div style={{fontSize:22,fontWeight:700,color:C.su}}>{dHw}</div>
+                <div style={{fontSize:11,color:C.su,marginTop:2}}>완료</div>
+              </div>
+              <div style={{background:C.wb,border:"1px solid #FDE68A",borderRadius:12,padding:"14px 16px",textAlign:"center"}}>
+                <div style={{fontSize:22,fontWeight:700,color:C.wn}}>{pHw}</div>
+                <div style={{fontSize:11,color:C.wn,marginTop:2}}>진행중</div>
+              </div>
+              <div style={{background:C.as,border:"1px solid "+C.al,borderRadius:12,padding:"14px 16px",textAlign:"center"}}>
+                <div style={{fontSize:22,fontWeight:700,color:avgC}}>{avgP}%</div>
+                <div style={{fontSize:11,color:C.ac,marginTop:2}}>평균 완성도</div>
+              </div>
+            </div>
+            {/* Grouped by lesson */}
+            {lessons.filter(l=>(l.homework||[]).length>0).length===0?(<div style={{textAlign:"center",padding:40,color:C.tt,background:C.sf,border:"1px solid "+C.bd,borderRadius:14}}><div style={{fontSize:14}}>숙제가 없습니다</div></div>):(
+              lessons.filter(l=>(l.homework||[]).length>0).map(l=>{
+                const lhw=l.homework||[],lDone=lhw.filter(h=>(h.completion_pct||0)>=100).length;
+                return(<div key={l.id} style={{marginBottom:20}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
                     <div style={{display:"flex",alignItems:"center",gap:8}}>
-                      <span style={{fontSize:11,color:pct>=100?C.su:C.wn,fontWeight:600}}>{pct}%</span>
-                      {!isParent&&<input type="range" min="0" max="100" step="10" value={pct} onChange={e=>updHw(h.id,"completion_pct",parseInt(e.target.value))} style={{width:80}}/>}
+                      <div style={{width:8,height:8,borderRadius:"50%",background:col.b}}/>
+                      <span style={{fontSize:13,fontWeight:600,color:C.tp}}>{l.date}</span>
+                      <span style={{fontSize:12,color:C.ts}}>{l.topic||l.subject}</span>
                     </div>
+                    <span style={{fontSize:11,color:lDone===lhw.length?C.su:C.tt,fontWeight:500}}>{lDone}/{lhw.length} 완료</span>
                   </div>
-                  <div style={{height:4,background:C.bl,borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:pct+"%",background:pct>=100?C.su:C.wn,borderRadius:2}}/></div>
-                </div>);})}
-            </div>))
-          )}
-        </div>)}
+                  <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                    {lhw.map(h=>{
+                      const pct=h.completion_pct||0;
+                      const pc=pct>=100?C.su:pct>=50?C.wn:C.dn;
+                      const pb=pct>=100?C.sb:pct>=50?C.wb:C.db;
+                      const sl=pct>=100?"완료":pct>0?"진행중":"미시작";
+                      return(
+                        <div key={h.id} style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:12,padding:"14px 18px"}}>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                            <span style={{fontSize:14,fontWeight:600,color:C.tp}}>{h.title||"숙제"}</span>
+                            <div style={{display:"flex",alignItems:"center",gap:8}}>
+                              <span style={{fontSize:10,background:pb,color:pc,padding:"2px 8px",borderRadius:5,fontWeight:600}}>{sl}</span>
+                              {!isParent&&<input type="range" min="0" max="100" step="10" value={pct} onChange={e=>updHw(h.id,"completion_pct",parseInt(e.target.value))} style={{width:80,accentColor:pc,cursor:"pointer"}}/>}
+                            </div>
+                          </div>
+                          <div style={{display:"flex",alignItems:"center",gap:10}}>
+                            <div style={{flex:1,height:6,background:C.bl,borderRadius:3,overflow:"hidden"}}>
+                              <div style={{height:"100%",width:pct+"%",background:pc,borderRadius:3,transition:"width .3s"}}/>
+                            </div>
+                            <span style={{fontSize:13,fontWeight:700,color:pc,minWidth:36,textAlign:"right"}}>{pct}%</span>
+                          </div>
+                          {h.note&&<div style={{fontSize:12,color:C.ts,marginTop:8,paddingTop:8,borderTop:"1px solid "+C.bl}}>{h.note}</div>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>);
+              })
+            )}
+          </div>);
+        })()}
 
         {/* WRONG ANSWERS */}
         {subTab==="wrong"&&(<div>
