@@ -84,7 +84,7 @@ export default function Schedule({menuBtn}){
   useEffect(()=>{fetchData();},[fetchData]);
 
   const nW=d=>{const t=new Date(cur);t.setDate(t.getDate()+d*7);setCur(t);};
-  const gL=date=>{const ds=fd(date),dw=date.getDay()===0?7:date.getDay();return lessons.filter(l=>{if(l.is_recurring&&l.recurring_exceptions&&l.recurring_exceptions.includes(ds))return false;if(l.date===ds)return true;if(l.is_recurring&&l.recurring_day===dw){if(ds<l.date)return false;if(l.recurring_end_date&&ds>=l.recurring_end_date)return false;return true;}return false;});};
+  const gL=date=>{const ds=fd(date),dw=date.getDay()===0?7:date.getDay();return lessons.filter(l=>{const ld=(l.date||"").slice(0,10);if(l.is_recurring&&l.recurring_exceptions&&l.recurring_exceptions.includes(ds))return false;if(ld===ds)return true;if(l.is_recurring&&+l.recurring_day===dw){if(ds<ld)return false;if(l.recurring_end_date&&ds>=(l.recurring_end_date+"").slice(0,10))return false;return true;}return false;});};
   const gCo=sid=>{const st=students.find(x=>x.id===sid);return SC[(st?.color_index||0)%8];};
   const getStu=sid=>students.find(x=>x.id===sid);
 
@@ -108,9 +108,8 @@ export default function Schedule({menuBtn}){
   };
   const delFuture=async(id,viewDate)=>{
     const les=lessons.find(l=>l.id===id);
-    if(!les||les.date===viewDate){const{error}=await supabase.from('lessons').delete().eq('id',id);if(!error)setLessons(p=>p.filter(l=>l.id!==id));}
-    else{const{error}=await supabase.from('lessons').update({recurring_end_date:viewDate}).eq('id',id).select().single();if(!error)setLessons(p=>p.map(l=>l.id===id?{...l,recurring_end_date:viewDate}:l));}
-    setMO(false);setEL(null);
+    if(!les||les.date===viewDate){setLessons(p=>p.filter(l=>l.id!==id));setMO(false);setEL(null);await supabase.from('lessons').delete().eq('id',id);}
+    else{setLessons(p=>p.map(l=>l.id===id?{...l,recurring_end_date:viewDate}:l));setMO(false);setEL(null);await supabase.from('lessons').update({recurring_end_date:viewDate}).eq('id',id);}
   };
   const updDetail=async(id,data)=>{
     const u={};
@@ -143,10 +142,9 @@ export default function Schedule({menuBtn}){
   const materialize=async(l,viewDate)=>{
     const{data,error}=await supabase.from('lessons').insert({student_id:l.student_id,date:viewDate,start_hour:l.start_hour,start_min:l.start_min,duration:l.duration,subject:l.subject,topic:"",is_recurring:false,recurring_day:null,user_id:user.id}).select('*, homework(*), files(*)').single();
     if(error||!data)return null;
-    const exc=[...(l.recurring_exceptions||[]),viewDate];
-    const{error:e2}=await supabase.from('lessons').update({recurring_exceptions:exc}).eq('id',l.id).select().single();
-    if(!e2)setLessons(p=>[...p.map(x=>x.id===l.id?{...x,recurring_exceptions:exc}:x),data]);
-    else setLessons(p=>[...p,data]);
+    const prev=Array.isArray(l.recurring_exceptions)?l.recurring_exceptions:[];const exc=[...prev,viewDate];
+    const{error:e2}=await supabase.from('lessons').update({recurring_exceptions:exc}).eq('id',l.id);
+    setLessons(p=>[...p.map(x=>x.id===l.id?{...x,recurring_exceptions:exc}:x),data]);
     return data;
   };
   const openDetail=async(lesData,viewDate)=>{
@@ -174,7 +172,7 @@ export default function Schedule({menuBtn}){
   };
 
   const onRC=(e,l,vd)=>{e.preventDefault();e.stopPropagation();setEL({...l,_viewDate:fd(vd)});setMO(true);};
-  const delSingle=async(id,viewDate)=>{const les=lessons.find(l=>l.id===id);if(!les)return;const exc=[...(les.recurring_exceptions||[]),viewDate];const{error}=await supabase.from('lessons').update({recurring_exceptions:exc}).eq('id',id).select().single();if(!error)setLessons(p=>p.map(l=>l.id===id?{...l,recurring_exceptions:exc}:l));setMO(false);setEL(null);};
+  const delSingle=async(id,viewDate)=>{const les=lessons.find(l=>l.id===id);if(!les){setMO(false);setEL(null);return;}const prev=Array.isArray(les.recurring_exceptions)?les.recurring_exceptions:[];const exc=[...prev,viewDate];setLessons(p=>p.map(l=>l.id===id?{...l,recurring_exceptions:exc}:l));setMO(false);setEL(null);await supabase.from('lessons').update({recurring_exceptions:exc}).eq('id',id);};
 
   const onGD=(e,di)=>{
     if(dragRef.current)return;const g=gridRef.current;if(!g)return;const r=g.getBoundingClientRect(),hOff=e.currentTarget.getBoundingClientRect().top-r.top+g.scrollTop,y=e.clientY-r.top+g.scrollTop-hOff;
