@@ -39,7 +39,7 @@ export default function LessonDetailModal({ les, student, onUpdate, onClose }) {
   const updHw = (id, k, v) => { setHw(p => p.map(h => h.id === id ? { ...h, [k]: v } : h)); markDirty(); };
   const addFile = () => { if (!newFileName.trim()) return; setFiles(p => [...p, { id: Date.now(), name: newFileName, type: newFileName.split(".").pop() || "file" }]); setNewFileName(""); markDirty(); };
   const delFile = id => { setFiles(p => p.filter(f => f.id !== id)); markDirty(); };
-  const doSave = async () => { await onUpdate(les.id, { top: topic, content, feedback, tMemo, hw, planPrivate, planShared, files }); setDirty(false); onClose(); };
+  const doSave = async () => { try { await onUpdate(les.id, { top: topic, content, feedback, tMemo, hw, planPrivate, planShared, files }); setDirty(false); onClose(); } catch(e) { /* error handled by parent toast */ } };
 
   const tabs = [{ id: "content", l: "수업 내용" }, { id: "feedback", l: "피드백" }, { id: "hw", l: "숙제" }, { id: "files", l: "자료" }, { id: "plan", l: "계획" }];
 
