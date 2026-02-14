@@ -693,7 +693,10 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
 
         {/* PLAN */}
         {subTab==="plan"&&(<div>
-          <h3 style={{fontSize:16,fontWeight:700,color:C.tp,marginBottom:16}}>학습 오버뷰</h3>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+            <h3 style={{fontSize:16,fontWeight:700,color:C.tp}}>학습 오버뷰</h3>
+            {!isParent&&!planEditing&&<button onClick={()=>setPlanEditing(true)} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:8,padding:"6px 14px",fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>수정</button>}
+          </div>
 
           {/* 학업 전략 + SWOT */}
           {planEditing?(<>
@@ -727,10 +730,7 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
           </>):(<>
             {/* 읽기 모드 */}
             <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:20,marginBottom:16}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-                <div style={{fontSize:13,fontWeight:600,color:C.ac}}>🧭 학업 전략</div>
-                {!isParent&&<button onClick={()=>setPlanEditing(true)} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:8,padding:"5px 14px",fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>수정</button>}
-              </div>
+              <div style={{fontSize:13,fontWeight:600,color:C.ac,marginBottom:10}}>🧭 학업 전략</div>
               <div style={{fontSize:13,color:planStrategy?C.tp:C.tt,lineHeight:1.7,whiteSpace:"pre-wrap",minHeight:20}}>{planStrategy||"아직 작성된 전략이 없습니다"}</div>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}>
