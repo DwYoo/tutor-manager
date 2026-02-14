@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import LessonDetailModal from './student/LessonDetailModal'
 
 const C={bg:"#FAFAF9",sf:"#FFFFFF",sfh:"#F5F5F4",bd:"#E7E5E4",bl:"#F0EFED",pr:"#1A1A1A",ac:"#2563EB",al:"#DBEAFE",as:"#EFF6FF",tp:"#1A1A1A",ts:"#78716C",tt:"#A8A29E",su:"#16A34A",sb:"#F0FDF4",dn:"#DC2626",db:"#FEF2F2",wn:"#F59E0B",wb:"#FFFBEB"};
 const SC=[{bg:"#DBEAFE",t:"#1E40AF",b:"#93C5FD"},{bg:"#FCE7F3",t:"#9D174D",b:"#F9A8D4"},{bg:"#D1FAE5",t:"#065F46",b:"#6EE7B7"},{bg:"#FEF3C7",t:"#92400E",b:"#FCD34D"},{bg:"#EDE9FE",t:"#5B21B6",b:"#C4B5FD"},{bg:"#FFE4E6",t:"#9F1239",b:"#FDA4AF"},{bg:"#CCFBF1",t:"#115E59",b:"#5EEAD4"},{bg:"#FEE2E2",t:"#991B1B",b:"#FCA5A5"}];
@@ -19,6 +20,7 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
   const[scores,setScores]=useState([]);
   const[loading,setLoading]=useState(true);
   const[weekOff,setWeekOff]=useState(0);
+  const[dLes,setDLes]=useState(null);
 
   const fetchData=useCallback(async()=>{
     setLoading(true);
@@ -31,6 +33,23 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
     setStudents(sRes.data||[]);setLessons(lRes.data||[]);setTuitions(tRes.data||[]);setScores(scRes.data||[]);setLoading(false);
   },[]);
   useEffect(()=>{fetchData();},[fetchData]);
+
+  const mkLes=l=>({...l,sh:l.start_hour,sm:l.start_min,dur:l.duration,sub:l.subject,top:l.topic,rep:l.is_recurring,tMemo:l.private_memo||"",hw:l.homework||[],files:l.files||[]});
+  const updDetail=async(id,data)=>{
+    const u={};
+    if(data.top!==undefined)u.topic=data.top;if(data.content!==undefined)u.content=data.content;
+    if(data.feedback!==undefined)u.feedback=data.feedback;if(data.tMemo!==undefined)u.private_memo=data.tMemo;
+    if(data.planShared!==undefined)u.plan_shared=data.planShared;if(data.planPrivate!==undefined)u.plan_private=data.planPrivate;
+    if(Object.keys(u).length)await supabase.from('lessons').update(u).eq('id',id);
+    const les=lessons.find(l=>l.id===id);const oldHw=les?.homework||[],newHw=data.hw||[];
+    const toDel=oldHw.filter(h=>!newHw.some(n=>n.id===h.id));
+    const toIns=newHw.filter(h=>!oldHw.some(o=>o.id===h.id));
+    const toUpd=newHw.filter(h=>oldHw.some(o=>o.id===h.id));
+    if(toDel.length)await supabase.from('homework').delete().in('id',toDel.map(h=>h.id));
+    if(toIns.length)await supabase.from('homework').insert(toIns.map(h=>({lesson_id:id,title:h.title,completion_pct:h.completion_pct||0,note:h.note||""}))).select();
+    for(const h of toUpd)await supabase.from('homework').update({title:h.title,completion_pct:h.completion_pct||0,note:h.note||""}).eq('id',h.id);
+    fetchData();
+  };
 
   /* ── Derived data ── */
   const activeStudents=students.filter(s=>!s.archived);
@@ -221,7 +240,7 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
               const co=SC[(ns.color_index||0)%8];
               const em=nl.start_hour*60+nl.start_min+nl.duration;
               return(
-                <div onClick={()=>onDetail(ns)} style={{cursor:"pointer",borderRadius:12,border:`1px solid ${C.bl}`,borderLeft:`4px solid ${co.b}`,padding:16}} className="hcard">
+                <div onClick={()=>setDLes(mkLes(nl))} style={{cursor:"pointer",borderRadius:12,border:`1px solid ${C.bl}`,borderLeft:`4px solid ${co.b}`,padding:16}} className="hcard">
                   <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14}}>
                     <div style={{width:40,height:40,borderRadius:10,background:co.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:700,color:co.t}}>{(ns.name||"?")[0]}</div>
                     <div style={{flex:1}}>
@@ -230,15 +249,15 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
                     </div>
                   </div>
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
-                    <div style={{background:C.bg,borderRadius:8,padding:"10px 12px"}}>
+                    <div onClick={e=>{e.stopPropagation();if(last)setDLes(mkLes(last));}} style={{background:C.bg,borderRadius:8,padding:"10px 12px",cursor:last?"pointer":"default"}}>
                       <div style={{fontSize:10,color:C.tt,marginBottom:4}}>지난 수업</div>
                       <div style={{fontSize:12,fontWeight:600,color:C.tp}}>{last?.topic||last?.subject||"기록 없음"}</div>
                     </div>
-                    <div style={{background:C.bg,borderRadius:8,padding:"10px 12px"}}>
+                    <div onClick={e=>{e.stopPropagation();onDetail(ns,{mainTab:"study",subTab:"homework"});}} style={{background:C.bg,borderRadius:8,padding:"10px 12px",cursor:"pointer"}}>
                       <div style={{fontSize:10,color:C.tt,marginBottom:4}}>내준 숙제</div>
                       <div style={{fontSize:12,fontWeight:600,color:hwTotal===0?C.tt:C.tp}}>{hwTotal===0?"없음":`${hwTotal}건`}</div>
                     </div>
-                    <div style={{background:C.bg,borderRadius:8,padding:"10px 12px"}}>
+                    <div onClick={e=>{e.stopPropagation();onDetail(ns,{mainTab:"analysis",subTab:"scores"});}} style={{background:C.bg,borderRadius:8,padding:"10px 12px",cursor:"pointer"}}>
                       <div style={{fontSize:10,color:C.tt,marginBottom:4}}>최근 성적</div>
                       <div style={{fontSize:12,fontWeight:600,color:scoreTrend==="up"?C.su:scoreTrend==="down"?C.dn:C.tp}}>
                         {lastScore?`${lastScore.score}점 ${scoreTrend==="up"?"↑":scoreTrend==="down"?"↓":"→"}`:"기록 없음"}
@@ -319,14 +338,14 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
           )}
 
           {/* Weekly chart */}
-          <div style={{background:C.sf,border:`1px solid ${C.bd}`,borderRadius:14,padding:20}}>
+          <div onClick={()=>onNav("schedule")} style={{background:C.sf,border:`1px solid ${C.bd}`,borderRadius:14,padding:20,cursor:"pointer"}} className="hcard">
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
               <h3 style={{fontSize:15,fontWeight:600,color:C.tp,margin:0}}>주간 수업</h3>
               <div style={{display:"flex",alignItems:"center",gap:6}}>
-                <button onClick={()=>setWeekOff(w=>w-1)} style={{background:"none",border:`1px solid ${C.bd}`,borderRadius:6,width:26,height:26,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,color:C.ts,fontFamily:"inherit"}}>◀</button>
-                {weekOff!==0&&<button onClick={()=>setWeekOff(0)} style={{background:C.as,border:`1px solid ${C.ac}`,borderRadius:6,padding:"2px 8px",cursor:"pointer",fontSize:11,color:C.ac,fontWeight:600,fontFamily:"inherit"}}>이번주</button>}
+                <button onClick={e=>{e.stopPropagation();setWeekOff(w=>w-1);}} style={{background:"none",border:`1px solid ${C.bd}`,borderRadius:6,width:26,height:26,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,color:C.ts,fontFamily:"inherit"}}>◀</button>
+                {weekOff!==0&&<button onClick={e=>{e.stopPropagation();setWeekOff(0);}} style={{background:C.as,border:`1px solid ${C.ac}`,borderRadius:6,padding:"2px 8px",cursor:"pointer",fontSize:11,color:C.ac,fontWeight:600,fontFamily:"inherit"}}>이번주</button>}
                 <span style={{fontSize:11,color:C.ts,minWidth:90,textAlign:"center"}}>{`${p2(wk[0].getMonth()+1)}/${p2(wk[0].getDate())} ~ ${p2(wk[6].getMonth()+1)}/${p2(wk[6].getDate())}`}</span>
-                <button onClick={()=>setWeekOff(w=>w+1)} style={{background:"none",border:`1px solid ${C.bd}`,borderRadius:6,width:26,height:26,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,color:C.ts,fontFamily:"inherit"}}>▶</button>
+                <button onClick={e=>{e.stopPropagation();setWeekOff(w=>w+1);}} style={{background:"none",border:`1px solid ${C.bd}`,borderRadius:6,width:26,height:26,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,color:C.ts,fontFamily:"inherit"}}>▶</button>
               </div>
             </div>
             <div style={{display:"flex",alignItems:"flex-end",gap:8,height:100,padding:"0 8px"}}>
@@ -364,6 +383,7 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
           </div>
         </div>
       </div>
+      {dLes&&<LessonDetailModal les={dLes} student={getStu(dLes.student_id)} onUpdate={updDetail} onClose={()=>setDLes(null)}/>}
     </div>
   );
 }

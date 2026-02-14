@@ -12,7 +12,7 @@ import Sidebar from '@/components/Sidebar'
 
 const NAV = [
   { id: 'dashboard', l: '대시보드' },
-  { id: 'schedule', l: '수업 일정' },
+  { id: 'schedule', l: '캘린더' },
   { id: 'students', l: '학생 관리' },
   { id: 'tuition', l: '수업료' },
 ]
@@ -22,12 +22,13 @@ export default function Home() {
   const [page, setPage] = useState('dashboard')
   const [sideOpen, setSideOpen] = useState(false)
   const [detailStudent, setDetailStudent] = useState(null)
+  const [detailTab, setDetailTab] = useState(null)
 
   // Not logged in → show Login
   if (!user) return <Login />
 
-  const goDetail = (stu) => { setDetailStudent(stu); setPage('student-detail') }
-  const goBack = () => { setDetailStudent(null); setPage('students') }
+  const goDetail = (stu, tab) => { setDetailStudent(stu); setDetailTab(tab||null); setPage('student-detail') }
+  const goBack = () => { setDetailStudent(null); setDetailTab(null); setPage('students') }
 
   const MenuButton = () => (
     <button
@@ -85,7 +86,7 @@ export default function Home() {
           {page === 'dashboard' && <Dashboard onNav={setPage} onDetail={goDetail} menuBtn={<MenuButton />} />}
           {page === 'schedule' && <Schedule menuBtn={<MenuButton />} />}
           {page === 'students' && <Students onDetail={goDetail} menuBtn={<MenuButton />} />}
-          {page === 'student-detail' && <StudentDetail student={detailStudent} onBack={goBack} menuBtn={<MenuButton />} />}
+          {page === 'student-detail' && <StudentDetail student={detailStudent} initialTab={detailTab} onBack={goBack} menuBtn={<MenuButton />} />}
           {page === 'tuition' && <Tuition menuBtn={<MenuButton />} />}
         </div>
       </div>

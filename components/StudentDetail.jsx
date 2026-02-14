@@ -19,7 +19,7 @@ const IcBack=()=>(<svg width="18" height="18" viewBox="0 0 24 24" fill="none" st
 const CustomTooltip=({active,payload})=>{if(!active||!payload?.length)return null;const d=payload[0].payload;return(<div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:10,padding:"10px 14px",boxShadow:"0 4px 12px rgba(0,0,0,.08)"}}><div style={{fontSize:12,color:C.tt,marginBottom:4}}>{d.label||d.date}</div>{d.score!=null&&<div style={{fontSize:16,fontWeight:700,color:C.ac}}>{d.score}점</div>}{d.grade!=null&&<div style={{fontSize:d.score!=null?13:16,fontWeight:700,color:"#8B5CF6"}}>{d.grade}등급</div>}</div>);};
 const ReasonTooltip=({active,payload})=>{if(!active||!payload?.length)return null;const d=payload[0].payload;return(<div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:10,padding:"8px 12px",boxShadow:"0 4px 12px rgba(0,0,0,.08)"}}><div style={{fontSize:11,color:C.tt,marginBottom:2}}>{d.name}</div><div style={{fontSize:14,fontWeight:700,color:d.fill||C.ac}}>{d.count}문항</div></div>);};
 
-export default function StudentDetail({ student, onBack, menuBtn }) {
+export default function StudentDetail({ student, initialTab, onBack, menuBtn }) {
   const{user}=useAuth();
   const toast=useToast();
   const s = student;
@@ -27,8 +27,8 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
   const tog = menuBtn;
   const col = SC[(typeof s.color_index==='number'?s.color_index:s.name?s.name.charCodeAt(0):0)%8]||SC[0];
 
-  const [mainTab,setMainTab]=useState("class");
-  const [subTab,setSubTab]=useState("timeline");
+  const [mainTab,setMainTab]=useState(initialTab?.mainTab||"class");
+  const [subTab,setSubTab]=useState(initialTab?.subTab||"timeline");
   const [isParent,setIsParent]=useState(false);
   const [loading,setLoading]=useState(true);
   const [lessons,setLessons]=useState([]);
