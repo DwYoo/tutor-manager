@@ -39,6 +39,7 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
   const [nT,setNT]=useState("");const [nB,setNB]=useState("");const [nS,setNS]=useState(false);
   const [wForm,setWForm]=useState({book:"",chapter:"",problem_num:"",reason:"",note:""});
   const [wFilter,setWFilter]=useState("");const [wPage,setWPage]=useState(0);const [wExpanded,setWExpanded]=useState({});
+  const [hwFilter,setHwFilter]=useState(null);
   const PER_PAGE=20;
   const [showAddScore,setShowAddScore]=useState(false);
   const [scoreForm,setScoreForm]=useState({date:"",score:"",label:""});
@@ -393,23 +394,23 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
             <h3 style={{fontSize:16,fontWeight:700,color:C.tp,marginBottom:16}}>숙제 현황</h3>
             {/* Summary stats */}
             <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:20}}>
-              <div style={{background:C.sb,border:"1px solid #BBF7D0",borderRadius:12,padding:"14px 16px",textAlign:"center"}}>
+              <div onClick={()=>setHwFilter(hwFilter==="done"?null:"done")} style={{background:C.sb,border:hwFilter==="done"?"2px solid "+C.su:"1px solid #BBF7D0",borderRadius:12,padding:"14px 16px",textAlign:"center",cursor:"pointer",opacity:hwFilter&&hwFilter!=="done"?.5:1,transition:"all .15s"}}>
                 <div style={{fontSize:22,fontWeight:700,color:C.su}}>{dHw}</div>
                 <div style={{fontSize:11,color:C.su,marginTop:2}}>완료</div>
               </div>
-              <div style={{background:C.wb,border:"1px solid #FDE68A",borderRadius:12,padding:"14px 16px",textAlign:"center"}}>
+              <div onClick={()=>setHwFilter(hwFilter==="progress"?null:"progress")} style={{background:C.wb,border:hwFilter==="progress"?"2px solid "+C.wn:"1px solid #FDE68A",borderRadius:12,padding:"14px 16px",textAlign:"center",cursor:"pointer",opacity:hwFilter&&hwFilter!=="progress"?.5:1,transition:"all .15s"}}>
                 <div style={{fontSize:22,fontWeight:700,color:C.wn}}>{pHw}</div>
                 <div style={{fontSize:11,color:C.wn,marginTop:2}}>진행중</div>
               </div>
-              <div style={{background:C.db,border:"1px solid #FECACA",borderRadius:12,padding:"14px 16px",textAlign:"center"}}>
+              <div onClick={()=>setHwFilter(hwFilter==="notStarted"?null:"notStarted")} style={{background:C.db,border:hwFilter==="notStarted"?"2px solid "+C.dn:"1px solid #FECACA",borderRadius:12,padding:"14px 16px",textAlign:"center",cursor:"pointer",opacity:hwFilter&&hwFilter!=="notStarted"?.5:1,transition:"all .15s"}}>
                 <div style={{fontSize:22,fontWeight:700,color:C.dn}}>{nHw}</div>
                 <div style={{fontSize:11,color:C.dn,marginTop:2}}>미시작</div>
               </div>
             </div>
             {/* Grouped by lesson */}
             {lessons.filter(l=>(l.homework||[]).length>0).length===0?(<div style={{textAlign:"center",padding:40,color:C.tt,background:C.sf,border:"1px solid "+C.bd,borderRadius:14}}><div style={{fontSize:14}}>숙제가 없습니다</div></div>):(
-              lessons.filter(l=>(l.homework||[]).length>0).map(l=>{
-                const lhw=l.homework||[],lDone=lhw.filter(h=>(h.completion_pct||0)>=100).length;
+              lessons.filter(l=>{const hw=l.homework||[];if(hw.length===0)return false;if(!hwFilter)return true;return hw.some(h=>{const p=h.completion_pct||0;if(hwFilter==="done")return p>=100;if(hwFilter==="progress")return p>0&&p<100;return p===0;});}).map(l=>{
+                const lhwAll=l.homework||[],lhw=hwFilter?lhwAll.filter(h=>{const p=h.completion_pct||0;if(hwFilter==="done")return p>=100;if(hwFilter==="progress")return p>0&&p<100;return p===0;}):lhwAll,lDone=lhwAll.filter(h=>(h.completion_pct||0)>=100).length;
                 return(<div key={l.id} style={{marginBottom:20}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
                     <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -417,7 +418,7 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
                       <span style={{fontSize:13,fontWeight:600,color:C.tp}}>{l.date}</span>
                       <span style={{fontSize:12,color:C.ts}}>{l.topic||l.subject}</span>
                     </div>
-                    <span style={{fontSize:11,color:lDone===lhw.length?C.su:C.tt,fontWeight:500}}>{lDone}/{lhw.length} 완료</span>
+                    <span style={{fontSize:11,color:lDone===lhwAll.length?C.su:C.tt,fontWeight:500}}>{lDone}/{lhwAll.length} 완료</span>
                   </div>
                   <div style={{display:"flex",flexDirection:"column",gap:8}}>
                     {lhw.map(h=>{
@@ -434,7 +435,7 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
                           </div>
                           <div style={{display:"flex",alignItems:"center",gap:10}}>
                             <div onMouseDown={barDrag} style={{flex:1,height:10,background:C.bl,borderRadius:5,cursor:isParent?"default":"pointer",position:"relative"}}>
-                              <div style={{height:"100%",width:pct+"%",background:pc,borderRadius:5,transition:"width .15s",pointerEvents:"none"}}/>
+                              <div style={{height:"100%",width:pct+"%",minWidth:pct>0?12:0,background:pc,borderRadius:5,transition:"width .15s",pointerEvents:"none"}}/>
                               <div style={{position:"absolute",top:"50%",left:pct+"%",transform:"translate(-50%,-50%)",width:18,height:18,borderRadius:"50%",background:"#fff",border:"3px solid "+pc,boxShadow:"0 1px 4px rgba(0,0,0,.15)",pointerEvents:"none",transition:"left .15s"}}/>
                             </div>
                             <span style={{fontSize:13,fontWeight:700,color:pc,minWidth:36,textAlign:"right"}}>{pct}%</span>
