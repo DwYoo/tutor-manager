@@ -186,10 +186,6 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
       const cur=stuScores[stuScores.length-1].score,prev=stuScores[stuScores.length-2].score;
       if(cur<prev)al.push({type:"score",label:`성적 하락 ${prev}→${cur}`,color:C.wn,bg:C.wb});
     }
-    // 다가오는 수업 없음
-    let hasUp=false;
-    for(let o=0;o<7;o++){const d=new Date(today);d.setDate(today.getDate()+o);if(lessons.some(l=>l.student_id===s.id&&lessonOnDate(l,d))){hasUp=true;break;}}
-    if(!hasUp)al.push({type:"noclass",label:"7일 내 수업 없음",color:C.tt,bg:C.bl});
     if(al.length>0)studentAlerts.push({student:s,alerts:al});
   });
 
@@ -199,8 +195,6 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
   const stats=[
     {l:"전체 학생",v:String(activeStudents.length),sub:"관리 중",c:C.ac,click:()=>onNav("students")},
     {l:"이번 주 수업",v:String(thisWeekTotal),sub:`오늘 ${todayClasses.length}`,c:C.su,click:()=>onNav("schedule")},
-    {l:"월 수입",v:totalFee>0?`₩${Math.round(totalFee/10000)}만`:"₩0",sub:"이번 달",c:C.wn,click:()=>onNav("tuition")},
-    {l:"미수금",v:unpaidAmount>0?`₩${Math.round(unpaidAmount/10000)}만`:"₩0",sub:`${unpaidRecs.length}명`,c:C.dn,click:()=>onNav("tuition")},
   ];
 
   if(loading)return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:C.tt,fontSize:14}}>불러오는 중...</div></div>);
@@ -221,7 +215,7 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
       </div>
 
       {/* Stats */}
-      <div className="dash-stats" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:28}}>
+      <div className="dash-stats" style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:14,marginBottom:28}}>
         {stats.map((s,i)=>(<div key={i} onClick={s.click} style={{background:C.sf,border:`1px solid ${C.bd}`,borderRadius:14,padding:20,cursor:"pointer"}} className="hcard"><div style={{fontSize:12,color:C.tt,marginBottom:6}}>{s.l}</div><div style={{fontSize:24,fontWeight:700,color:C.tp}}>{s.v}</div><div style={{fontSize:11,color:s.c,marginTop:4}}>{s.sub}</div></div>))}
       </div>
 
@@ -254,8 +248,8 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
                       <div style={{fontSize:12,fontWeight:600,color:C.tp}}>{last?.topic||last?.subject||"기록 없음"}</div>
                     </div>
                     <div style={{background:C.bg,borderRadius:8,padding:"10px 12px"}}>
-                      <div style={{fontSize:10,color:C.tt,marginBottom:4}}>숙제 완료</div>
-                      <div style={{fontSize:12,fontWeight:600,color:hwTotal===0?C.tt:hwDone===hwTotal?C.su:C.wn}}>{hwTotal===0?"없음":`${hwDone}/${hwTotal}`}</div>
+                      <div style={{fontSize:10,color:C.tt,marginBottom:4}}>내준 숙제</div>
+                      <div style={{fontSize:12,fontWeight:600,color:hwTotal===0?C.tt:C.tp}}>{hwTotal===0?"없음":`${hwTotal}건`}</div>
                     </div>
                     <div style={{background:C.bg,borderRadius:8,padding:"10px 12px"}}>
                       <div style={{fontSize:10,color:C.tt,marginBottom:4}}>최근 성적</div>
@@ -380,6 +374,13 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
                 </div>);})}
               {activeStudents.length===0&&<div style={{textAlign:"center",padding:20,color:C.tt,fontSize:13}}>학생을 추가해보세요</div>}
             </div>
+          </div>
+
+          {/* 수업료 요약 */}
+          <div onClick={()=>onNav("tuition")} style={{background:C.sf,border:`1px solid ${C.bd}`,borderRadius:14,padding:"14px 20px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}} className="hcard">
+            <div><span style={{fontSize:11,color:C.tt}}>월 수입</span><span style={{fontSize:13,fontWeight:600,color:C.tp,marginLeft:8}}>{totalFee>0?`₩${totalFee.toLocaleString()}`:"₩0"}</span></div>
+            <div style={{width:1,height:20,background:C.bd}}/>
+            <div><span style={{fontSize:11,color:C.tt}}>미수금</span><span style={{fontSize:13,fontWeight:600,color:unpaidAmount>0?C.dn:C.su,marginLeft:8}}>{unpaidAmount>0?`₩${unpaidAmount.toLocaleString()}`:"₩0"}</span></div>
           </div>
         </div>
       </div>
