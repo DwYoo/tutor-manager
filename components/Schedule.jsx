@@ -120,7 +120,7 @@ export default function Schedule({menuBtn}){
   const x2d=(x,r)=>{const cw=(r.width-60)/7;return Math.max(0,Math.min(6,Math.floor((x-60)/cw)));};
 
   const onLD=(e,l)=>{
-    if(e.button!==0)return;e.preventDefault();e.stopPropagation();
+    if(e.button!==0){e.stopPropagation();return;}e.preventDefault();e.stopPropagation();
     const g=gridRef.current;if(!g)return;const r=g.getBoundingClientRect(),y=e.clientY-r.top+g.scrollTop;
     const cm=y2m(y),lm=l.start_hour*60+l.start_min,off=cm-lm;movedRef.current=false;
     dragRef.current={t:"m",id:l.id,off,r};
