@@ -103,10 +103,11 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
   const reasonMap={};
   reasonSource.forEach(w=>{const r=w.reason||"미분류";reasonMap[r]=(reasonMap[r]||0)+1;});
   const reasonData=Object.entries(reasonMap).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([reason,count],i)=>({name:reason,count,fill:REASON_COLORS[i%REASON_COLORS.length]}));
-  const chapterSource=chapterBook?wrongs.filter(w=>w.book===chapterBook):wrongs;
+  const chapterBookSel=chapterBook||wBooks[0]||"";
+  const chapterSource=chapterBookSel?wrongs.filter(w=>w.book===chapterBookSel):wrongs;
   const chapterMap={};
   chapterSource.forEach(w=>{const c=w.chapter||"미분류";chapterMap[c]=(chapterMap[c]||0)+1;});
-  const chapterData=Object.entries(chapterMap).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([name,count],i)=>({name,count,fill:REASON_COLORS[i%REASON_COLORS.length]}));
+  const chapterData=Object.entries(chapterMap).sort((a,b)=>a[0].localeCompare(b[0],undefined,{numeric:true})).slice(0,8).map(([name,count],i)=>({name,count,fill:REASON_COLORS[i%REASON_COLORS.length]}));
 
   const _rmc={};wrongs.forEach(w=>{const r=w.reason||"미분류";_rmc[r]=(_rmc[r]||0)+1;});
   const reasonColorMap={};Object.entries(_rmc).sort((a,b)=>b[1]-a[1]).forEach(([r],i)=>{reasonColorMap[r]=REASON_COLORS[i%REASON_COLORS.length];});
@@ -484,8 +485,7 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
               <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:12,padding:"14px 12px"}}>
                 <div style={{fontSize:12,fontWeight:600,color:C.tp,marginBottom:6}}>단원별 오답</div>
                 <div style={{display:"flex",gap:3,marginBottom:8,flexWrap:"wrap"}}>
-                  <button onClick={()=>setChapterBook("")} style={{padding:"2px 8px",borderRadius:5,border:"1px solid "+(!chapterBook?C.ac:C.bd),background:!chapterBook?C.as:"transparent",fontSize:9,fontWeight:!chapterBook?600:400,color:!chapterBook?C.ac:C.ts,cursor:"pointer",fontFamily:"inherit"}}>전체</button>
-                  {wBooks.map(b=>(<button key={b} onClick={()=>setChapterBook(chapterBook===b?"":b)} style={{padding:"2px 8px",borderRadius:5,border:"1px solid "+(chapterBook===b?C.ac:C.bd),background:chapterBook===b?C.as:"transparent",fontSize:9,fontWeight:chapterBook===b?600:400,color:chapterBook===b?C.ac:C.ts,cursor:"pointer",fontFamily:"inherit"}}>{b}</button>))}
+                  {wBooks.map(b=>(<button key={b} onClick={()=>setChapterBook(b)} style={{padding:"2px 8px",borderRadius:5,border:"1px solid "+(chapterBookSel===b?C.ac:C.bd),background:chapterBookSel===b?C.as:"transparent",fontSize:9,fontWeight:chapterBookSel===b?600:400,color:chapterBookSel===b?C.ac:C.ts,cursor:"pointer",fontFamily:"inherit"}}>{b}</button>))}
                 </div>
                 {chapterData.length>0?(<ResponsiveContainer width="100%" height={120}>
                   <BarChart data={chapterData} margin={{top:4,right:4,left:-20,bottom:0}}>
