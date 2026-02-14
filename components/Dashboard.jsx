@@ -4,11 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import LessonDetailModal from './student/LessonDetailModal'
 import { C, SC } from '@/components/Colors'
-const DK=["일","월","화","수","목","금","토"];
-const DKS=["월","화","수","목","금","토","일"];
-const p2=n=>String(n).padStart(2,"0");
-const fd=d=>`${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`;
-const gwd=base=>{const d=new Date(base),dy=d.getDay(),df=dy===0?-6:1-dy,m=new Date(d);m.setDate(d.getDate()+df);return Array.from({length:7},(_,i)=>{const t=new Date(m);t.setDate(m.getDate()+i);return t;});};
+import { p2, fd, DK, DKS, gwd, lessonOnDate } from '@/lib/utils'
 const BN={prep:"다음 수업 준비",upcoming:"다가오는 수업",unrecorded:"기록 미완료",alerts:"주의 학생",weekChart:"주간 수업",studentList:"학생 근황",tuition:"수업료 요약"};
 const DFL={left:["prep","upcoming"],right:["unrecorded","alerts","weekChart","tuition"],bottom:["studentList"],hidden:[]};
 
@@ -26,15 +22,20 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
   const[dragId,setDragId]=useState(null);
   const[dropTgt,setDropTgt]=useState(null);
 
+  const[fetchError,setFetchError]=useState(false);
   const fetchData=useCallback(async()=>{
-    setLoading(true);
-    const[sRes,lRes,tRes,scRes]=await Promise.all([
-      supabase.from('students').select('*').order('created_at'),
-      supabase.from('lessons').select('*, homework(*)').order('date'),
-      supabase.from('tuition').select('*'),
-      supabase.from('scores').select('*').order('date'),
-    ]);
-    setStudents(sRes.data||[]);setLessons(lRes.data||[]);setTuitions(tRes.data||[]);setScores(scRes.data||[]);setLoading(false);
+    setLoading(true);setFetchError(false);
+    try{
+      const[sRes,lRes,tRes,scRes]=await Promise.all([
+        supabase.from('students').select('*').order('created_at'),
+        supabase.from('lessons').select('*, homework(*)').order('date'),
+        supabase.from('tuition').select('*'),
+        supabase.from('scores').select('*').order('date'),
+      ]);
+      if(sRes.error||lRes.error||tRes.error||scRes.error){setFetchError(true);setLoading(false);return;}
+      setStudents(sRes.data||[]);setLessons(lRes.data||[]);setTuitions(tRes.data||[]);setScores(scRes.data||[]);
+    }catch{setFetchError(true);}
+    setLoading(false);
   },[]);
   useEffect(()=>{fetchData();},[fetchData]);
 
@@ -77,14 +78,6 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
   const curMonth=`${today.getFullYear()}-${p2(today.getMonth()+1)}`;
   const year=today.getFullYear(),month=today.getMonth()+1;
 
-  const lessonOnDate=(l,date)=>{
-    const ds=fd(date),dw=date.getDay()===0?7:date.getDay();
-    const ld=(l.date||"").slice(0,10);
-    if(l.is_recurring&&l.recurring_exceptions&&l.recurring_exceptions.includes(ds))return false;
-    if(ld===ds)return true;
-    if(l.is_recurring&&+l.recurring_day===dw){if(ds<ld)return false;if(l.recurring_end_date&&ds>=(l.recurring_end_date+"").slice(0,10))return false;return true;}
-    return false;
-  };
 
   const todayClasses=lessons.filter(l=>lessonOnDate(l,today)).sort((a,b)=>(a.start_hour*60+a.start_min)-(b.start_hour*60+b.start_min));
   const upcomingDays=[];
@@ -305,6 +298,7 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
   };
 
   if(loading)return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:C.tt,fontSize:14}}>불러오는 중...</div></div>);
+  if(fetchError)return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:12}}><div style={{fontSize:14,color:C.dn}}>데이터를 불러오지 못했습니다</div><button onClick={fetchData} style={{padding:"8px 20px",borderRadius:8,border:`1px solid ${C.bd}`,background:C.sf,color:C.tp,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>다시 시도</button></div>);
 
   return(
     <div className="main-pad dash-container" style={{padding:28}}>
