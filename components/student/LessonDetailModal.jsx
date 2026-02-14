@@ -60,7 +60,7 @@ export default function LessonDetailModal({ les, student, onUpdate, onClose }) {
           {/* Tabs */}
           <div style={{ display: "flex", gap: 0, borderBottom: `1px solid ${C.bd}` }}>
             {tabs.map(t => (
-              <button key={t.id} onClick={() => setTab(t.id)} style={{ padding: "8px 14px", fontSize: 12, fontWeight: tab === t.id ? 600 : 400, color: tab === t.id ? C.ac : C.tt, borderBottom: tab === t.id ? `2px solid ${C.ac}` : "2px solid transparent", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", marginBottom: -1 }}>
+              <button key={t.id} onClick={() => setTab(t.id)} style={{ padding: "8px 14px", fontSize: 12, fontWeight: tab === t.id ? 600 : 400, color: tab === t.id ? C.ac : C.tt, borderTop: "none", borderLeft: "none", borderRight: "none", borderBottom: tab === t.id ? `2px solid ${C.ac}` : "2px solid transparent", background: "none", cursor: "pointer", fontFamily: "inherit", marginBottom: -1 }}>
                 {t.l}
                 {t.id === "hw" && hw.length > 0 && <span style={{ marginLeft: 4, background: C.ac, color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 10 }}>{hw.length}</span>}
                 {t.id === "files" && files.length > 0 && <span style={{ marginLeft: 4, background: C.tt, color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 10 }}>{files.length}</span>}
