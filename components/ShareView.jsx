@@ -21,6 +21,7 @@ export default function ShareView({ token }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [tab, setTab] = useState("lessons");
+  const [subTab, setSubTab] = useState("history");
   const [expandedLesson, setExpandedLesson] = useState(null);
   const [showHwDetail, setShowHwDetail] = useState(false);
   const [showWrongList, setShowWrongList] = useState(false);
@@ -71,6 +72,7 @@ export default function ShareView({ token }) {
   // Filter lessons to only show past lessons (not future ones)
   const today = new Date().toISOString().split('T')[0];
   const pastLessons = lessons.filter(l => l.date <= today);
+  const upcomingLessons = lessons.filter(l => l.date > today).sort((a, b) => a.date.localeCompare(b.date));
 
   // Homework aggregation (only from past lessons)
   const allHw = pastLessons.flatMap(l => (l.homework || []).map(h => ({ ...h, lesDate: l.date, lesSub: l.subject })));
@@ -105,9 +107,9 @@ export default function ShareView({ token }) {
   const lessonFiles = pastLessons.flatMap(l => (l.files || []).map(f => ({ ...f, lesDate: l.date, lesTopic: l.topic || l.subject })));
 
   const tabs = [
-    { id: "lessons", l: "수업이력", count: pastLessons.length },
+    { id: "lessons", l: "수업", count: pastLessons.length + upcomingLessons.length, subs: [{ id: "history", l: "수업이력" }, { id: "schedule", l: "수업일정" }] },
     { id: "study", l: "학습관리", count: allHw.length + wrongs.length },
-    { id: "analysis", l: "분석", count: scores.length },
+    { id: "analysis", l: "학습 분석", count: scores.length },
     { id: "files", l: "자료실", count: lessonFiles.length + standaloneFiles.length },
   ];
 
@@ -126,27 +128,62 @@ export default function ShareView({ token }) {
         </div>
       </div>
 
+      {/* Recent Report (above tabs) */}
+      {(() => {
+        const allReports = [...planComments, ...reports].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+        const recentReport = allReports[0];
+        return recentReport ? (
+          <div style={{ background: C.sf, borderBottom: "1px solid " + C.bd, padding: "20px 0" }}>
+            <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 20px" }}>
+              <h3 style={{ fontSize: 14, fontWeight: 700, color: C.tp, marginBottom: 10 }}>최근 학습 리포트</h3>
+              <div style={{ background: "linear-gradient(135deg, " + C.as + " 0%, " + C.sf + " 100%)", border: "2px solid " + C.ac, borderRadius: 14, padding: 16 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: C.tp }}>{recentReport.title || "리포트"}</span>
+                  <span style={{ fontSize: 11, color: C.tt }}>{recentReport.date}</span>
+                </div>
+                <div style={{ fontSize: 13, color: C.tp, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{recentReport.body}</div>
+              </div>
+            </div>
+          </div>
+        ) : null;
+      })()}
+
       {/* Tabs */}
       <div style={{ background: C.sf, borderBottom: "1px solid " + C.bd, position: "sticky", top: 0, zIndex: 10 }}>
         <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 20px", display: "flex", gap: 0, overflowX: "auto" }}>
           {tabs.map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)} style={{ padding: "12px 20px", border: "none", borderBottom: tab === t.id ? "2px solid " + C.ac : "2px solid transparent", background: "none", fontSize: 14, fontWeight: tab === t.id ? 600 : 400, color: tab === t.id ? C.ac : C.ts, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+            <button key={t.id} onClick={() => { setTab(t.id); if (t.subs) setSubTab(t.subs[0].id); }} style={{ padding: "12px 20px", border: "none", borderBottom: tab === t.id ? "2px solid " + C.ac : "2px solid transparent", background: "none", fontSize: 14, fontWeight: tab === t.id ? 600 : 400, color: tab === t.id ? C.ac : C.ts, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
               {t.l}{t.count > 0 && <span style={{ marginLeft: 6, fontSize: 11, color: tab === t.id ? C.ac : C.tt }}>({t.count})</span>}
             </button>
           ))}
         </div>
       </div>
 
+      {/* Sub Tabs for lessons */}
+      {tab === "lessons" && (
+        <div style={{ background: C.bl, borderBottom: "1px solid " + C.bd }}>
+          <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 20px", display: "flex", gap: 0 }}>
+            {tabs.find(t => t.id === "lessons")?.subs?.map(st => (
+              <button key={st.id} onClick={() => setSubTab(st.id)} style={{ padding: "10px 16px", border: "none", borderBottom: subTab === st.id ? "2px solid " + C.ac : "2px solid transparent", background: "none", fontSize: 13, fontWeight: subTab === st.id ? 600 : 400, color: subTab === st.id ? C.ac : C.ts, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+                {st.l}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Content */}
       <div style={{ maxWidth: 720, margin: "0 auto", padding: "20px 20px 60px" }}>
 
-        {/* === 수업이력 === */}
+        {/* === 수업 탭 === */}
         {tab === "lessons" && (<div>
-          {pastLessons.length === 0 ? (
-            <Empty text="수업 기록이 없습니다" />
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {pastLessons.map(l => {
+          {/* 수업이력 서브탭 */}
+          {subTab === "history" && (<div>
+            {pastLessons.length === 0 ? (
+              <Empty text="수업 기록이 없습니다" />
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {pastLessons.map(l => {
                 const sh = l.start_hour, sm = l.start_min, dur = l.duration;
                 const em = sh * 60 + sm + dur;
                 const hw = l.homework || [];
@@ -200,9 +237,126 @@ export default function ShareView({ token }) {
                     )}
                   </div>
                 );
-              })}
-            </div>
-          )}
+                })}
+              </div>
+            )}
+          </div>)}
+
+          {/* 수업일정 서브탭 */}
+          {subTab === "schedule" && (<div>
+            {/* Calendar View */}
+            {(() => {
+              const now = new Date();
+              const year = now.getFullYear();
+              const month = now.getMonth();
+              const firstDay = new Date(year, month, 1).getDay();
+              const startOffset = firstDay === 0 ? 6 : firstDay - 1;
+              const daysInMonth = new Date(year, month + 1, 0).getDate();
+              const cells = [];
+              for (let i = 0; i < startOffset; i++) cells.push({ d: null });
+              for (let i = 1; i <= daysInMonth; i++) {
+                const ds = `${year}-${p2(month + 1)}-${p2(i)}`;
+                const dt = new Date(year, month, i);
+                const dw = dt.getDay() === 0 ? 7 : dt.getDay();
+                const dayLessons = lessons.filter(l => {
+                  if (l.is_recurring && l.recurring_exceptions && l.recurring_exceptions.includes(ds)) return false;
+                  if (l.date === ds) return true;
+                  if (l.is_recurring && l.recurring_day === dw) {
+                    if (ds < l.date) return false;
+                    if (l.recurring_end_date && ds >= l.recurring_end_date) return false;
+                    return true;
+                  }
+                  return false;
+                });
+                cells.push({ d: i, lessons: dayLessons, ds });
+              }
+              const rem = 42 - cells.length;
+              for (let i = 0; i < rem; i++) cells.push({ d: null });
+
+              return (
+                <div style={{ marginBottom: 24 }}>
+                  <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp, marginBottom: 12 }}>
+                    {s.name} 수업 일정 · {year}년 {month + 1}월
+                  </h3>
+                  <div style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 14, overflow: "hidden" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", borderBottom: "1px solid " + C.bd }}>
+                      {["월", "화", "수", "목", "금", "토", "일"].map(d => (
+                        <div key={d} style={{ padding: "10px", textAlign: "center", fontSize: 12, fontWeight: 500, color: C.tt }}>{d}</div>
+                      ))}
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)" }}>
+                      {cells.map((c, i) => (
+                        <div
+                          key={i}
+                          style={{
+                            minHeight: 72,
+                            padding: 6,
+                            borderBottom: "1px solid " + C.bl,
+                            borderRight: (i + 1) % 7 ? "1px solid " + C.bl : "none",
+                            opacity: c.d ? 1 : 0.3,
+                          }}
+                        >
+                          {c.d && (
+                            <div>
+                              <div style={{ fontSize: 13, marginBottom: 4, fontWeight: c.d === now.getDate() && c.ds >= today ? 700 : 400, color: c.d === now.getDate() && c.ds >= today ? C.ac : C.tp }}>{c.d}</div>
+                              {c.lessons?.map(l => (
+                                <div
+                                  key={l.id}
+                                  style={{
+                                    fontSize: 9,
+                                    padding: "2px 4px",
+                                    borderRadius: 4,
+                                    fontWeight: 500,
+                                    marginBottom: 2,
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    whiteSpace: "nowrap",
+                                    background: col.bg,
+                                    color: col.t,
+                                  }}
+                                >
+                                  {p2(l.start_hour || 0)}:{p2(l.start_min || 0)} {l.topic || l.subject}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Upcoming Lessons List */}
+            {upcomingLessons.length > 0 && (
+              <div>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp, marginBottom: 12 }}>예정 수업</h3>
+                <div style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 14, overflow: "hidden" }}>
+                  {upcomingLessons.map((l, idx) => {
+                    const sh = l.start_hour, sm = l.start_min, dur = l.duration;
+                    const em = sh * 60 + sm + dur;
+                    const dateObj = new Date(l.date + "T00:00:00");
+                    const dayOfWeek = ["일", "월", "화", "수", "목", "금", "토"][dateObj.getDay()];
+                    return (
+                      <div key={l.id} style={{ padding: "14px 18px", borderBottom: idx < upcomingLessons.length - 1 ? "1px solid " + C.bl : "none" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                          <div style={{ textAlign: "center", flexShrink: 0 }}>
+                            <div style={{ fontSize: 11, color: C.tt }}>{l.date.split('-')[1]}/{l.date.split('-')[2]}</div>
+                            <div style={{ fontSize: 10, color: C.ts, marginTop: 2 }}>({dayOfWeek})</div>
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: C.tp }}>{l.subject}{l.topic ? " · " + l.topic : ""}</div>
+                            <div style={{ fontSize: 12, color: C.ts, marginTop: 2 }}>{m2s(sh * 60 + sm)}~{m2s(em)}</div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>)}
         </div>)}
 
         {/* === 학습관리 === */}
@@ -218,7 +372,7 @@ export default function ShareView({ token }) {
           </div>
           {allHw.length === 0 ? <Empty text="숙제 기록이 없습니다" /> : (<>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginBottom: showHwDetail ? 16 : 28 }}>
-              <StatCard label="평균 완료율" value={hwAvg + "%"} color={C.ac} />
+              <StatCard label="완료율" value={hwAvg + "%"} color={C.ac} />
               <StatCard label="완료" value={hwDone + "건"} color={C.su} />
               <StatCard label="진행중" value={hwInProg + "건"} color={C.wn} />
               <StatCard label="미시작" value={hwNotStarted + "건"} color={C.tt} />
@@ -354,25 +508,7 @@ export default function ShareView({ token }) {
             <SwotCard label="⚠️ 위협 (T)" bg={C.wb} border="#FDE68A" color="#B45309" text={s.plan_threat} />
           </div>
 
-          {/* Recent Report */}
-          {(() => {
-            const allReports = [...planComments, ...reports].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
-            const recentReport = allReports[0];
-            return recentReport ? (
-              <div style={{ marginBottom: 24 }}>
-                <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp, marginBottom: 12 }}>최근 학습 리포트</h3>
-                <div style={{ background: C.sf, border: "2px solid " + C.ac, borderRadius: 14, padding: 20 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                    <span style={{ fontSize: 15, fontWeight: 700, color: C.tp }}>{recentReport.title || "리포트"}</span>
-                    <span style={{ fontSize: 12, color: C.tt }}>{recentReport.date}</span>
-                  </div>
-                  <div style={{ fontSize: 14, color: C.tp, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{recentReport.body}</div>
-                </div>
-              </div>
-            ) : null;
-          })()}
-
-          {/* Scores (moved to bottom) */}
+          {/* Scores */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
             <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp, margin: 0 }}>성적 추이</h3>
             {scores.length > 0 && (
