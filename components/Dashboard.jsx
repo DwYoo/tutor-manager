@@ -17,6 +17,7 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
   const[lessons,setLessons]=useState([]);
   const[tuitions,setTuitions]=useState([]);
   const[loading,setLoading]=useState(true);
+  const[weekOff,setWeekOff]=useState(0);
 
   const fetchData=useCallback(async()=>{
     setLoading(true);
@@ -32,7 +33,8 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
   /* ── Derived data ── */
   const today=new Date();const todayStr=fd(today);
   const todayDw=today.getDay()===0?7:today.getDay();
-  const wk=gwd(today);
+  const wkBase=new Date(today);wkBase.setDate(today.getDate()+weekOff*7);
+  const wk=gwd(wkBase);
   const curMonth=`${today.getFullYear()}-${p2(today.getMonth()+1)}`;
   const year=today.getFullYear(),month=today.getMonth()+1;
 
@@ -54,7 +56,8 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
     return{day:DKS[i],c:cnt};
   });
   const weekTotal=weekData.reduce((a,d)=>a+d.c,0);
-  const todayIdx=today.getDay()===0?6:today.getDay()-1;
+  const thisWeekTotal=weekOff===0?weekTotal:gwd(today).reduce((a,d)=>a+lessons.filter(l=>lessonOnDate(l,d)).length,0);
+  const todayIdx=weekOff===0?(today.getDay()===0?6:today.getDay()-1):-1;
 
   // ── Fee calculation: same as Tuition (fee_per_class × lessons this month) ──
   const countMonthLessons=(sid)=>{
@@ -105,7 +108,7 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
 
   const stats=[
     {l:"전체 학생",v:String(students.length),sub:"관리 중",c:C.ac,click:()=>onNav("students")},
-    {l:"이번 주 수업",v:String(weekTotal),sub:`오늘 ${todayClasses.length}`,c:C.su,click:()=>onNav("schedule")},
+    {l:"이번 주 수업",v:String(thisWeekTotal),sub:`오늘 ${todayClasses.length}`,c:C.su,click:()=>onNav("schedule")},
     {l:"월 수입",v:totalFee>0?`₩${Math.round(totalFee/10000)}만`:"₩0",sub:"이번 달",c:C.wn,click:()=>onNav("tuition")},
     {l:"미수금",v:unpaidAmount>0?`₩${Math.round(unpaidAmount/10000)}만`:"₩0",sub:`${unpaidRecs.length}명`,c:C.dn,click:()=>onNav("tuition")},
   ];
@@ -169,7 +172,15 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
         <div style={{display:"flex",flexDirection:"column",gap:16}}>
           {/* Weekly chart */}
           <div style={{background:C.sf,border:`1px solid ${C.bd}`,borderRadius:14,padding:20}}>
-            <h3 style={{fontSize:15,fontWeight:600,color:C.tp,marginBottom:16}}>주간 수업</h3>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+              <h3 style={{fontSize:15,fontWeight:600,color:C.tp,margin:0}}>주간 수업</h3>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <button onClick={()=>setWeekOff(w=>w-1)} style={{background:"none",border:`1px solid ${C.bd}`,borderRadius:6,width:26,height:26,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,color:C.ts,fontFamily:"inherit"}}>◀</button>
+                {weekOff!==0&&<button onClick={()=>setWeekOff(0)} style={{background:C.as,border:`1px solid ${C.ac}`,borderRadius:6,padding:"2px 8px",cursor:"pointer",fontSize:11,color:C.ac,fontWeight:600,fontFamily:"inherit"}}>이번주</button>}
+                <span style={{fontSize:11,color:C.ts,minWidth:90,textAlign:"center"}}>{`${p2(wk[0].getMonth()+1)}/${p2(wk[0].getDate())} ~ ${p2(wk[6].getMonth()+1)}/${p2(wk[6].getDate())}`}</span>
+                <button onClick={()=>setWeekOff(w=>w+1)} style={{background:"none",border:`1px solid ${C.bd}`,borderRadius:6,width:26,height:26,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,color:C.ts,fontFamily:"inherit"}}>▶</button>
+              </div>
+            </div>
             <div style={{display:"flex",alignItems:"flex-end",gap:8,height:100,padding:"0 8px"}}>
               {weekData.map((d,i)=>{const maxC=Math.max(...weekData.map(x=>x.c),1);const h=d.c>0?(d.c/maxC)*100:4;const isT=i===todayIdx;return(
                 <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:6}}>
