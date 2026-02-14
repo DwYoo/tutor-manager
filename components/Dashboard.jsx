@@ -76,21 +76,24 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
     return cnt;
   };
 
+  const autoStatus=(amt,due)=>amt>=due?"paid":amt>0?"partial":"unpaid";
+
   const monthRecs=students.map(s=>{
     const rec=tuitions.find(t=>t.student_id===s.id&&t.month===curMonth);
     const lessonCnt=countMonthLessons(s.id);
     const calcFee=(s.fee_per_class||0)*lessonCnt;
     const carryover=rec?.carryover||0;
-    const totalDue=calcFee+carryover;
+    const autoTotalDue=calcFee+carryover;
+    const totalDue=(rec&&rec.fee_override!=null)?rec.fee_override:autoTotalDue;
     const paidAmount=rec?.amount||0;
-    const status=rec?.status||"unpaid";
+    const status=autoStatus(paidAmount,totalDue);
     return{student:s,totalDue,paidAmount,status};
   });
 
   const totalFee=monthRecs.reduce((a,r)=>a+r.totalDue,0);
   const totalPaid=monthRecs.reduce((a,r)=>a+r.paidAmount,0);
   const unpaidRecs=monthRecs.filter(r=>r.status!=="paid");
-  const unpaidAmount=Math.max(0,totalFee-totalPaid);
+  const unpaidAmount=monthRecs.reduce((a,r)=>r.status!=="paid"?a+Math.max(0,r.totalDue-r.paidAmount):a,0);
 
   // ── Next class per student (from actual lessons) ──
   const getNextClass=(sid)=>{
