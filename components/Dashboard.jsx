@@ -62,7 +62,7 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
     let cnt=0;
     for(let d=1;d<=dim;d++){
       const dt=new Date(year,month-1,d);
-      if(lessons.some(l=>l.student_id===sid&&lessonOnDate(l,dt)))cnt++;
+      cnt+=lessons.filter(l=>l.student_id===sid&&lessonOnDate(l,dt)).length;
     }
     return cnt;
   };

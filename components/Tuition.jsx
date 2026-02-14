@@ -46,12 +46,12 @@ export default function Tuition({menuBtn}){
       const dt=new Date(yr,mo-1,d);
       const ds=yr+"-"+p2(mo)+"-"+p2(d);
       const dw=dt.getDay()===0?7:dt.getDay();
-      if(lessons.some(l=>{
+      cnt+=lessons.filter(l=>{
         if(l.student_id!==sid)return false;
         if(l.date===ds)return true;
         if(l.is_recurring&&l.recurring_day===dw)return dt>=new Date(l.date);
         return false;
-      }))cnt++;
+      }).length;
     }
     return cnt;
   };
