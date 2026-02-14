@@ -94,7 +94,7 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
 
   const allFiles=lessons.flatMap(l=>(l.files||[]).map(f=>({...f,lesDate:l.date,lesTopic:l.topic||l.subject})));
   const wBooks=[...new Set(wrongs.map(w=>w.book).filter(Boolean))];
-  const filteredW=(wFilter?wrongs.filter(w=>w.book===wFilter):wrongs).sort((a,b)=>{const an=parseInt(a.problem_num)||0,bn=parseInt(b.problem_num)||0;return an-bn;});
+  const filteredW=(wFilter?wrongs.filter(w=>w.book===wFilter):wrongs).sort((a,b)=>{const ac=a.chapter||"",bc=b.chapter||"";if(ac!==bc)return ac.localeCompare(bc,undefined,{numeric:true});const an=parseInt(a.problem_num)||0,bn=parseInt(b.problem_num)||0;return an-bn;});
   const totalWPages=Math.max(1,Math.ceil(filteredW.length/PER_PAGE));
   const pagedW=filteredW.slice(wPage*PER_PAGE,(wPage+1)*PER_PAGE);
 
@@ -121,7 +121,7 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
     if(l.is_recurring&&l.date!==viewDate){const d=await materialize(l,viewDate);if(d)setLesDetailData(d);}
     else setLesDetailData(l);
   };
-  const addWrong=async()=>{if(!wForm.problem_num.trim())return;const{data,error}=await supabase.from('wrong_answers').insert({student_id:s.id,...wForm,user_id:user.id}).select().single();if(!error&&data){setWrongs(p=>[data,...p]);setWForm(f=>({...f,problem_num:"",reason:"",note:""}));setWPage(0);}};
+  const addWrong=async()=>{if(!wForm.problem_num.trim())return;const nums=wForm.problem_num.split(',').map(n=>n.trim()).filter(Boolean);if(!nums.length)return;const rows=nums.map(n=>({student_id:s.id,book:wForm.book,chapter:wForm.chapter,problem_num:n,reason:wForm.reason,note:wForm.note,user_id:user.id}));const{data,error}=await supabase.from('wrong_answers').insert(rows).select();if(!error&&data){setWrongs(p=>[...data,...p]);setWForm(f=>({...f,problem_num:"",reason:"",note:""}));setWPage(0);}};
   const delWrong=async(id)=>{await supabase.from('wrong_answers').delete().eq('id',id);setWrongs(p=>p.filter(w=>w.id!==id));};
   const wTimers=useRef({});
   const updWrong=(id,key,val)=>{setWrongs(p=>p.map(w=>w.id===id?{...w,[key]:val}:w));const tk=id+key;clearTimeout(wTimers.current[tk]);wTimers.current[tk]=setTimeout(()=>{supabase.from('wrong_answers').update({[key]:val}).eq('id',id);},500);};
