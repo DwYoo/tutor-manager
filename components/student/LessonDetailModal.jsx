@@ -1,250 +1,196 @@
-'use client'
+'use client';
+import { useState } from 'react';
 
-import { useState } from 'react'
-import { supabase } from '@/lib/supabase'
+const C={bg:"#FAFAF9",sf:"#FFFFFF",sfh:"#F5F5F4",bd:"#E7E5E4",bl:"#F0EFED",pr:"#1A1A1A",ac:"#2563EB",al:"#DBEAFE",as:"#EFF6FF",tp:"#1A1A1A",ts:"#78716C",tt:"#A8A29E",su:"#16A34A",sb:"#F0FDF4",dn:"#DC2626",db:"#FEF2F2",wn:"#F59E0B",wb:"#FFFBEB"};
+const SC=[{bg:"#DBEAFE",t:"#1E40AF",b:"#93C5FD"},{bg:"#FCE7F3",t:"#9D174D",b:"#F9A8D4"},{bg:"#D1FAE5",t:"#065F46",b:"#6EE7B7"},{bg:"#FEF3C7",t:"#92400E",b:"#FCD34D"},{bg:"#EDE9FE",t:"#5B21B6",b:"#C4B5FD"},{bg:"#FFE4E6",t:"#9F1239",b:"#FDA4AF"},{bg:"#CCFBF1",t:"#115E59",b:"#5EEAD4"},{bg:"#FEE2E2",t:"#991B1B",b:"#FCA5A5"}];
+const ls={display:"block",fontSize:12,fontWeight:500,color:C.tt,marginBottom:6};
+const is={width:"100%",padding:"9px 12px",borderRadius:8,border:`1px solid ${C.bd}`,fontSize:14,color:C.tp,background:C.sf,outline:"none",fontFamily:"inherit"};
+const p2=n=>String(n).padStart(2,"0");
+const m2s=m=>`${p2(Math.floor(m/60))}:${p2(m%60)}`;
 
-const SC = [
-  { bg: '#DBEAFE', t: '#1E40AF', b: '#93C5FD' },
-  { bg: '#FCE7F3', t: '#9D174D', b: '#F9A8D4' },
-  { bg: '#D1FAE5', t: '#065F46', b: '#6EE7B7' },
-  { bg: '#FEF3C7', t: '#92400E', b: '#FCD34D' },
-  { bg: '#EDE9FE', t: '#5B21B6', b: '#C4B5FD' },
-  { bg: '#FFE4E6', t: '#9F1239', b: '#FDA4AF' },
-  { bg: '#CCFBF1', t: '#115E59', b: '#5EEAD4' },
-  { bg: '#FEE2E2', t: '#991B1B', b: '#FCA5A5' },
-]
+const IcX=()=><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
+const IcLock=()=><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>;
 
-const p2 = n => String(n).padStart(2, '0')
+export default function LessonDetailModal({ les, student, onUpdate, onClose }) {
+  const col = SC[(student?.ci ?? student?.id ?? 0) % 8];
+  const em = les.sh * 60 + les.sm + les.dur;
+  const [tab, setTab] = useState("content");
+  const [topic, setTopic] = useState(les.top || "");
+  const [content, setContent] = useState(les.content || "");
+  const [feedback, setFeedback] = useState(les.feedback || "");
+  const [tMemo, setTMemo] = useState(les.tMemo || "");
+  const [hw, setHw] = useState((les.hw || []).map((h, i) => h.id ? h : { ...h, id: h.id || Date.now() + i, note: h.note || "" }));
+  const [planShared, setPlanShared] = useState(les.planShared || "");
+  const [planPrivate, setPlanPrivate] = useState(les.planPrivate || "");
+  const [files, setFiles] = useState(les.files || []);
+  const [newFileName, setNewFileName] = useState("");
+  const [newHw, setNewHw] = useState("");
+  const [dirty, setDirty] = useState(false);
+  const markDirty = () => setDirty(true);
 
-export default function LessonDetailModal({ lesson, student, isParent, onClose, onRefresh }) {
-  const col = SC[student.color_index % 8]
-  const l = lesson
-  const em = (l.start_hour || 0) * 60 + (l.start_min || 0) + (l.duration || 0)
+  const addHw = () => { if (!newHw.trim()) return; setHw(p => [...p, { id: Date.now(), title: newHw, pct: 0, note: "" }]); setNewHw(""); markDirty(); };
+  const delHw = id => { setHw(p => p.filter(h => h.id !== id)); markDirty(); };
+  const updHw = (id, k, v) => { setHw(p => p.map(h => h.id === id ? { ...h, [k]: v } : h)); markDirty(); };
+  const addFile = () => { if (!newFileName.trim()) return; setFiles(p => [...p, { id: Date.now(), name: newFileName, type: newFileName.split(".").pop() || "file" }]); setNewFileName(""); markDirty(); };
+  const delFile = id => { setFiles(p => p.filter(f => f.id !== id)); markDirty(); };
+  const doSave = () => { onUpdate(les.id, { top: topic, content, feedback, tMemo, hw, planPrivate, planShared, files }); setDirty(false); };
 
-  const [tab, setTab] = useState('content')
-  const [topic, setTopic] = useState(l.topic || '')
-  const [content, setContent] = useState(l.content || '')
-  const [feedback, setFeedback] = useState(l.feedback || '')
-  const [privateMemo, setPrivateMemo] = useState(l.private_memo || '')
-  const [planShared, setPlanShared] = useState(l.plan_shared || '')
-  const [planPrivate, setPlanPrivate] = useState(l.plan_private || '')
-  const [dirty, setDirty] = useState(false)
-
-  // Homework
-  const [hw, setHw] = useState(l.homework || [])
-  const [newHw, setNewHw] = useState('')
-
-  const markDirty = () => setDirty(true)
-
-  const doSave = async () => {
-    await supabase.from('lessons').update({
-      topic, content, feedback, private_memo: privateMemo,
-      plan_shared: planShared, plan_private: planPrivate,
-    }).eq('id', l.id)
-    setDirty(false)
-    onRefresh()
-  }
-
-  const addHw = async () => {
-    if (!newHw.trim()) return
-    await supabase.from('homework').insert({ lesson_id: l.id, title: newHw, completion_pct: 0 })
-    setNewHw('')
-    onRefresh()
-    const { data } = await supabase.from('homework').select('*').eq('lesson_id', l.id)
-    setHw(data || [])
-  }
-
-  const delHw = async (id) => {
-    await supabase.from('homework').delete().eq('id', id)
-    setHw(hw.filter(h => h.id !== id))
-    onRefresh()
-  }
-
-  const updHw = async (id, key, val) => {
-    await supabase.from('homework').update({ [key]: val }).eq('id', id)
-    setHw(hw.map(h => h.id === id ? { ...h, [key]: val } : h))
-  }
-
-  const deleteLesson = async () => {
-    if (!confirm('이 수업 기록을 삭제하시겠습니까?')) return
-    await supabase.from('lessons').delete().eq('id', l.id)
-    onClose()
-    onRefresh()
-  }
-
-  const tabs = [
-    { id: 'content', l: '수업 내용' },
-    { id: 'feedback', l: '피드백' },
-    { id: 'hw', l: '숙제' },
-    { id: 'plan', l: '계획' },
-  ]
+  const tabs = [{ id: "content", l: "수업 내용" }, { id: "feedback", l: "피드백" }, { id: "hw", l: "숙제" }, { id: "files", l: "자료" }, { id: "plan", l: "계획" }];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4" onClick={onClose}>
-      <div onClick={e => e.stopPropagation()}
-        className="bg-sf rounded-2xl w-full max-w-[560px] max-h-[90vh] flex flex-col shadow-xl overflow-hidden">
-
+    <div style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,.35)" }} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} className="detail-modal" style={{ background: C.sf, borderRadius: 16, width: "100%", maxWidth: 560, maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 20px 60px rgba(0,0,0,.15)", overflow: "hidden" }}>
         {/* Header */}
-        <div className="px-5 pt-5 shrink-0">
-          <div className="flex justify-between items-start mb-3">
-            <div className="flex-1">
-              <div className="flex items-center gap-2.5 mb-1.5">
-                <div className="w-3 h-3 rounded-full" style={{ background: col.b }} />
-                <h2 className="text-lg font-bold text-tp">{student.name}</h2>
-                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-md" style={{ background: col.bg, color: col.t }}>{l.subject}</span>
+        <div style={{ padding: "24px 24px 0", flexShrink: 0 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+                <div style={{ width: 12, height: 12, borderRadius: "50%", background: col.b }} />
+                <h2 style={{ fontSize: 18, fontWeight: 700, color: C.tp }}>{student?.name}</h2>
+                <span style={{ background: col.bg, color: col.t, padding: "3px 10px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}>{les.sub}</span>
               </div>
-              <input
-                value={topic}
-                onChange={e => { setTopic(e.target.value); markDirty() }}
-                className="border-none outline-none text-sm font-medium text-tp bg-transparent p-0 w-full"
-                style={{ borderBottom: '1px dashed #E7E5E4' }}
-                placeholder="수업 주제 입력..."
-              />
+              <input value={topic} onChange={e => { setTopic(e.target.value); markDirty(); }} style={{ border: "none", outline: "none", fontSize: 14, fontWeight: 500, color: C.tp, background: "transparent", padding: "2px 0", width: "100%", borderBottom: "1px dashed " + C.bd, fontFamily: "inherit" }} placeholder="수업 주제 입력..." />
             </div>
-            <button onClick={onClose} className="text-tt bg-transparent border-none cursor-pointer ml-3 shrink-0 flex">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
+            <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: C.tt, display: "flex", marginLeft: 12, flexShrink: 0 }}><IcX /></button>
           </div>
-          <div className="flex items-center gap-3 text-[13px] text-ts mb-4">
-            <span>{p2(l.start_hour || 0)}:{p2(l.start_min || 0)} ~ {p2(Math.floor(em / 60))}:{p2(em % 60)} ({l.duration}분)</span>
-            <span className="text-xs text-tt">{l.date}</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 13, color: C.ts, marginBottom: 16 }}>
+            <span>{m2s(les.sh * 60 + les.sm)} ~ {m2s(em)} ({les.dur}분)</span>
+            {les.rep && <span style={{ color: C.ac, fontSize: 12 }}>🔁 반복</span>}
           </div>
-          <div className="flex gap-0 border-b border-bd">
+          {/* Tabs */}
+          <div style={{ display: "flex", gap: 0, borderBottom: `1px solid ${C.bd}` }}>
             {tabs.map(t => (
-              <button key={t.id} onClick={() => setTab(t.id)}
-                className={`px-3.5 py-2 text-xs cursor-pointer border-none bg-transparent -mb-px
-                  ${tab === t.id ? 'text-ac font-semibold' : 'text-tt'}`}
-                style={{ borderBottom: tab === t.id ? '2px solid #2563EB' : '2px solid transparent' }}>
+              <button key={t.id} onClick={() => setTab(t.id)} style={{ padding: "8px 14px", fontSize: 12, fontWeight: tab === t.id ? 600 : 400, color: tab === t.id ? C.ac : C.tt, borderBottom: tab === t.id ? `2px solid ${C.ac}` : "2px solid transparent", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", marginBottom: -1 }}>
                 {t.l}
-                {t.id === 'hw' && hw.length > 0 && (
-                  <span className="ml-1 bg-ac text-white rounded-full px-1.5 py-px text-[10px]">{hw.length}</span>
-                )}
+                {t.id === "hw" && hw.length > 0 && <span style={{ marginLeft: 4, background: C.ac, color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 10 }}>{hw.length}</span>}
+                {t.id === "files" && files.length > 0 && <span style={{ marginLeft: 4, background: C.tt, color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 10 }}>{files.length}</span>}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Body */}
-        <div className="flex-1 overflow-auto p-5">
-          {tab === 'content' && (
+        {/* Content */}
+        <div style={{ flex: 1, overflow: "auto", padding: 24 }}>
+          {tab === "content" && (
             <div>
-              <label className="block text-xs font-medium text-tt mb-1.5">수업 내용</label>
-              <textarea value={content} onChange={e => { setContent(e.target.value); markDirty() }}
-                className="w-full px-3 py-2.5 rounded-lg border border-bd text-sm outline-none resize-y min-h-[200px] leading-relaxed"
-                placeholder="오늘 수업에서 다룬 내용..." />
+              <label style={ls}>수업 내용</label>
+              <textarea value={content} onChange={e => { setContent(e.target.value); markDirty(); }} style={{ ...is, minHeight: 200, resize: "vertical", lineHeight: 1.6 }} placeholder="오늘 수업에서 다룬 내용..." />
             </div>
           )}
 
-          {tab === 'feedback' && (
-            <div className="flex flex-col gap-5">
+          {tab === "feedback" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               <div>
-                <label className="block text-xs font-medium text-tt mb-1">
-                  학생 피드백 <span className="text-ac font-normal">(공개)</span>
-                </label>
-                <div className="bg-as border border-al rounded-lg px-3 py-1.5 text-[11px] text-ac mb-2">학생과 학부모에게 공유됩니다.</div>
-                <textarea value={feedback} onChange={e => { setFeedback(e.target.value); markDirty() }}
-                  className="w-full px-3 py-2.5 rounded-lg border border-bd text-sm outline-none resize-y min-h-[120px] leading-relaxed"
-                  placeholder="학생 이해도, 태도, 개선점..." />
+                <label style={ls}>학생 피드백 <span style={{ color: C.ac, fontWeight: 400 }}>(공개 — 학생/학부모 열람 가능)</span></label>
+                <div style={{ background: C.as, border: "1px solid " + C.al, borderRadius: 8, padding: "6px 12px", fontSize: 11, color: C.ac, marginBottom: 8 }}>이 내용은 학생과 학부모에게 공유됩니다.</div>
+                <textarea value={feedback} onChange={e => { setFeedback(e.target.value); markDirty(); }} style={{ ...is, minHeight: 120, resize: "vertical", lineHeight: 1.6 }} placeholder="학생 이해도, 태도, 개선점..." />
               </div>
-              {!isParent && (
-                <div>
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-                    <label className="text-xs font-medium text-tt">선생님 메모 <span className="text-dn font-semibold">(비공개)</span></label>
-                  </div>
-                  <div className="bg-wb border border-[#FDE68A] rounded-lg px-3 py-1.5 text-[11px] text-[#92400E] mb-2">선생님만 볼 수 있습니다.</div>
-                  <textarea value={privateMemo} onChange={e => { setPrivateMemo(e.target.value); markDirty() }}
-                    className="w-full px-3 py-2.5 rounded-lg border border-bd text-sm outline-none resize-y min-h-[100px] leading-relaxed"
-                    placeholder="다음 수업 준비, 학생 특이사항..." />
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                  <IcLock />
+                  <label style={{ ...ls, marginBottom: 0 }}>선생님 메모 <span style={{ color: C.dn, fontWeight: 600 }}>(비공개)</span></label>
                 </div>
-              )}
+                <div style={{ background: C.wb, border: "1px solid #FDE68A", borderRadius: 8, padding: "6px 12px", fontSize: 11, color: "#92400E", marginBottom: 8 }}>선생님만 볼 수 있습니다.</div>
+                <textarea value={tMemo} onChange={e => { setTMemo(e.target.value); markDirty(); }} style={{ ...is, minHeight: 100, resize: "vertical", lineHeight: 1.6 }} placeholder="다음 수업 준비, 학생 특이사항..." />
+              </div>
             </div>
           )}
 
-          {tab === 'hw' && (
+          {tab === "hw" && (
             <div>
-              <div className="flex gap-2 mb-5">
-                <input value={newHw} onChange={e => setNewHw(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') addHw() }}
-                  className="flex-1 px-3 py-2.5 rounded-lg border border-bd text-sm outline-none"
-                  placeholder="숙제 제목 입력 후 Enter..." />
-                <button onClick={addHw} className="bg-pr text-white border-none rounded-lg px-4 py-2 text-[13px] font-semibold cursor-pointer whitespace-nowrap">추가</button>
+              <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+                <input value={newHw} onChange={e => setNewHw(e.target.value)} onKeyDown={e => { if (e.key === "Enter") addHw(); }} style={{ ...is, flex: 1 }} placeholder="숙제 제목 입력 후 Enter..." />
+                <button onClick={addHw} style={{ background: C.pr, color: "#fff", border: "none", borderRadius: 8, padding: "9px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>추가</button>
               </div>
               {hw.length === 0 ? (
-                <div className="text-center p-10 text-tt text-sm">아직 숙제가 없습니다</div>
+                <div style={{ textAlign: "center", padding: 40, color: C.tt }}><div style={{ fontSize: 14 }}>아직 숙제가 없습니다</div></div>
               ) : (
-                <div className="flex flex-col gap-3">
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   {hw.map((h, i) => {
-                    const pc = h.completion_pct >= 80 ? '#16A34A' : h.completion_pct >= 50 ? '#F59E0B' : '#DC2626'
-                    const pbg = h.completion_pct >= 80 ? '#F0FDF4' : h.completion_pct >= 50 ? '#FFFBEB' : '#FEF2F2'
+                    const pc = (h.completion_pct||0) >= 80 ? C.su : (h.completion_pct||0) >= 50 ? C.wn : C.dn;
+                    const pbg = (h.completion_pct||0) >= 80 ? C.sb : (h.completion_pct||0) >= 50 ? C.wb : C.db;
                     return (
-                      <div key={h.id} className="border border-bd rounded-xl p-4">
-                        <div className="flex justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-tt font-semibold bg-sfh rounded-md px-2 py-0.5">#{i + 1}</span>
-                            <span className="text-sm font-semibold text-tp">{h.title}</span>
+                      <div key={h.id} style={{ border: "1px solid " + C.bd, borderRadius: 12, padding: 16 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <span style={{ fontSize: 12, color: C.tt, fontWeight: 600, background: C.sfh, borderRadius: 6, padding: "2px 8px" }}>#{i + 1}</span>
+                            <span style={{ fontSize: 14, fontWeight: 600, color: C.tp }}>{h.title}</span>
                           </div>
-                          <button onClick={() => delHw(h.id)} className="bg-transparent border-none cursor-pointer text-tt p-1">✕</button>
+                          <button onClick={() => delHw(h.id)} style={{ background: "none", border: "none", cursor: "pointer", color: C.tt, padding: 4 }}>✕</button>
                         </div>
-                        <div className="mb-3">
-                          <div className="flex justify-between mb-1.5">
-                            <span className="text-xs text-tt">완성도</span>
-                            <span className="text-[13px] font-bold px-2 py-0.5 rounded-md" style={{ color: pc, background: pbg }}>{h.completion_pct}%</span>
+                        <div style={{ marginBottom: 12 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                            <span style={{ fontSize: 12, color: C.tt }}>완성도</span>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: pc, background: pbg, padding: "2px 8px", borderRadius: 6 }}>{(h.completion_pct||0)}%</span>
                           </div>
-                          <input type="range" min="0" max="100" step="5" value={h.completion_pct}
-                            onChange={e => updHw(h.id, 'completion_pct', +e.target.value)}
-                            className="w-full cursor-pointer" style={{ accentColor: pc }} />
+                          <input type="range" min="0" max="100" step="5" value={(h.completion_pct||0)} onChange={e => updHw(h.id, "completion_pct", +e.target.value)} style={{ width: "100%", accentColor: pc, cursor: "pointer" }} />
                         </div>
-                        <input value={h.note || ''} onChange={e => updHw(h.id, 'note', e.target.value)}
-                          className="w-full px-2.5 py-1.5 rounded-lg border border-bd text-[13px] outline-none"
-                          placeholder="숙제 관련 메모..." />
+                        <div>
+                          <label style={{ fontSize: 11, color: C.tt, display: "block", marginBottom: 4 }}>메모</label>
+                          <input value={h.note || ""} onChange={e => updHw(h.id, "note", e.target.value)} style={{ ...is, fontSize: 13, padding: "7px 10px" }} placeholder="숙제 관련 메모..." />
+                        </div>
                       </div>
-                    )
+                    );
                   })}
                 </div>
               )}
             </div>
           )}
 
-          {tab === 'plan' && (
-            <div className="flex flex-col gap-5">
-              <div>
-                <label className="block text-xs font-semibold text-ac mb-1">공유용 수업 계획</label>
-                <div className="bg-as border border-al rounded-lg px-3 py-1.5 text-[11px] text-ac mb-2">학생/학부모 공유</div>
-                <textarea value={planShared} onChange={e => { setPlanShared(e.target.value); markDirty() }}
-                  className="w-full px-3 py-2.5 rounded-lg border border-bd text-sm outline-none resize-y min-h-[100px] leading-relaxed"
-                  placeholder="다음 수업 예고, 준비물..." />
+          {tab === "files" && (
+            <div>
+              <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+                <input value={newFileName} onChange={e => setNewFileName(e.target.value)} onKeyDown={e => { if (e.key === "Enter") addFile(); }} style={{ ...is, flex: 1 }} placeholder="파일명 입력 (예: 연습문제.pdf)" />
+                <button onClick={addFile} style={{ background: C.pr, color: "#fff", border: "none", borderRadius: 8, padding: "9px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>추가</button>
               </div>
-              {!isParent && (
-                <div>
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-                    <label className="text-xs font-medium text-tt">선생님 전용 <span className="text-dn font-semibold">(비공개)</span></label>
-                  </div>
-                  <textarea value={planPrivate} onChange={e => { setPlanPrivate(e.target.value); markDirty() }}
-                    className="w-full px-3 py-2.5 rounded-lg border border-bd text-sm outline-none resize-y min-h-[100px] leading-relaxed"
-                    placeholder="수업 전략, 난이도 조절..." />
+              {files.length === 0 ? (
+                <div style={{ textAlign: "center", padding: 40, color: C.tt }}><div style={{ fontSize: 14 }}>등록된 자료가 없습니다</div></div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {files.map(f => {
+                    const icon = (f.file_type||f.type) === "pdf" ? "📄" : (f.file_type||f.type) === "img" ? "🖼️" : "📎";
+                    return (
+                      <div key={f.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", border: "1px solid " + C.bd, borderRadius: 10 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ fontSize: 16 }}>{icon}</span>
+                          <span style={{ fontSize: 13, fontWeight: 500, color: C.tp }}>{(f.file_name||f.name)}</span>
+                          <span style={{ fontSize: 10, color: C.tt, background: C.sfh, padding: "1px 6px", borderRadius: 4 }}>{(f.file_type||f.type)}</span>
+                        </div>
+                        <button onClick={() => delFile(f.id)} style={{ background: "none", border: "none", cursor: "pointer", color: C.tt, fontSize: 12 }}>✕</button>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
+              <div style={{ marginTop: 12, fontSize: 11, color: C.tt }}>* 자료실에 자동 반영됩니다.</div>
+            </div>
+          )}
+
+          {tab === "plan" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              <div>
+                <label style={{ ...ls, color: C.ac, fontWeight: 600 }}>공유용 수업 계획</label>
+                <div style={{ background: C.as, border: "1px solid " + C.al, borderRadius: 8, padding: "6px 12px", fontSize: 11, color: C.ac, marginBottom: 8 }}>학생/학부모 공유</div>
+                <textarea value={planShared} onChange={e => { setPlanShared(e.target.value); markDirty(); }} style={{ ...is, minHeight: 100, resize: "vertical", lineHeight: 1.6 }} placeholder="다음 수업 예고, 준비물..." />
+              </div>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                  <IcLock />
+                  <label style={{ ...ls, marginBottom: 0 }}>선생님 전용 <span style={{ color: C.dn, fontWeight: 600 }}>(비공개)</span></label>
+                </div>
+                <textarea value={planPrivate} onChange={e => { setPlanPrivate(e.target.value); markDirty(); }} style={{ ...is, minHeight: 100, resize: "vertical", lineHeight: 1.6 }} placeholder="수업 전략, 난이도 조절..." />
+              </div>
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-4 border-t border-bd flex justify-between items-center gap-2.5 shrink-0">
-          <div className="flex items-center gap-2">
-            <button onClick={deleteLesson} className="bg-db text-dn border-none rounded-lg px-3 py-2 text-xs font-semibold cursor-pointer">삭제</button>
-            {dirty && <span className="text-xs text-wn">● 변경사항 있음</span>}
-          </div>
-          <div className="flex gap-2.5">
-            <button onClick={onClose} className="bg-sfh text-ts border border-bd rounded-lg px-5 py-2 text-[13px] cursor-pointer">닫기</button>
-            <button onClick={doSave}
-              className={`text-white border-none rounded-lg px-6 py-2 text-[13px] font-semibold cursor-pointer ${dirty ? 'bg-ac' : 'bg-pr'}`}>
-              저장
-            </button>
-          </div>
+        <div style={{ padding: "16px 24px", borderTop: `1px solid ${C.bd}`, display: "flex", justifyContent: "flex-end", gap: 10, flexShrink: 0 }}>
+          {dirty && <span style={{ fontSize: 12, color: C.wn, display: "flex", alignItems: "center", gap: 4, marginRight: "auto" }}>● 변경사항 있음</span>}
+          <button onClick={onClose} style={{ background: C.sfh, color: C.ts, border: `1px solid ${C.bd}`, borderRadius: 8, padding: "10px 20px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>닫기</button>
+          <button onClick={doSave} style={{ background: dirty ? C.ac : C.pr, color: "#fff", border: "none", borderRadius: 8, padding: "10px 24px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>저장</button>
         </div>
       </div>
     </div>
-  )
+  );
 }

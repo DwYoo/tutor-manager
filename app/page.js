@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import { useAuth } from '@/components/AuthProvider'
+import Login from '@/components/Login'
 import Dashboard from '@/components/Dashboard'
 import Schedule from '@/components/Schedule'
 import Students from '@/components/Students'
@@ -16,9 +18,13 @@ const NAV = [
 ]
 
 export default function Home() {
+  const { user, signOut } = useAuth()
   const [page, setPage] = useState('dashboard')
   const [sideOpen, setSideOpen] = useState(false)
   const [detailStudent, setDetailStudent] = useState(null)
+
+  // Not logged in → show Login
+  if (!user) return <Login />
 
   const goDetail = (stu) => { setDetailStudent(stu); setPage('student-detail') }
   const goBack = () => { setDetailStudent(null); setPage('students') }
@@ -26,7 +32,12 @@ export default function Home() {
   const MenuButton = () => (
     <button
       onClick={() => setSideOpen(true)}
-      className="w-11 h-11 rounded-[10px] border-2 border-bd bg-sf flex items-center justify-center shrink-0 cursor-pointer relative z-30 lg:hidden"
+      style={{
+        width: 44, height: 44, borderRadius: 10, border: '2px solid #E7E5E4',
+        background: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        cursor: 'pointer', flexShrink: 0, position: 'relative', zIndex: 30,
+      }}
+      className="menu-toggle"
     >
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#78716C" strokeWidth="2">
         <line x1="3" y1="6" x2="21" y2="6" />
@@ -37,36 +48,40 @@ export default function Home() {
   )
 
   return (
-    <div className="flex min-h-screen bg-bg">
-      {/* Desktop sidebar - always visible on lg+ */}
-      <div className="hidden lg:block">
+    <div style={{ display: 'flex', minHeight: '100vh', background: '#FAFAF9' }}>
+      <style>{`
+        @media(min-width:1024px){.menu-toggle{display:none!important;}}
+      `}</style>
+
+      {/* Desktop sidebar */}
+      <div style={{ display: 'none' }} className="desktop-sidebar">
         <Sidebar
-          nav={NAV}
-          page={page}
+          nav={NAV} page={page}
           onNav={(id) => { setPage(id); setDetailStudent(null) }}
-          onClose={() => {}}
-          isDesktop
+          onClose={() => {}} isDesktop
+          user={user} onSignOut={signOut}
         />
       </div>
+      <style>{`@media(min-width:1024px){.desktop-sidebar{display:block!important;}}`}</style>
 
-      {/* Mobile sidebar - overlay */}
+      {/* Mobile sidebar overlay */}
       {sideOpen && (
         <>
-          <div className="fixed inset-0 z-40 bg-black/30 lg:hidden" onClick={() => setSideOpen(false)} />
-          <div className="fixed left-0 top-0 z-50 lg:hidden shadow-xl">
+          <div style={{ position: 'fixed', inset: 0, zIndex: 40, background: 'rgba(0,0,0,.3)' }} onClick={() => setSideOpen(false)} />
+          <div style={{ position: 'fixed', left: 0, top: 0, zIndex: 50, boxShadow: '4px 0 24px rgba(0,0,0,.1)' }}>
             <Sidebar
-              nav={NAV}
-              page={page}
+              nav={NAV} page={page}
               onNav={(id) => { setPage(id); setDetailStudent(null); setSideOpen(false) }}
               onClose={() => setSideOpen(false)}
+              user={user} onSignOut={signOut}
             />
           </div>
         </>
       )}
 
       {/* Main content */}
-      <div className="flex-1 min-w-0">
-        <div className="animate-fadeIn">
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ animation: 'fadeIn .3s ease' }}>
           {page === 'dashboard' && <Dashboard onNav={setPage} onDetail={goDetail} menuBtn={<MenuButton />} />}
           {page === 'schedule' && <Schedule menuBtn={<MenuButton />} />}
           {page === 'students' && <Students onDetail={goDetail} menuBtn={<MenuButton />} />}

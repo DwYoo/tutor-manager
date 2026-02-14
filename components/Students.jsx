@@ -1,187 +1,138 @@
-'use client'
+'use client';
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/components/AuthProvider';
+import { supabase } from '@/lib/supabase';
 
-import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+const C={bg:"#FAFAF9",sf:"#FFFFFF",sfh:"#F5F5F4",bd:"#E7E5E4",bl:"#F0EFED",pr:"#1A1A1A",ac:"#2563EB",al:"#DBEAFE",as:"#EFF6FF",tp:"#1A1A1A",ts:"#78716C",tt:"#A8A29E",su:"#16A34A",sb:"#F0FDF4",dn:"#DC2626",db:"#FEF2F2",wn:"#F59E0B",wb:"#FFFBEB"};
+const SC=[{bg:"#DBEAFE",t:"#1E40AF",b:"#93C5FD"},{bg:"#FCE7F3",t:"#9D174D",b:"#F9A8D4"},{bg:"#D1FAE5",t:"#065F46",b:"#6EE7B7"},{bg:"#FEF3C7",t:"#92400E",b:"#FCD34D"},{bg:"#EDE9FE",t:"#5B21B6",b:"#C4B5FD"},{bg:"#FFE4E6",t:"#9F1239",b:"#FDA4AF"},{bg:"#CCFBF1",t:"#115E59",b:"#5EEAD4"},{bg:"#FEE2E2",t:"#991B1B",b:"#FCA5A5"}];
+const STATUS=[{id:"paid",l:"완납",c:C.su,bg:C.sb},{id:"partial",l:"일부납",c:C.wn,bg:C.wb},{id:"unpaid",l:"미납",c:C.dn,bg:C.db}];
+const ls={display:"block",fontSize:12,fontWeight:500,color:C.tt,marginBottom:6};
+const is={width:"100%",padding:"9px 12px",borderRadius:8,border:`1px solid ${C.bd}`,fontSize:14,color:C.tp,background:C.sf,outline:"none",fontFamily:"inherit"};
+const IcP=()=><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
+const IcX=()=><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
 
-const SC = [
-  { bg: '#DBEAFE', t: '#1E40AF', b: '#93C5FD' },
-  { bg: '#FCE7F3', t: '#9D174D', b: '#F9A8D4' },
-  { bg: '#D1FAE5', t: '#065F46', b: '#6EE7B7' },
-  { bg: '#FEF3C7', t: '#92400E', b: '#FCD34D' },
-  { bg: '#EDE9FE', t: '#5B21B6', b: '#C4B5FD' },
-  { bg: '#FFE4E6', t: '#9F1239', b: '#FDA4AF' },
-  { bg: '#CCFBF1', t: '#115E59', b: '#5EEAD4' },
-  { bg: '#FEE2E2', t: '#991B1B', b: '#FCA5A5' },
-]
-const STATUS = [
-  { id: 'paid', l: '완납', c: '#16A34A', bg: '#F0FDF4' },
-  { id: 'partial', l: '일부납', c: '#F59E0B', bg: '#FFFBEB' },
-  { id: 'unpaid', l: '미납', c: '#DC2626', bg: '#FEF2F2' },
-]
+export default function Students({onDetail,menuBtn}){
+  const tog=menuBtn;
+  const{user}=useAuth();
+  const[students,setStudents]=useState([]);
+  const[search,setSearch]=useState('');
+  const[loading,setLoading]=useState(true);
+  const[showAdd,setShowAdd]=useState(false);
+  const[editStu,setEditStu]=useState(null);
+  const[form,setForm]=useState({name:'',grade:'',subject:'',school:'',phone:'',parent_phone:'',fee:'',fee_per_class:''});
 
-export default function Students({ onDetail, menuBtn }) {
-  const [students, setStudents] = useState([])
-  const [search, setSearch] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [showAdd, setShowAdd] = useState(false)
-  const [form, setForm] = useState({ name: '', grade: '', subject: '', school: '', phone: '', parent_name: '', parent_phone: '', fee: '' })
+  useEffect(()=>{fetchStudents();},[]);
+  const fetchStudents=async()=>{const{data}=await supabase.from('students').select('*').order('created_at');setStudents(data||[]);setLoading(false);};
 
-  useEffect(() => { fetchStudents() }, [])
+  const openAdd=()=>{setEditStu(null);setForm({name:'',grade:'',subject:'',school:'',phone:'',parent_phone:'',fee:'',fee_per_class:''});setShowAdd(true);};
+  const openEdit=(s,e)=>{e.stopPropagation();setEditStu(s);setForm({name:s.name||'',grade:s.grade||'',subject:s.subject||'',school:s.school||'',phone:s.phone||'',parent_phone:s.parent_phone||'',fee:String(s.fee||''),fee_per_class:String(s.fee_per_class||'')});setShowAdd(true);};
 
-  const fetchStudents = async () => {
-    const { data } = await supabase.from('students').select('*').order('created_at')
-    setStudents(data || [])
-    setLoading(false)
-  }
-
-  const addStudent = async () => {
-    if (!form.name.trim()) return
-    const { error } = await supabase.from('students').insert({
-      ...form,
-      fee: parseInt(form.fee) || 0,
-      color_index: students.length % 8,
-      fee_status: 'unpaid',
-    })
-    if (!error) {
-      setForm({ name: '', grade: '', subject: '', school: '', phone: '', parent_name: '', parent_phone: '', fee: '' })
-      setShowAdd(false)
-      fetchStudents()
+  const saveStudent=async()=>{
+    if(!form.name.trim())return;
+    const payload={...form,fee:parseInt(form.fee)||0,fee_per_class:parseInt(form.fee_per_class)||0};
+    delete payload.fee;delete payload.fee_per_class;
+    const full={...form,fee:parseInt(form.fee)||0,fee_per_class:parseInt(form.fee_per_class)||0};
+    if(editStu){
+      const{error}=await supabase.from('students').update(full).eq('id',editStu.id);
+      if(!error)fetchStudents();
+    }else{
+      const{error}=await supabase.from('students').insert({...full,color_index:students.length%8,fee_status:'unpaid',user_id:user.id});
+      if(!error)fetchStudents();
     }
-  }
+    setShowAdd(false);setEditStu(null);
+  };
 
-  const deleteStudent = async (id) => {
-    if (!confirm('정말 삭제하시겠습니까?')) return
-    await supabase.from('students').delete().eq('id', id)
-    fetchStudents()
-  }
+  const deleteStudent=async(id,e)=>{e.stopPropagation();if(!confirm('정말 삭제하시겠습니까?'))return;await supabase.from('students').delete().eq('id',id);fetchStudents();};
 
-  const filtered = students.filter(s =>
-    s.name?.includes(search) || s.subject?.includes(search) || s.school?.includes(search)
-  )
+  const filtered=students.filter(s=>(s.name||'').includes(search)||(s.subject||'').includes(search)||(s.school||'').includes(search));
 
-  if (loading) return <div className="flex items-center justify-center min-h-screen"><div className="text-tt text-sm">불러오는 중...</div></div>
+  if(loading)return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:C.tt,fontSize:14}}>불러오는 중...</div></div>);
 
-  return (
-    <div className="p-4 md:p-7">
+  return(
+    <div style={{padding:28}}>
+      <style>{`.hcard{transition:all .12s;}.hcard:hover{background:${C.sfh}!important;}
+        @media(max-width:768px){.stu-grid{grid-template-columns:1fr!important;}}`}</style>
+
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
-        <div className="flex items-center gap-3">
-          {menuBtn}
-          <h1 className="text-lg md:text-xl font-bold text-tp">학생 관리</h1>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24,flexWrap:"wrap",gap:12}}>
+        <div style={{display:"flex",alignItems:"center",gap:12}}>
+          {tog}
+          <h1 style={{fontSize:20,fontWeight:700,color:C.tp}}>학생 관리</h1>
+          <span style={{background:C.sfh,color:C.ts,padding:"3px 10px",borderRadius:6,fontSize:12}}>{students.length}명</span>
         </div>
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="flex-1 sm:w-[200px] px-3.5 py-2 rounded-lg border border-bd text-[13px] text-tp outline-none"
-            placeholder="검색..."
-          />
-          <button
-            onClick={() => setShowAdd(true)}
-            className="bg-pr text-white border-none rounded-lg px-4 py-2 text-[13px] font-semibold cursor-pointer whitespace-nowrap"
-          >
-            + 추가
-          </button>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <input value={search} onChange={e=>setSearch(e.target.value)} style={{padding:"8px 14px",borderRadius:8,border:`1px solid ${C.bd}`,fontSize:13,color:C.tp,outline:"none",width:200,fontFamily:"inherit"}} placeholder="검색..."/>
+          <button onClick={openAdd} style={{display:"flex",alignItems:"center",gap:4,background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"8px 16px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}><IcP/> 학생 추가</button>
         </div>
       </div>
 
-      {/* Add modal */}
-      {showAdd && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4" onClick={() => setShowAdd(false)}>
-          <div onClick={e => e.stopPropagation()} className="bg-sf rounded-2xl w-full max-w-md p-6 shadow-xl max-h-[90vh] overflow-auto">
-            <div className="flex justify-between mb-5">
-              <h2 className="text-lg font-bold text-tp">학생 추가</h2>
-              <button onClick={() => setShowAdd(false)} className="text-tt bg-transparent border-none cursor-pointer">✕</button>
-            </div>
-            <div className="flex flex-col gap-3">
-              {[
-                { k: 'name', l: '이름', ph: '학생 이름' },
-                { k: 'grade', l: '학년', ph: '예: 고2' },
-                { k: 'subject', l: '과목', ph: '예: 수학' },
-                { k: 'school', l: '학교', ph: '학교명' },
-                { k: 'phone', l: '연락처', ph: '010-0000-0000' },
-                { k: 'parent_name', l: '학부모 이름', ph: '학부모 성함' },
-                { k: 'parent_phone', l: '학부모 연락처', ph: '010-0000-0000' },
-                { k: 'fee', l: '월 수업료', ph: '예: 400000' },
-              ].map(f => (
-                <div key={f.k}>
-                  <label className="block text-xs font-medium text-tt mb-1.5">{f.l}</label>
-                  <input
-                    value={form[f.k]}
-                    onChange={e => setForm(p => ({ ...p, [f.k]: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-lg border border-bd text-sm text-tp outline-none"
-                    placeholder={f.ph}
-                  />
+      {/* Student cards */}
+      <div className="stu-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:14}}>
+        {filtered.map(s=>{
+          const col=SC[(s.color_index||0)%8];
+          const st=STATUS.find(x=>x.id===s.fee_status)||STATUS[2];
+          return(
+            <div key={s.id} onClick={()=>onDetail(s)} style={{background:C.sf,border:`1px solid ${C.bd}`,borderRadius:14,padding:20,cursor:"pointer",borderTop:`3px solid ${col.b}`}} className="hcard">
+              <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14}}>
+                <div style={{width:40,height:40,borderRadius:10,background:col.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:700,color:col.t}}>{(s.name||"?")[0]}</div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:15,fontWeight:700,color:C.tp}}>{s.name}</div>
+                  <div style={{display:"flex",gap:4,marginTop:2}}>
+                    <span style={{background:col.bg,color:col.t,padding:"2px 8px",borderRadius:5,fontSize:11,fontWeight:600}}>{s.subject}</span>
+                    <span style={{background:C.sfh,color:C.ts,padding:"2px 8px",borderRadius:5,fontSize:11}}>{s.grade}</span>
+                  </div>
                 </div>
-              ))}
+              </div>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:C.ts}}>
+                <span>다음: {s.next_class||"-"}</span>
+                <span style={{background:st.bg,color:st.c,padding:"2px 8px",borderRadius:5,fontSize:10,fontWeight:600}}>{st.l}</span>
+              </div>
+              <div style={{display:"flex",justifyContent:"space-between",marginTop:8,paddingTop:8,borderTop:`1px solid ${C.bl}`,fontSize:12}}>
+                <span style={{color:C.ts}}>{s.school||""}</span>
+                <div style={{textAlign:"right"}}><div style={{fontWeight:600,color:C.tp}}>₩{(s.fee||0).toLocaleString()}/월</div>{s.fee_per_class>0&&<div style={{fontSize:10,color:C.tt}}>회당 ₩{(s.fee_per_class).toLocaleString()}</div>}</div>
+              </div>
+              <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:8,paddingTop:8,borderTop:`1px solid ${C.bl}`}}>
+                <button onClick={e=>openEdit(s,e)} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,fontSize:11,fontFamily:"inherit"}}>수정</button>
+                <button onClick={e=>deleteStudent(s.id,e)} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,fontSize:11,fontFamily:"inherit"}}>삭제</button>
+              </div>
             </div>
-            <div className="flex gap-2.5 mt-5 justify-end">
-              <button onClick={() => setShowAdd(false)} className="bg-sfh text-ts border border-bd rounded-lg px-5 py-2.5 text-[13px] cursor-pointer">취소</button>
-              <button onClick={addStudent} className="bg-pr text-white border-none rounded-lg px-6 py-2.5 text-[13px] font-semibold cursor-pointer">추가</button>
+          );
+        })}
+
+        {/* Add card */}
+        <div onClick={openAdd} style={{background:C.sf,border:`2px dashed ${C.bd}`,borderRadius:14,padding:20,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:160,color:C.tt}} className="hcard">
+          <IcP/>
+          <div style={{marginTop:8,fontSize:13}}>학생 추가</div>
+        </div>
+      </div>
+
+      {/* Add/Edit Modal */}
+      {showAdd&&(
+        <div style={{position:"fixed",inset:0,zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,.35)"}} onClick={()=>{setShowAdd(false);setEditStu(null);}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:C.sf,borderRadius:16,width:"100%",maxWidth:440,padding:28,boxShadow:"0 20px 60px rgba(0,0,0,.15)",maxHeight:"90vh",overflow:"auto"}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:20}}>
+              <h2 style={{fontSize:18,fontWeight:700,color:C.tp}}>{editStu?"학생 수정":"학생 추가"}</h2>
+              <button onClick={()=>{setShowAdd(false);setEditStu(null);}} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,display:"flex"}}><IcX/></button>
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+              {[
+                {k:'name',l:'이름',ph:'학생 이름'},
+                {k:'grade',l:'학년',ph:'예: 고2'},
+                {k:'subject',l:'과목',ph:'예: 수학'},
+                {k:'school',l:'학교',ph:'학교명'},
+                {k:'phone',l:'연락처',ph:'010-0000-0000'},
+                {k:'parent_phone',l:'학부모 연락처',ph:'010-0000-0000'},
+                {k:'fee',l:'월 수업료 (참고용)',ph:'예: 400000'},
+                {k:'fee_per_class',l:'수업당 단가',ph:'예: 50000'},
+              ].map(f=>(<div key={f.k}><label style={ls}>{f.l}</label><input value={form[f.k]} onChange={e=>setForm(p=>({...p,[f.k]:e.target.value}))} style={is} placeholder={f.ph}/></div>))}
+            </div>
+            <div style={{display:"flex",gap:10,marginTop:20,justifyContent:"flex-end"}}>
+              <button onClick={()=>{setShowAdd(false);setEditStu(null);}} style={{background:C.sfh,color:C.ts,border:`1px solid ${C.bd}`,borderRadius:8,padding:"10px 20px",fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>취소</button>
+              <button onClick={saveStudent} style={{background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"10px 24px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{editStu?"저장":"추가"}</button>
             </div>
           </div>
         </div>
       )}
-
-      {/* Student cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3.5">
-        {filtered.map(s => {
-          const col = SC[s.color_index % 8]
-          const st = STATUS.find(x => x.id === s.fee_status) || STATUS[2]
-          return (
-            <div
-              key={s.id}
-              className="bg-sf border border-bd rounded-[14px] p-5 cursor-pointer hover:bg-sfh transition-colors"
-              style={{ borderTop: `3px solid ${col.b}` }}
-            >
-              <div onClick={() => onDetail(s)}>
-                <div className="flex items-center gap-3 mb-3.5">
-                  <div
-                    className="w-10 h-10 rounded-[10px] flex items-center justify-center text-base font-bold"
-                    style={{ background: col.bg, color: col.t }}
-                  >
-                    {s.name[0]}
-                  </div>
-                  <div>
-                    <div className="text-[15px] font-bold text-tp">{s.name}</div>
-                    <div className="flex gap-1 mt-0.5">
-                      <span className="text-[11px] font-semibold px-2 py-0.5 rounded-[5px]" style={{ background: col.bg, color: col.t }}>{s.subject}</span>
-                      <span className="text-[11px] px-2 py-0.5 rounded-[5px] bg-sfh text-ts">{s.grade}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex justify-between text-xs text-ts">
-                  <span>다음: {s.next_class || '-'}</span>
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-[5px]" style={{ background: st.bg, color: st.c }}>{st.l}</span>
-                </div>
-                <div className="flex justify-between mt-2 pt-2 text-xs" style={{ borderTop: '1px solid #F0EFED' }}>
-                  <span className="text-ts">{s.school}</span>
-                  <span className="font-semibold text-tp">₩{(s.fee || 0).toLocaleString()}/월</span>
-                </div>
-              </div>
-              <div className="mt-2 pt-2 flex justify-end" style={{ borderTop: '1px solid #F0EFED' }}>
-                <button
-                  onClick={(e) => { e.stopPropagation(); deleteStudent(s.id) }}
-                  className="text-[11px] text-tt bg-transparent border-none cursor-pointer hover:text-dn"
-                >
-                  삭제
-                </button>
-              </div>
-            </div>
-          )
-        })}
-
-        {/* Add card */}
-        <div
-          onClick={() => setShowAdd(true)}
-          className="bg-sf border-2 border-dashed border-bd rounded-[14px] p-5 cursor-pointer flex flex-col items-center justify-center min-h-[160px] text-tt hover:bg-sfh transition-colors"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-            <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-          <div className="mt-2 text-[13px]">학생 추가</div>
-        </div>
-      </div>
     </div>
-  )
+  );
 }
