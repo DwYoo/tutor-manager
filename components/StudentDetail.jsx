@@ -38,10 +38,9 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
   const [showNew,setShowNew]=useState(false);
   const [nT,setNT]=useState("");const [nB,setNB]=useState("");const [nS,setNS]=useState(false);
   const [wForm,setWForm]=useState({book:"",chapter:"",problem_num:"",reason:"",note:""});
-  const [wFilter,setWFilter]=useState("");const [wPage,setWPage]=useState(0);
+  const [wFilter,setWFilter]=useState("");const [wPage,setWPage]=useState(0);const [wSearch,setWSearch]=useState("");const [wBulkMode,setWBulkMode]=useState(false);const [wSelected,setWSelected]=useState(new Set());
   const [wExpanded,setWExpanded]=useState(()=>{try{const s=localStorage.getItem("wExp_"+student.id);return s?JSON.parse(s):{};}catch{return{};}});
   useEffect(()=>{try{localStorage.setItem("wExp_"+student.id,JSON.stringify(wExpanded));}catch{}},[wExpanded,student.id]);
-  const PER_PAGE=20;
   const [showAddScore,setShowAddScore]=useState(false);
   const [scoreForm,setScoreForm]=useState({date:"",score:"",label:""});
   const [editScore,setEditScore]=useState(null);
@@ -96,9 +95,7 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
 
   const allFiles=lessons.flatMap(l=>(l.files||[]).map(f=>({...f,lesDate:l.date,lesTopic:l.topic||l.subject})));
   const wBooks=[...new Set(wrongs.map(w=>w.book).filter(Boolean))];
-  const filteredW=(wFilter?wrongs.filter(w=>w.book===wFilter):wrongs).sort((a,b)=>{const ac=a.chapter||"",bc=b.chapter||"";if(ac!==bc)return ac.localeCompare(bc,undefined,{numeric:true});const an=parseInt(a.problem_num)||0,bn=parseInt(b.problem_num)||0;return an-bn;});
-  const totalWPages=Math.max(1,Math.ceil(filteredW.length/PER_PAGE));
-  const pagedW=filteredW.slice(wPage*PER_PAGE,(wPage+1)*PER_PAGE);
+  const filteredW=(()=>{let arr=wFilter?wrongs.filter(w=>w.book===wFilter):wrongs;if(wSearch){const q=wSearch.toLowerCase();arr=arr.filter(w=>(w.problem_num||"").toLowerCase().includes(q)||(w.reason||"").toLowerCase().includes(q)||(w.note||"").toLowerCase().includes(q)||(w.chapter||"").toLowerCase().includes(q));}return arr.sort((a,b)=>{const ac=a.chapter||"",bc=b.chapter||"";if(ac!==bc)return ac.localeCompare(bc,undefined,{numeric:true});const an=parseInt(a.problem_num)||0,bn=parseInt(b.problem_num)||0;return an-bn;});})();
 
   // Reason & chapter stats (independent book filters)
   const reasonSource=reasonBook?wrongs.filter(w=>w.book===reasonBook):wrongs;
@@ -131,6 +128,7 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
   };
   const addWrong=async()=>{if(!wForm.problem_num.trim())return;const nums=wForm.problem_num.split(',').map(n=>n.trim()).filter(Boolean);if(!nums.length)return;const rows=nums.map(n=>({student_id:s.id,book:wForm.book,chapter:wForm.chapter,problem_num:n,reason:wForm.reason,note:wForm.note,user_id:user.id}));const{data,error}=await supabase.from('wrong_answers').insert(rows).select();if(!error&&data){setWrongs(p=>[...data,...p]);setWForm(f=>({...f,problem_num:"",reason:"",note:""}));setWPage(0);}};
   const delWrong=async(id)=>{await supabase.from('wrong_answers').delete().eq('id',id);setWrongs(p=>p.filter(w=>w.id!==id));};
+  const bulkDelWrong=async()=>{const ids=[...wSelected];if(!ids.length)return;await supabase.from('wrong_answers').delete().in('id',ids);setWrongs(p=>p.filter(w=>!wSelected.has(w.id)));setWSelected(new Set());setWBulkMode(false);};
   const wTimers=useRef({});
   const updWrong=(id,key,val)=>{setWrongs(p=>p.map(w=>w.id===id?{...w,[key]:val}:w));const tk=id+key;clearTimeout(wTimers.current[tk]);wTimers.current[tk]=setTimeout(async()=>{await supabase.from('wrong_answers').update({[key]:val}).eq('id',id);},500);};
   const addRp=async()=>{if(!nT.trim())return;const{data,error}=await supabase.from('reports').insert({student_id:s.id,title:nT,body:nB,is_shared:nS,date:fd(new Date()),user_id:user.id}).select().single();if(!error&&data){setReports(p=>[data,...p]);setNT("");setNB("");setNS(false);setShowNew(false);}};
@@ -462,7 +460,10 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
         {subTab==="wrong"&&(<div>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}}>
             <h3 style={{fontSize:16,fontWeight:700,color:C.tp}}>오답 관리</h3>
-            <span style={{background:C.db,color:C.dn,padding:"3px 12px",borderRadius:6,fontSize:12,fontWeight:600}}>총 {wrongs.length}문항</span>
+            <div style={{display:"flex",gap:6,alignItems:"center"}}>
+              <span style={{background:C.db,color:C.dn,padding:"3px 12px",borderRadius:6,fontSize:12,fontWeight:600}}>총 {wrongs.length}문항</span>
+              {wrongs.length>0&&<><span style={{background:C.wb,color:C.wn,padding:"3px 10px",borderRadius:6,fontSize:11,fontWeight:600}}>미해결 {wrongs.filter(w=>!w.resolved).length}</span><span style={{background:C.sb,color:C.su,padding:"3px 10px",borderRadius:6,fontSize:11,fontWeight:600}}>해결 {wrongs.filter(w=>w.resolved).length}</span></>}
+            </div>
           </div>
 
           {/* Stats charts */}
@@ -514,7 +515,12 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
             </div>
           </div>)}
 
-          {/* Filter by book */}
+          {/* Search + Filter */}
+          <div style={{display:"flex",gap:8,marginBottom:10,alignItems:"center",flexWrap:"wrap"}}>
+            <input value={wSearch} onChange={e=>setWSearch(e.target.value)} placeholder="검색 (번호, 사유, 메모, 단원)" style={{...is,fontSize:11,padding:"5px 10px",width:200,flex:"0 0 auto"}}/>
+            {!isParent&&(<button onClick={()=>{if(wBulkMode){setWSelected(new Set());setWBulkMode(false);}else setWBulkMode(true);}} style={{background:wBulkMode?C.db:C.sfh,border:"1px solid "+(wBulkMode?C.dn:C.bd),borderRadius:8,padding:"5px 12px",fontSize:11,fontWeight:wBulkMode?600:400,color:wBulkMode?C.dn:C.ts,cursor:"pointer",fontFamily:"inherit"}}>{wBulkMode?"선택 취소":"선택"}</button>)}
+            {wBulkMode&&wSelected.size>0&&(<button onClick={bulkDelWrong} style={{background:C.dn,color:"#fff",border:"none",borderRadius:8,padding:"5px 14px",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{wSelected.size}개 삭제</button>)}
+          </div>
           <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
             <button onClick={()=>{setWFilter("");setWPage(0);}} style={{background:!wFilter?C.as:C.sfh,border:"1px solid "+(!wFilter?C.ac:C.bd),borderRadius:8,padding:"5px 12px",fontSize:11,fontWeight:!wFilter?600:400,color:!wFilter?C.ac:C.ts,cursor:"pointer",fontFamily:"inherit"}}>전체 ({wrongs.length})</button>
             {wBooks.map(b=>{const cnt=wrongs.filter(w=>w.book===b).length;return(<button key={b} onClick={()=>{setWFilter(wFilter===b?"":b);setWPage(0);}} style={{background:wFilter===b?C.as:C.sfh,border:"1px solid "+(wFilter===b?C.ac:C.bd),borderRadius:8,padding:"5px 12px",fontSize:11,fontWeight:wFilter===b?600:400,color:wFilter===b?C.ac:C.ts,cursor:"pointer",fontFamily:"inherit"}}>{b} ({cnt})</button>);})}
@@ -528,47 +534,51 @@ export default function StudentDetail({ student, onBack, menuBtn }) {
                 <span style={{fontSize:13,fontWeight:600,color:book?C.tp:C.tt}}>{book||"교재명 미지정"} <span style={{fontWeight:400,color:C.tt}}>({items.length})</span></span>
                 <span style={{fontSize:12,color:C.tt}}>{exp?"▲":"▼"}</span>
               </div>
-              {exp&&(()=>{const uCh=[];const seen=new Set();items.forEach(w=>{const ch=w.chapter||"";if(!seen.has(ch)){seen.add(ch);uCh.push(ch);}});return <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-                <thead><tr>{["번호","사유","메모",""].map((h,i)=>(<th key={i} style={{padding:"8px 10px",textAlign:"left",color:C.tt,fontWeight:500,borderBottom:"1px solid "+C.bd}}>{h}</th>))}</tr></thead>
-                <tbody>{uCh.map(ch=>{const ck=bk+"::"+(ch||"__no_ch__");const chExp=wExpanded[ck]!==false;const chItems=items.filter(w=>(w.chapter||"")===ch);const cc=chapterColorMap[ch]||null;return(<Fragment key={ck}>
+              {exp&&(()=>{const uCh=[];const seen=new Set();items.forEach(w=>{const ch=w.chapter||"";if(!seen.has(ch)){seen.add(ch);uCh.push(ch);}});const cols=5;return <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+                <thead><tr>{["",wBulkMode?"":"번호","사유","메모",""].map((h,i)=>(<th key={i} style={{padding:"8px 10px",textAlign:"left",color:C.tt,fontWeight:500,borderBottom:"1px solid "+C.bd,width:i===0?28:i===4?48:"auto"}}>{h}</th>))}</tr></thead>
+                <tbody>{uCh.map(ch=>{const ck=bk+"::"+(ch||"__no_ch__");const chExp=wExpanded[ck]!==false;const chItems=items.filter(w=>(w.chapter||"")===ch);const cc=chapterColorMap[ch]||null;const chResolved=chItems.filter(w=>w.resolved).length;return(<Fragment key={ck}>
                   <tr onClick={()=>setWExpanded(p=>({...p,[ck]:!chExp}))} style={{cursor:"pointer"}}>
-                    <td colSpan={4} style={{padding:"7px 8px",background:C.sf,borderBottom:"1px solid "+C.bd}}>
+                    <td colSpan={cols} style={{padding:"7px 8px",background:C.sf,borderBottom:"1px solid "+C.bd}}>
                       <div style={{display:"flex",alignItems:"center",gap:6}}>
                         {cc&&<span style={{display:"inline-block",width:7,height:7,borderRadius:"50%",background:cc,flexShrink:0}}/>}
                         <span style={{fontSize:12,fontWeight:500,color:ch?C.ts:C.tt}}>{ch||"단원 미지정"}</span>
                         <span style={{fontSize:10,color:C.tt}}>({chItems.length})</span>
+                        {chResolved>0&&<span style={{fontSize:9,color:C.su,background:C.sb,padding:"1px 6px",borderRadius:4}}>{chResolved}해결</span>}
                         <span style={{fontSize:10,color:C.tt,marginLeft:"auto"}}>{chExp?"▲":"▼"}</span>
                       </div>
                     </td>
                   </tr>
-                  {chExp&&chItems.map(w=>{const rc=reasonColorMap[w.reason||"미분류"]||"#888";return(<tr key={w.id} style={{borderBottom:"1px solid "+C.bl}}>
-                  <td style={{padding:"6px 4px"}}>{isParent?<span style={{fontWeight:600,color:C.tp,fontSize:12,padding:"0 6px"}}>{w.problem_num}</span>:<input value={w.problem_num||""} onChange={e=>updWrong(w.id,"problem_num",e.target.value)} style={{border:"none",outline:"none",background:"transparent",fontWeight:600,color:C.tp,fontSize:12,fontFamily:"inherit",width:60,padding:"2px 6px"}}/>}</td>
-                  <td style={{padding:"6px 4px"}}>{isParent?<span style={{background:rc+"20",color:rc,padding:"2px 8px",borderRadius:5,fontSize:10,fontWeight:600}}>{w.reason||"-"}</span>:<input value={w.reason||""} onChange={e=>updWrong(w.id,"reason",e.target.value)} style={{border:"none",outline:"none",background:rc+"20",color:rc,fontSize:11,fontWeight:600,fontFamily:"inherit",borderRadius:5,padding:"2px 8px",width:"100%"}} placeholder="사유"/>}</td>
-                  <td style={{padding:"6px 4px"}}>{isParent?<span style={{color:C.ts,fontSize:12,padding:"0 6px"}}>{w.note||"-"}</span>:<input value={w.note||""} onChange={e=>updWrong(w.id,"note",e.target.value)} style={{border:"none",outline:"none",background:"transparent",color:C.ts,fontSize:12,fontFamily:"inherit",width:"100%",padding:"2px 6px"}} placeholder="메모"/>}</td>
-                  <td style={{padding:"6px 4px"}}>{!isParent&&<button onClick={()=>delWrong(w.id)} style={{background:"none",border:"none",color:C.tt,cursor:"pointer",fontSize:11,fontFamily:"inherit"}}>삭제</button>}</td>
+                  {chExp&&chItems.map(w=>{const rc=reasonColorMap[w.reason||"미분류"]||"#888";const resolved=!!w.resolved;const rSt=resolved?{textDecoration:"line-through",opacity:.45}:{};return(<tr key={w.id} style={{borderBottom:"1px solid "+C.bl,background:resolved?C.sb+"60":"transparent"}}>
+                  <td style={{padding:"6px 2px",width:28,textAlign:"center"}}>{wBulkMode?<input type="checkbox" checked={wSelected.has(w.id)} onChange={()=>setWSelected(p=>{const n=new Set(p);n.has(w.id)?n.delete(w.id):n.add(w.id);return n;})} style={{cursor:"pointer"}}/>:<button onClick={()=>updWrong(w.id,"resolved",!resolved)} style={{width:18,height:18,borderRadius:"50%",border:"2px solid "+(resolved?C.su:"#D4D4D4"),background:resolved?C.su:"transparent",cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center",padding:0,flexShrink:0}}>{resolved&&<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}</button>}</td>
+                  <td style={{padding:"6px 4px",...rSt}}>{isParent?<span style={{fontWeight:600,color:C.tp,fontSize:12,padding:"0 6px"}}>{w.problem_num}</span>:<input value={w.problem_num||""} onChange={e=>updWrong(w.id,"problem_num",e.target.value)} style={{border:"none",outline:"none",background:"transparent",fontWeight:600,color:C.tp,fontSize:12,fontFamily:"inherit",width:60,padding:"2px 6px",...rSt}}/>}</td>
+                  <td style={{padding:"6px 4px",...rSt}}>{isParent?<span style={{background:rc+"20",color:rc,padding:"2px 8px",borderRadius:5,fontSize:10,fontWeight:600}}>{w.reason||"-"}</span>:<input value={w.reason||""} onChange={e=>updWrong(w.id,"reason",e.target.value)} style={{border:"none",outline:"none",background:rc+"20",color:rc,fontSize:11,fontWeight:600,fontFamily:"inherit",borderRadius:5,padding:"2px 8px",width:"100%",...rSt}} placeholder="사유"/>}</td>
+                  <td style={{padding:"6px 4px",...rSt}}>{isParent?<span style={{color:C.ts,fontSize:12,padding:"0 6px"}}>{w.note||"-"}</span>:<input value={w.note||""} onChange={e=>updWrong(w.id,"note",e.target.value)} style={{border:"none",outline:"none",background:"transparent",color:C.ts,fontSize:12,fontFamily:"inherit",width:"100%",padding:"2px 6px",...rSt}} placeholder="메모"/>}</td>
+                  <td style={{padding:"6px 4px",width:48}}>{!isParent&&!wBulkMode&&<button onClick={()=>delWrong(w.id)} style={{background:"none",border:"none",color:C.tt,cursor:"pointer",fontSize:11,fontFamily:"inherit"}}>삭제</button>}</td>
                 </tr>);})}
                 </Fragment>);})}</tbody>
               </table>;})()}
             </div>);})):(
             <div>
-              {(()=>{const fItems=filteredW;const uCh=[];const seen=new Set();fItems.forEach(w=>{const ch=w.chapter||"";if(!seen.has(ch)){seen.add(ch);uCh.push(ch);}});const fk=wFilter||"__filtered__";return fItems.length===0?<div style={{textAlign:"center",padding:24,color:C.tt,fontSize:13}}>오답 기록이 없습니다</div>:<table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-                <thead><tr>{["번호","사유","메모",""].map((h,i)=>(<th key={i} style={{padding:"8px 10px",textAlign:"left",color:C.tt,fontWeight:500,borderBottom:"1px solid "+C.bd}}>{h}</th>))}</tr></thead>
-                <tbody>{uCh.map(ch=>{const ck=fk+"::"+(ch||"__no_ch__");const chExp=wExpanded[ck]!==false;const chItems=fItems.filter(w=>(w.chapter||"")===ch);const cc=chapterColorMap[ch]||null;return(<Fragment key={ck}>
+              {(()=>{const fItems=filteredW;const uCh=[];const seen=new Set();fItems.forEach(w=>{const ch=w.chapter||"";if(!seen.has(ch)){seen.add(ch);uCh.push(ch);}});const fk=wFilter||"__filtered__";const cols=5;return fItems.length===0?<div style={{textAlign:"center",padding:24,color:C.tt,fontSize:13}}>오답 기록이 없습니다</div>:<table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+                <thead><tr>{["",wBulkMode?"":"번호","사유","메모",""].map((h,i)=>(<th key={i} style={{padding:"8px 10px",textAlign:"left",color:C.tt,fontWeight:500,borderBottom:"1px solid "+C.bd,width:i===0?28:i===4?48:"auto"}}>{h}</th>))}</tr></thead>
+                <tbody>{uCh.map(ch=>{const ck=fk+"::"+(ch||"__no_ch__");const chExp=wExpanded[ck]!==false;const chItems=fItems.filter(w=>(w.chapter||"")===ch);const cc=chapterColorMap[ch]||null;const chResolved=chItems.filter(w=>w.resolved).length;return(<Fragment key={ck}>
                   <tr onClick={()=>setWExpanded(p=>({...p,[ck]:!chExp}))} style={{cursor:"pointer"}}>
-                    <td colSpan={4} style={{padding:"7px 8px",background:C.sf,borderBottom:"1px solid "+C.bd}}>
+                    <td colSpan={cols} style={{padding:"7px 8px",background:C.sf,borderBottom:"1px solid "+C.bd}}>
                       <div style={{display:"flex",alignItems:"center",gap:6}}>
                         {cc&&<span style={{display:"inline-block",width:7,height:7,borderRadius:"50%",background:cc,flexShrink:0}}/>}
                         <span style={{fontSize:12,fontWeight:500,color:ch?C.ts:C.tt}}>{ch||"단원 미지정"}</span>
                         <span style={{fontSize:10,color:C.tt}}>({chItems.length})</span>
+                        {chResolved>0&&<span style={{fontSize:9,color:C.su,background:C.sb,padding:"1px 6px",borderRadius:4}}>{chResolved}해결</span>}
                         <span style={{fontSize:10,color:C.tt,marginLeft:"auto"}}>{chExp?"▲":"▼"}</span>
                       </div>
                     </td>
                   </tr>
-                  {chExp&&chItems.map(w=>{const rc=reasonColorMap[w.reason||"미분류"]||"#888";return(<tr key={w.id} style={{borderBottom:"1px solid "+C.bl}}>
-                  <td style={{padding:"6px 4px"}}>{isParent?<span style={{fontWeight:600,color:C.tp,fontSize:12,padding:"0 6px"}}>{w.problem_num}</span>:<input value={w.problem_num||""} onChange={e=>updWrong(w.id,"problem_num",e.target.value)} style={{border:"none",outline:"none",background:"transparent",fontWeight:600,color:C.tp,fontSize:12,fontFamily:"inherit",width:60,padding:"2px 6px"}}/>}</td>
-                  <td style={{padding:"6px 4px"}}>{isParent?<span style={{background:rc+"20",color:rc,padding:"2px 8px",borderRadius:5,fontSize:10,fontWeight:600}}>{w.reason||"-"}</span>:<input value={w.reason||""} onChange={e=>updWrong(w.id,"reason",e.target.value)} style={{border:"none",outline:"none",background:rc+"20",color:rc,fontSize:11,fontWeight:600,fontFamily:"inherit",borderRadius:5,padding:"2px 8px",width:"100%"}} placeholder="사유"/>}</td>
-                  <td style={{padding:"6px 4px"}}>{isParent?<span style={{color:C.ts,fontSize:12,padding:"0 6px"}}>{w.note||"-"}</span>:<input value={w.note||""} onChange={e=>updWrong(w.id,"note",e.target.value)} style={{border:"none",outline:"none",background:"transparent",color:C.ts,fontSize:12,fontFamily:"inherit",width:"100%",padding:"2px 6px"}} placeholder="메모"/>}</td>
-                  <td style={{padding:"6px 4px"}}>{!isParent&&<button onClick={()=>delWrong(w.id)} style={{background:"none",border:"none",color:C.tt,cursor:"pointer",fontSize:11,fontFamily:"inherit"}}>삭제</button>}</td>
+                  {chExp&&chItems.map(w=>{const rc=reasonColorMap[w.reason||"미분류"]||"#888";const resolved=!!w.resolved;const rSt=resolved?{textDecoration:"line-through",opacity:.45}:{};return(<tr key={w.id} style={{borderBottom:"1px solid "+C.bl,background:resolved?C.sb+"60":"transparent"}}>
+                  <td style={{padding:"6px 2px",width:28,textAlign:"center"}}>{wBulkMode?<input type="checkbox" checked={wSelected.has(w.id)} onChange={()=>setWSelected(p=>{const n=new Set(p);n.has(w.id)?n.delete(w.id):n.add(w.id);return n;})} style={{cursor:"pointer"}}/>:<button onClick={()=>updWrong(w.id,"resolved",!resolved)} style={{width:18,height:18,borderRadius:"50%",border:"2px solid "+(resolved?C.su:"#D4D4D4"),background:resolved?C.su:"transparent",cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center",padding:0,flexShrink:0}}>{resolved&&<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}</button>}</td>
+                  <td style={{padding:"6px 4px",...rSt}}>{isParent?<span style={{fontWeight:600,color:C.tp,fontSize:12,padding:"0 6px"}}>{w.problem_num}</span>:<input value={w.problem_num||""} onChange={e=>updWrong(w.id,"problem_num",e.target.value)} style={{border:"none",outline:"none",background:"transparent",fontWeight:600,color:C.tp,fontSize:12,fontFamily:"inherit",width:60,padding:"2px 6px",...rSt}}/>}</td>
+                  <td style={{padding:"6px 4px",...rSt}}>{isParent?<span style={{background:rc+"20",color:rc,padding:"2px 8px",borderRadius:5,fontSize:10,fontWeight:600}}>{w.reason||"-"}</span>:<input value={w.reason||""} onChange={e=>updWrong(w.id,"reason",e.target.value)} style={{border:"none",outline:"none",background:rc+"20",color:rc,fontSize:11,fontWeight:600,fontFamily:"inherit",borderRadius:5,padding:"2px 8px",width:"100%",...rSt}} placeholder="사유"/>}</td>
+                  <td style={{padding:"6px 4px",...rSt}}>{isParent?<span style={{color:C.ts,fontSize:12,padding:"0 6px"}}>{w.note||"-"}</span>:<input value={w.note||""} onChange={e=>updWrong(w.id,"note",e.target.value)} style={{border:"none",outline:"none",background:"transparent",color:C.ts,fontSize:12,fontFamily:"inherit",width:"100%",padding:"2px 6px",...rSt}} placeholder="메모"/>}</td>
+                  <td style={{padding:"6px 4px",width:48}}>{!isParent&&!wBulkMode&&<button onClick={()=>delWrong(w.id)} style={{background:"none",border:"none",color:C.tt,cursor:"pointer",fontSize:11,fontFamily:"inherit"}}>삭제</button>}</td>
                 </tr>);})}
                 </Fragment>);})}</tbody>
               </table>;})()}
