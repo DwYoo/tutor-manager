@@ -83,7 +83,7 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
   });
 
   const totalFee=monthRecs.reduce((a,r)=>a+r.totalDue,0);
-  const totalPaid=monthRecs.reduce((a,r)=>a+(r.status==="paid"?r.totalDue:r.paidAmount),0);
+  const totalPaid=monthRecs.reduce((a,r)=>a+r.paidAmount,0);
   const unpaidRecs=monthRecs.filter(r=>r.status!=="paid");
   const unpaidAmount=Math.max(0,totalFee-totalPaid);
 
