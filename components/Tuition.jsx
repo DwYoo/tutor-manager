@@ -33,7 +33,7 @@ export default function Tuition({menuBtn}){
     const[sRes,tRes,lRes]=await Promise.all([
       supabase.from('students').select('*').order('created_at'),
       supabase.from('tuition').select('*'),
-      supabase.from('lessons').select('id, student_id, date, is_recurring, recurring_day'),
+      supabase.from('lessons').select('*'),
     ]);
     setStudents(sRes.data||[]);setTuitions(tRes.data||[]);setLessons(lRes.data||[]);setLoading(false);
   },[]);
@@ -49,8 +49,13 @@ export default function Tuition({menuBtn}){
       const dw=dt.getDay()===0?7:dt.getDay();
       cnt+=lessons.filter(l=>{
         if(l.student_id!==sid)return false;
+        if(l.is_recurring&&l.recurring_exceptions&&l.recurring_exceptions.includes(ds))return false;
         if(l.date===ds)return true;
-        if(l.is_recurring&&l.recurring_day===dw)return dt>=new Date(l.date);
+        if(l.is_recurring&&l.recurring_day===dw){
+          if(ds<l.date)return false;
+          if(l.recurring_end_date&&ds>=l.recurring_end_date)return false;
+          return true;
+        }
         return false;
       }).length;
     }
