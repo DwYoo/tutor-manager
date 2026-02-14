@@ -119,7 +119,19 @@ export default function Schedule({menuBtn}){
     if(data.planShared!==undefined)u.plan_shared=data.planShared;
     if(data.planPrivate!==undefined)u.plan_private=data.planPrivate;
     if(Object.keys(u).length)await supabase.from('lessons').update(u).eq('id',id);
-    setLessons(p=>p.map(l=>l.id===id?{...l,...u,homework:data.hw||l.homework,files:data.files||l.files}:l));
+    // Sync homework to DB
+    const les=lessons.find(l=>l.id===id);
+    const oldHw=les?.homework||[],newHw=data.hw||[];
+    const oldIds=new Set(oldHw.map(h=>h.id));
+    const toDel=oldHw.filter(h=>!newHw.some(n=>n.id===h.id));
+    const toIns=newHw.filter(h=>!oldIds.has(h.id));
+    const toUpd=newHw.filter(h=>oldIds.has(h.id));
+    if(toDel.length)await supabase.from('homework').delete().in('id',toDel.map(h=>h.id));
+    let ins=[];
+    if(toIns.length){const{data:d}=await supabase.from('homework').insert(toIns.map(h=>({lesson_id:id,title:h.title,completion_pct:h.completion_pct||0,note:h.note||""}))).select();ins=d||[];}
+    for(const h of toUpd)await supabase.from('homework').update({title:h.title,completion_pct:h.completion_pct||0,note:h.note||""}).eq('id',h.id);
+    const finalHw=[...toUpd,...ins];
+    setLessons(p=>p.map(l=>l.id===id?{...l,...u,homework:finalHw,files:data.files||l.files}:l));
   };
 
   /* Drag helpers */
