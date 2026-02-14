@@ -42,9 +42,14 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
   // Helper: does this lesson occur on this date?
   const lessonOnDate=(l,date)=>{
     const ds=fd(date),dw=date.getDay()===0?7:date.getDay();
+    const ld=(l.date||"").slice(0,10);
     if(l.is_recurring&&l.recurring_exceptions&&l.recurring_exceptions.includes(ds))return false;
-    if(l.date===ds)return true;
-    if(l.is_recurring&&l.recurring_day===dw){if(ds<l.date)return false;if(l.recurring_end_date&&ds>=l.recurring_end_date)return false;return true;}
+    if(ld===ds)return true;
+    if(l.is_recurring&&+l.recurring_day===dw){
+      if(ds<ld)return false;
+      if(l.recurring_end_date&&ds>=(l.recurring_end_date+"").slice(0,10))return false;
+      return true;
+    }
     return false;
   };
 
