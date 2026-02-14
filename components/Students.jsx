@@ -119,6 +119,10 @@ export default function Students({onDetail,menuBtn}){
               <div style={{fontSize:12,color:C.ts}}>
                 {(()=>{const nc=getNextClass(s.id);return nc?<span>다음: {nc}</span>:<span style={{color:C.tt}}>예정된 수업 없음</span>;})()}
               </div>
+              {(s.fee_per_class||s.fee)?(<div style={{marginTop:10,paddingTop:10,borderTop:`1px solid ${C.bl}`,fontSize:11,color:C.ts,display:"flex",flexDirection:"column",gap:3}}>
+                {s.fee_per_class>0&&<div><span style={{color:C.tt}}>회당 단가:</span> <span style={{fontWeight:600,color:C.tp}}>{s.fee_per_class.toLocaleString()}원</span></div>}
+                {s.fee>0&&<div><span style={{color:C.tt}}>월 수업료:</span> <span style={{fontWeight:600,color:C.tp}}>{s.fee.toLocaleString()}원</span></div>}
+              </div>):null}
               <div style={{flex:1,marginTop:8,paddingTop:8,borderTop:`1px solid ${C.bl}`,fontSize:12}}>
                 {s.school&&<span style={{color:C.ts}}>{s.school}</span>}
               </div>
