@@ -249,7 +249,7 @@ export default function Schedule({menuBtn}){
   const onTS=e=>{if(e.touches.length===1)swipeRef.current={x:e.touches[0].clientX,y:e.touches[0].clientY,t:Date.now()};};
   const onTE=e=>{if(!swipeRef.current)return;const dx=e.changedTouches[0].clientX-swipeRef.current.x,dy=e.changedTouches[0].clientY-swipeRef.current.y,dt=Date.now()-swipeRef.current.t;swipeRef.current=null;if(Math.abs(dx)>25&&Math.abs(dx)>Math.abs(dy)&&dt<600)nW(dx<0?1:-1);};
   const wheelAcc=useRef(0);const wheelTimer=useRef(null);
-  const onWh=e=>{if(Math.abs(e.deltaX)<Math.abs(e.deltaY))return;e.preventDefault();wheelAcc.current+=e.deltaX;clearTimeout(wheelTimer.current);wheelTimer.current=setTimeout(()=>{if(Math.abs(wheelAcc.current)>15)nW(wheelAcc.current>0?1:-1);wheelAcc.current=0;},150);};
+  const onWh=e=>{if(Math.abs(e.deltaX)<Math.abs(e.deltaY))return;e.preventDefault();wheelAcc.current+=e.deltaX;clearTimeout(wheelTimer.current);wheelTimer.current=setTimeout(()=>{if(Math.abs(wheelAcc.current)>30)nW(wheelAcc.current>0?1:-1);wheelAcc.current=0;},50);};
   useEffect(()=>{const g=gridRef.current;if(!g)return;g.addEventListener('wheel',onWh,{passive:false});return()=>g.removeEventListener('wheel',onWh);},[cur]);
 
   if(loading)return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:C.tt,fontSize:14}}>불러오는 중...</div></div>);
