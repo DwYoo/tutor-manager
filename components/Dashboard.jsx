@@ -232,12 +232,9 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
       const stuStat=activeStudents.map(s=>{
         const hw=lessons.filter(l=>l.student_id===s.id).flatMap(l=>l.homework||[]).slice(-5);
         const hwR=hw.length>0?Math.round(hw.filter(h=>(h.completion_pct||0)>=100).length/hw.length*100):null;
-        const sc=scores.filter(x=>x.student_id===s.id).sort((a,b)=>(a.date||"").localeCompare(b.date||""));
-        const ls=sc.length>0?sc[sc.length-1]:null;
-        let tr=null;if(sc.length>=2){const c=sc[sc.length-1].score,pr=sc[sc.length-2].score;tr=c>pr?"up":c<pr?"down":"same";}
-        const mr=monthRecs.find(r=>r.student.id===s.id);
+        const recent=lessons.filter(l=>l.student_id===s.id).sort((a,b)=>(b.date||"").localeCompare(a.date||""))[0];
         const nc=getNextClass(s.id);
-        return{s,hwR,ls,tr,mr,nc};
+        return{s,hwR,recent,nc};
       });
       return(
       <div style={{background:C.sf,border:`1px solid ${C.bd}`,borderRadius:14,padding:20}}>
@@ -247,24 +244,20 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
         </div>
         {stuStat.length>0?(
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-          {stuStat.map(({s,hwR,ls,tr,mr,nc})=>{const co=SC[(s.color_index||0)%8];
+          {stuStat.map(({s,hwR,recent,nc})=>{const co=SC[(s.color_index||0)%8];
             const hwC=hwR==null?{c:C.tt,b:C.bg}:hwR>=80?{c:C.su,b:C.sb}:hwR>=50?{c:C.wn,b:C.wb}:{c:C.dn,b:C.db};
-            const scC=tr==="up"?{c:C.su,b:C.sb}:tr==="down"?{c:C.dn,b:C.db}:{c:C.tt,b:C.bg};
-            const ps=mr?.status;const pC=ps==="paid"?{c:C.su,b:C.sb}:ps==="partial"?{c:C.wn,b:C.wb}:ps==="unpaid"?{c:C.dn,b:C.db}:{c:C.tt,b:C.bg};
-            const pL=ps==="paid"?"납완":ps==="partial"?"일부":"미납";
             return(
             <div key={s.id} onClick={()=>onDetail(s)} style={{padding:12,borderRadius:10,border:`1px solid ${C.bl}`,cursor:"pointer"}} className="hcard">
-              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
                 <div style={{width:28,height:28,borderRadius:7,background:co.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:co.t}}>{(s.name||"?")[0]}</div>
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontSize:13,fontWeight:600,color:C.tp,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.name}</div>
                   <div style={{fontSize:11,color:C.tt}}>{s.subject} · {nc}</div>
                 </div>
               </div>
+              {recent&&<div style={{fontSize:11,color:C.ts,marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{recent.title||"제목 없음"}</div>}
               <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
                 <span style={{fontSize:9,color:hwC.c,background:hwC.b,padding:"2px 6px",borderRadius:4,fontWeight:600}}>숙제 {hwR!=null?`${hwR}%`:"-"}</span>
-                <span style={{fontSize:9,color:scC.c,background:scC.b,padding:"2px 6px",borderRadius:4,fontWeight:600}}>{ls?`${ls.score}점${tr==="up"?"↑":tr==="down"?"↓":"→"}`:"-"}</span>
-                <span style={{fontSize:9,color:pC.c,background:pC.b,padding:"2px 6px",borderRadius:4,fontWeight:600}}>{pL}</span>
               </div>
             </div>);})}
         </div>):(
