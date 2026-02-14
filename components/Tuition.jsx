@@ -32,7 +32,7 @@ export default function Tuition({menuBtn}){
     const[sRes,tRes,lRes]=await Promise.all([
       supabase.from('students').select('*').order('created_at'),
       supabase.from('tuition').select('*'),
-      supabase.from('lessons').select('id, student_id, date, is_recurring, recurring_day, recurring_exceptions, recurring_end_date, status'),
+      supabase.from('lessons').select('*'),
     ]);
     setStudents(sRes.data||[]);setTuitions(tRes.data||[]);setLessons(lRes.data||[]);setLoading(false);
   },[]);
@@ -49,9 +49,10 @@ export default function Tuition({menuBtn}){
       cnt+=lessons.filter(l=>{
         if(l.student_id!==sid)return false;
         if(l.status==='cancelled')return false;
+        const ld=(l.date||"").slice(0,10);
         if(l.is_recurring&&l.recurring_exceptions&&l.recurring_exceptions.includes(ds))return false;
-        if(l.date===ds)return true;
-        if(l.is_recurring&&l.recurring_day===dw){if(ds<l.date)return false;if(l.recurring_end_date&&ds>=l.recurring_end_date)return false;return true;}
+        if(ld===ds)return true;
+        if(l.is_recurring&&+l.recurring_day===dw){if(ds<ld)return false;if(l.recurring_end_date&&ds>=(l.recurring_end_date+"").slice(0,10))return false;return true;}
         return false;
       }).length;
     }
