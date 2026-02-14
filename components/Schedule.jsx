@@ -67,7 +67,7 @@ export default function Schedule({menuBtn}){
   const tog=menuBtn;
   const{user}=useAuth();
   const[cur,setCur]=useState(new Date());
-  const[viewMode,setVM]=useState('week');
+  const[viewMode,setVM]=useState(()=>{try{const v=localStorage.getItem('sch_viewMode');return v||'week';}catch{return 'week';}});
   const[lessons,setLessons]=useState([]);
   const[students,setStudents]=useState([]);
   const[loading,setLoading]=useState(true);
@@ -84,6 +84,8 @@ export default function Schedule({menuBtn}){
   const gridRef=useRef(null);const dragRef=useRef(null);const movedRef=useRef(false);const swipeRef=useRef(null);
   const today=new Date();const wk=gwd(cur);
   const hrs=Array.from({length:enH-stH},(_,i)=>i+stH);const tH=(enH-stH)*4*SHT;
+
+  const changeViewMode=(mode)=>{setVM(mode);try{localStorage.setItem('sch_viewMode',mode);}catch{}};
 
   const fetchData=useCallback(async()=>{
     setLoading(true);
@@ -269,8 +271,8 @@ export default function Schedule({menuBtn}){
             <button onClick={()=>setCur(new Date())} style={{padding:"6px 14px",borderRadius:8,border:`1px solid ${C.bd}`,background:C.sf,fontSize:12,cursor:"pointer",color:C.ts,fontFamily:"inherit"}}>오늘</button>
             <button className="nb" onClick={()=>nW(1)}><IcR/></button>
             <div style={{display:"flex",border:`1px solid ${C.bd}`,borderRadius:8,overflow:"hidden",marginLeft:4}}>
-              <button onClick={()=>setVM('week')} style={{padding:"5px 10px",fontSize:11,fontWeight:viewMode==='week'?700:500,border:"none",cursor:"pointer",fontFamily:"inherit",background:viewMode==='week'?C.pr:'transparent',color:viewMode==='week'?'#fff':C.ts}}>주간</button>
-              <button onClick={()=>setVM('month')} style={{padding:"5px 10px",fontSize:11,fontWeight:viewMode==='month'?700:500,border:"none",cursor:"pointer",fontFamily:"inherit",background:viewMode==='month'?C.pr:'transparent',color:viewMode==='month'?'#fff':C.ts,borderLeft:`1px solid ${C.bd}`}}>월간</button>
+              <button onClick={()=>changeViewMode('week')} style={{padding:"5px 10px",fontSize:11,fontWeight:viewMode==='week'?700:500,border:"none",cursor:"pointer",fontFamily:"inherit",background:viewMode==='week'?C.pr:'transparent',color:viewMode==='week'?'#fff':C.ts}}>주간</button>
+              <button onClick={()=>changeViewMode('month')} style={{padding:"5px 10px",fontSize:11,fontWeight:viewMode==='month'?700:500,border:"none",cursor:"pointer",fontFamily:"inherit",background:viewMode==='month'?C.pr:'transparent',color:viewMode==='month'?'#fff':C.ts,borderLeft:`1px solid ${C.bd}`}}>월간</button>
             </div>
             <button onClick={()=>{setEL(null);setMO(true);}} style={{display:"flex",alignItems:"center",gap:4,background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"7px 16px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}><IcP/> 수업 추가</button>
           </div>
@@ -298,7 +300,7 @@ export default function Schedule({menuBtn}){
           <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:0,border:`1px solid ${C.bd}`,borderRadius:12,overflow:"hidden",background:C.sf}}>
             {DK.map(d=><div key={d} style={{padding:"8px 0",textAlign:"center",fontSize:12,fontWeight:600,color:C.tt,background:C.sfh,borderBottom:`1px solid ${C.bd}`}}>{d}</div>)}
             {mDays.map((d,i)=>{const isM=d.getMonth()===cm;const it=sdy(d,today);const ds=fd(d);const dl=gL(d);const cnt=dl.filter(l=>effSt(l,ds)!=='cancelled'&&(!activeStu||l.student_id===activeStu)).length;
-              return(<div key={i} onClick={()=>{setCur(d);setVM('week');}} style={{minHeight:90,padding:6,borderRight:(i%7<6)?`1px solid ${C.bl}`:"none",borderBottom:`1px solid ${C.bl}`,background:it?C.as:isM?"transparent":"#FAFAF8",cursor:"pointer",transition:"background .1s"}} onMouseEnter={e=>e.currentTarget.style.background=it?C.as:C.sfh} onMouseLeave={e=>e.currentTarget.style.background=it?C.as:isM?"transparent":"#FAFAF8"}>
+              return(<div key={i} onClick={()=>{setCur(d);changeViewMode('week');}} style={{minHeight:90,padding:6,borderRight:(i%7<6)?`1px solid ${C.bl}`:"none",borderBottom:`1px solid ${C.bl}`,background:it?C.as:isM?"transparent":"#FAFAF8",cursor:"pointer",transition:"background .1s"}} onMouseEnter={e=>e.currentTarget.style.background=it?C.as:C.sfh} onMouseLeave={e=>e.currentTarget.style.background=it?C.as:isM?"transparent":"#FAFAF8"}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
                   <span style={{fontSize:13,fontWeight:it?700:isM?500:400,color:it?C.ac:isM?C.tp:C.tt,width:it?24:undefined,height:it?24:undefined,borderRadius:"50%",background:it?C.ac:"transparent",color:it?"#fff":isM?C.tp:C.tt,display:"inline-flex",alignItems:"center",justifyContent:"center"}}>{d.getDate()}</span>
                   {cnt>0&&<span style={{fontSize:10,fontWeight:600,color:C.ac,background:C.al,borderRadius:4,padding:"1px 5px"}}>{cnt}건</span>}
