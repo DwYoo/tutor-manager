@@ -25,6 +25,7 @@ export default function LessonDetailModal({ les, student, onUpdate, onClose }) {
   const [newFileName, setNewFileName] = useState("");
   const [newHw, setNewHw] = useState("");
   const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
   const markDirty = () => setDirty(true);
   const [dragIdx, setDragIdx] = useState(null);
   const [hwDropIdx, setHwDropIdx] = useState(null);
@@ -35,7 +36,7 @@ export default function LessonDetailModal({ les, student, onUpdate, onClose }) {
   const updHw = (id, k, v) => { setHw(p => p.map(h => h.id === id ? { ...h, [k]: v } : h)); markDirty(); };
   const addFile = () => { if (!newFileName.trim()) return; setFiles(p => [...p, { id: Date.now(), name: newFileName, type: newFileName.split(".").pop() || "file" }]); setNewFileName(""); markDirty(); };
   const delFile = id => { setFiles(p => p.filter(f => f.id !== id)); markDirty(); };
-  const doSave = async () => { try { await onUpdate(les.id, { top: topic, content, feedback, tMemo, hw, planPrivate, planShared, files }); setDirty(false); onClose(); } catch(e) { /* error handled by parent toast */ } };
+  const doSave = async () => { if (saving) return; setSaving(true); try { await onUpdate(les.id, { top: topic, content, feedback, tMemo, hw, planPrivate, planShared, files }); setDirty(false); onClose(); } catch(e) { /* error handled by parent toast */ } finally { setSaving(false); } };
 
   const tabs = [{ id: "content", l: "수업 내용" }, { id: "feedback", l: "피드백" }, { id: "hw", l: "숙제" }, { id: "files", l: "자료" }, { id: "plan", l: "계획" }];
 
@@ -198,7 +199,7 @@ export default function LessonDetailModal({ les, student, onUpdate, onClose }) {
         <div className="ldm-footer" style={{ padding: "16px 24px", borderTop: `1px solid ${C.bd}`, display: "flex", justifyContent: "flex-end", gap: 10, flexShrink: 0 }}>
           {dirty && <span style={{ fontSize: 12, color: C.wn, display: "flex", alignItems: "center", gap: 4, marginRight: "auto" }}>● 변경사항 있음</span>}
           <button onClick={onClose} style={{ background: C.sfh, color: C.ts, border: `1px solid ${C.bd}`, borderRadius: 8, padding: "10px 20px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>닫기</button>
-          <button onClick={doSave} style={{ background: dirty ? C.ac : C.pr, color: "#fff", border: "none", borderRadius: 8, padding: "10px 24px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>저장</button>
+          <button disabled={saving} onClick={doSave} style={{ background: saving ? "#999" : dirty ? C.ac : C.pr, color: "#fff", border: "none", borderRadius: 8, padding: "10px 24px", fontSize: 13, fontWeight: 600, cursor: saving ? "not-allowed" : "pointer", fontFamily: "inherit" }}>{saving ? "저장 중..." : "저장"}</button>
         </div>
       </div>
     </div>
