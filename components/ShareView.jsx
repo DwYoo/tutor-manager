@@ -30,8 +30,15 @@ export default function ShareView({ token }) {
   useEffect(() => {
     if (!token) return;
     (async () => {
-      const { data: stu, error: e } = await supabase.from('students').select('*').eq('share_token', token).single();
-      if (e || !stu) { setError('not_found'); setLoading(false); return; }
+      const { data: stu, error: e } = await supabase.from('students').select('*').eq('share_token', token).maybeSingle();
+      if (e) {
+        // RLS 정책으로 인한 접근 차단 또는 기타 오류
+        console.error('Share link query error:', e.message, e.code);
+        setError('not_found');
+        setLoading(false);
+        return;
+      }
+      if (!stu) { setError('not_found'); setLoading(false); return; }
       setS(stu);
       let a, b, c, d, f, g;
       try {
