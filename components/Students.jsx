@@ -27,6 +27,9 @@ export default function Students({onDetail,menuBtn}){
   const[editStu,setEditStu]=useState(null);
   const[form,setForm]=useState({name:'',grade:'',subject:'',school:'',phone:'',parent_phone:'',fee:'',fee_per_class:''});
   const[saving,setSaving]=useState(false);
+  const[busyIds,setBusy]=useState(new Set());
+  const markBusy=(id)=>setBusy(p=>{const n=new Set(p);n.add(id);return n;});
+  const unBusy=(id)=>setBusy(p=>{const n=new Set(p);n.delete(id);return n;});
 
   const[fetchError,setFetchError]=useState(false);
   useEffect(()=>{fetchStudents();},[]);
@@ -53,9 +56,9 @@ export default function Students({onDetail,menuBtn}){
     setShowAdd(false);setEditStu(null);setSaving(false);
   };
 
-  const deleteStudent=async(id,e)=>{e.stopPropagation();if(!confirm('정말 삭제하시겠습니까?'))return;const{error}=await supabase.from('students').delete().eq('id',id);if(error){toast?.('삭제에 실패했습니다','error');return;}toast?.('학생이 삭제되었습니다');fetchStudents();};
-  const archiveStudent=async(id,e)=>{e.stopPropagation();const{error}=await supabase.from('students').update({archived:true}).eq('id',id);if(error){toast?.('보관 처리에 실패했습니다','error');return;}toast?.('보관함으로 이동했습니다');fetchStudents();};
-  const restoreStudent=async(id,e)=>{e.stopPropagation();const{error}=await supabase.from('students').update({archived:false}).eq('id',id);if(error){toast?.('복원에 실패했습니다','error');return;}toast?.('학생이 복원되었습니다');fetchStudents();};
+  const deleteStudent=async(id,e)=>{e.stopPropagation();if(!confirm('정말 삭제하시겠습니까?'))return;markBusy(id);const{error}=await supabase.from('students').delete().eq('id',id);unBusy(id);if(error){toast?.('삭제에 실패했습니다','error');return;}toast?.('학생이 삭제되었습니다');fetchStudents();};
+  const archiveStudent=async(id,e)=>{e.stopPropagation();markBusy(id);const{error}=await supabase.from('students').update({archived:true}).eq('id',id);unBusy(id);if(error){toast?.('보관 처리에 실패했습니다','error');return;}toast?.('보관함으로 이동했습니다');fetchStudents();};
+  const restoreStudent=async(id,e)=>{e.stopPropagation();markBusy(id);const{error}=await supabase.from('students').update({archived:false}).eq('id',id);unBusy(id);if(error){toast?.('복원에 실패했습니다','error');return;}toast?.('학생이 복원되었습니다');fetchStudents();};
 
   const activeStudents=students.filter(s=>!s.archived).sort((a,b)=>(a.sort_order??Infinity)-(b.sort_order??Infinity));
   const archivedStudents=students.filter(s=>!!s.archived);
@@ -97,10 +100,12 @@ export default function Students({onDetail,menuBtn}){
         {filtered.map((s,idx)=>{
           const col=SC[(s.color_index||0)%8];
           const isDrag=dragId===s.id;
+          const isBusy=busyIds.has(s.id);
           const showL=canDrag&&dragId&&!isDrag&&dropIdx===idx&&!noDrop;
           const showR=canDrag&&dragId&&!isDrag&&idx===filtered.length-1&&dropIdx===filtered.length&&!noDrop;
           return(
-            <div key={s.id} onClick={()=>onDetail(s)} draggable={canDrag} onDragStart={e=>onDS(e,s.id)} onDragOver={e=>onDO(e,idx)} onDrop={onDR} onDragEnd={onDE} style={{position:"relative",display:"flex",flexDirection:"column",background:C.sf,border:`1px solid ${C.bd}`,borderRadius:14,padding:20,cursor:canDrag?"grab":"pointer",borderTop:`3px solid ${col.b}`,opacity:isDrag?.4:1,transition:"opacity .15s",minHeight:120}} className="hcard">
+            <div key={s.id} onClick={()=>!isBusy&&onDetail(s)} draggable={canDrag&&!isBusy} onDragStart={e=>onDS(e,s.id)} onDragOver={e=>onDO(e,idx)} onDrop={onDR} onDragEnd={onDE} style={{position:"relative",display:"flex",flexDirection:"column",background:C.sf,border:`1px solid ${C.bd}`,borderRadius:14,padding:20,cursor:isBusy?"wait":canDrag?"grab":"pointer",borderTop:`3px solid ${col.b}`,opacity:isDrag?.4:isBusy?.5:1,transition:"opacity .15s",minHeight:120,pointerEvents:isBusy?"none":"auto"}} className="hcard">
+              {isBusy&&<div style={{position:"absolute",inset:0,borderRadius:14,background:"rgba(255,255,255,.6)",zIndex:10,display:"flex",alignItems:"center",justifyContent:"center",pointerEvents:"auto"}}><div style={{fontSize:12,color:C.ts,fontWeight:500}}>처리 중...</div></div>}
               {showL&&<div style={{position:"absolute",left:-9,top:4,bottom:4,width:3,borderRadius:2,background:C.ac,boxShadow:`0 0 8px ${C.ac}`,zIndex:5}}/>}
               {showR&&<div style={{position:"absolute",right:-9,top:4,bottom:4,width:3,borderRadius:2,background:C.ac,boxShadow:`0 0 8px ${C.ac}`,zIndex:5}}/>}
               <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14}}>

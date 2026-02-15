@@ -33,14 +33,18 @@ export default function ShareView({ token }) {
       const { data: stu, error: e } = await supabase.from('students').select('*').eq('share_token', token).single();
       if (e || !stu) { setError('not_found'); setLoading(false); return; }
       setS(stu);
-      const [a, b, c, d, f, g] = await Promise.all([
-        supabase.from('lessons').select('*, homework(*)').eq('student_id', stu.id).order('date', { ascending: false }),
-        supabase.from('scores').select('*').eq('student_id', stu.id).order('created_at'),
-        supabase.from('wrong_answers').select('*').eq('student_id', stu.id).order('created_at', { ascending: false }),
-        supabase.from('reports').select('*').eq('student_id', stu.id).order('date', { ascending: false }),
-        supabase.from('files').select('*').eq('student_id', stu.id).is('lesson_id', null).order('created_at', { ascending: false }),
-        supabase.from('study_plans').select('*').eq('student_id', stu.id).order('date', { ascending: false }),
-      ]);
+      let a, b, c, d, f, g;
+      try {
+        [a, b, c, d, f, g] = await Promise.all([
+          supabase.from('lessons').select('*, homework(*)').eq('student_id', stu.id).order('date', { ascending: false }),
+          supabase.from('scores').select('*').eq('student_id', stu.id).order('created_at'),
+          supabase.from('wrong_answers').select('*').eq('student_id', stu.id).order('created_at', { ascending: false }),
+          supabase.from('reports').select('*').eq('student_id', stu.id).order('date', { ascending: false }),
+          supabase.from('files').select('*').eq('student_id', stu.id).is('lesson_id', null).order('created_at', { ascending: false }),
+          supabase.from('study_plans').select('*').eq('student_id', stu.id).order('date', { ascending: false }),
+        ]);
+      } catch { setError('fetch_error'); setLoading(false); return; }
+      if (a.error || b.error || c.error || d.error || f.error || g.error) { setError('fetch_error'); setLoading(false); return; }
       setLessons(a.data || []);
       setScores(b.data || []);
       setWrongs(c.data || []);
@@ -64,6 +68,13 @@ export default function ShareView({ token }) {
       <div style={{ fontSize: 48 }}>🔗</div>
       <div style={{ fontSize: 18, fontWeight: 700, color: C.tp }}>유효하지 않은 링크입니다</div>
       <div style={{ fontSize: 14, color: C.ts }}>공유 링크가 만료되었거나 존재하지 않습니다</div>
+    </div>
+  );
+
+  if (error === 'fetch_error') return (
+    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 12 }}>
+      <div style={{ fontSize: 14, color: "#DC2626" }}>데이터를 불러오지 못했습니다</div>
+      <button onClick={() => { setError(null); setLoading(true); }} style={{ padding: "8px 20px", borderRadius: 8, border: "1px solid #E7E5E4", background: "#FFFFFF", color: "#1A1A1A", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>다시 시도</button>
     </div>
   );
 

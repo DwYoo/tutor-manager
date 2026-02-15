@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
 import LessonDetailModal from './student/LessonDetailModal';
 import { C, SC } from '@/components/Colors';
-import { p2, fd, m2s, DKS as DK, gwd, s5, sdy } from '@/lib/utils';
+import { p2, fd, m2s, DKS as DK, gwd, s5, sdy, lessonOnDate } from '@/lib/utils';
 const LSTATUS={scheduled:{l:"예정",c:"#78716C",bg:"#F5F5F4"},completed:{l:"완료",c:"#16A34A",bg:"#F0FDF4"},cancelled:{l:"취소",c:"#DC2626",bg:"#FEF2F2"},makeup:{l:"보강",c:"#2563EB",bg:"#DBEAFE"}};
 const ls={display:"block",fontSize:12,fontWeight:500,color:C.tt,marginBottom:6};
 const is={width:"100%",padding:"9px 12px",borderRadius:8,border:`1px solid ${C.bd}`,fontSize:14,color:C.tp,background:C.sf,outline:"none",fontFamily:"inherit"};
@@ -75,7 +75,9 @@ export default function Schedule({menuBtn}){
   const[dpEdit,setDPE]=useState(false);const[compact,setCompact]=useState(false);
   const[isMobile,setIsMobile]=useState(false);
   const[mobileDay,setMobileDay]=useState(()=>{const d=new Date().getDay();return d===0?6:d-1;});
+  const[mTimeSet,setMTS]=useState(false);
   const gridRef=useRef(null);const dragRef=useRef(null);const movedRef=useRef(false);const swipeRef=useRef(null);
+  const lpRef=useRef(null);const lpStartRef=useRef(null);const lpFired=useRef(false);
   const today=new Date();const wk=gwd(cur);
   const hrs=Array.from({length:enH-stH},(_,i)=>i+stH);const tH=(enH-stH)*4*SHT;
 
@@ -99,7 +101,7 @@ export default function Schedule({menuBtn}){
   useEffect(()=>{const mq=window.matchMedia('(max-width:768px)');const handler=e=>{setIsMobile(e.matches);if(e.matches)setCompact(true);};handler(mq);mq.addEventListener('change',handler);return()=>mq.removeEventListener('change',handler);},[]);
 
   const nW=d=>{setSlide(d>0?'r':'l');setAnim(k=>k+1);if(viewMode==='month'){const t=new Date(cur);t.setMonth(t.getMonth()+d);setCur(t);}else{const t=new Date(cur);t.setDate(t.getDate()+d*7);setCur(t);}};
-  const gL=date=>{const ds=fd(date),dw=date.getDay()===0?7:date.getDay();return lessons.filter(l=>{const ld=(l.date||"").slice(0,10);if(l.is_recurring&&l.recurring_exceptions&&l.recurring_exceptions.includes(ds))return false;if(ld===ds)return true;if(l.is_recurring&&+l.recurring_day===dw){if(ds<ld)return false;if(l.recurring_end_date&&ds>=(l.recurring_end_date+"").slice(0,10))return false;return true;}return false;});};
+  const gL=date=>lessons.filter(l=>lessonOnDate(l,date));
 
   const gCo=sid=>{const st=students.find(x=>x.id===sid);return SC[(st?.color_index||0)%8];};
   const getStu=sid=>students.find(x=>x.id===sid);
@@ -251,7 +253,7 @@ export default function Schedule({menuBtn}){
   const onTE=e=>{if(!swipeRef.current)return;const dx=e.changedTouches[0].clientX-swipeRef.current.x,dy=e.changedTouches[0].clientY-swipeRef.current.y,dt=Date.now()-swipeRef.current.t;swipeRef.current=null;if(Math.abs(dx)>25&&Math.abs(dx)>Math.abs(dy)&&dt<600){if(isMobile&&viewMode==='week'){const dir=dx<0?1:-1;const next=mobileDay+dir;if(next<0){nW(-1);setMobileDay(6);}else if(next>6){nW(1);setMobileDay(0);}else{setSlide(dir>0?'r':'l');setAnim(k=>k+1);setMobileDay(next);}}else{nW(dx<0?1:-1);}}};
   const wheelAcc=useRef(0);const wheelTimer=useRef(null);
   const onWh=e=>{if(Math.abs(e.deltaX)<Math.abs(e.deltaY))return;e.preventDefault();wheelAcc.current+=e.deltaX;clearTimeout(wheelTimer.current);wheelTimer.current=setTimeout(()=>{if(Math.abs(wheelAcc.current)>30)nW(wheelAcc.current>0?1:-1);wheelAcc.current=0;},50);};
-  useEffect(()=>{const g=gridRef.current;if(!g)return;g.addEventListener('wheel',onWh,{passive:false});return()=>{g.removeEventListener('wheel',onWh);clearTimeout(wheelTimer.current);};},[cur]);
+  useEffect(()=>{const g=gridRef.current;if(!g)return;g.addEventListener('wheel',onWh,{passive:false});return()=>{g.removeEventListener('wheel',onWh);clearTimeout(wheelTimer.current);clearTimeout(lpRef.current);};},[cur]);
 
   if(loading)return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:C.tt,fontSize:14}}>불러오는 중...</div></div>);
   if(fetchError)return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:12}}><div style={{fontSize:14,color:C.dn}}>데이터를 불러오지 못했습니다</div><button onClick={fetchData} style={{padding:"8px 20px",borderRadius:8,border:`1px solid ${C.bd}`,background:C.sf,color:C.tp,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>다시 시도</button></div>);
@@ -260,7 +262,7 @@ export default function Schedule({menuBtn}){
 
   return(
     <div className="sch-container" style={{minHeight:"100vh",background:C.bg,padding:28}} onClick={()=>ctxMenu&&setCtx(null)}>
-      <style>{`.lb{cursor:grab;transition:box-shadow .12s,transform .1s;}.lb:hover{box-shadow:0 4px 12px rgba(0,0,0,.12);transform:scale(1.02);}.nb{transition:all .1s;cursor:pointer;border:none;background:none;display:flex;align-items:center;justify-content:center;padding:8px;border-radius:8px;color:${C.ts};min-height:44px;min-width:44px;}.nb:hover{background:${C.sfh};}.cm-i{transition:background .1s;min-height:44px;}.cm-i:hover{background:${C.sfh};}@keyframes wkR{from{transform:translateX(50px);opacity:0}to{transform:translateX(0);opacity:1}}@keyframes wkL{from{transform:translateX(-50px);opacity:0}to{transform:translateX(0);opacity:1}}.wk-r{animation:wkR .2s ease-out}.wk-l{animation:wkL .2s ease-out}@media(max-width:768px){.sch-container{padding:12px!important;}.sch-header{padding:12px 14px!important;}.sch-header-title{font-size:15px!important;}.sch-header-sub{font-size:11px!important;}.sch-filter-row{display:none!important;}.sch-dur-btn{min-height:44px;min-width:44px;}select,input[type="date"],input[type="number"]{min-height:44px;}.sch-week-grid>div{min-width:0!important;}}`}</style>
+      <style>{`.lb{cursor:grab;transition:box-shadow .12s,transform .1s;}.lb:hover{box-shadow:0 4px 12px rgba(0,0,0,.12);transform:scale(1.02);}.nb{transition:all .1s;cursor:pointer;border:none;background:none;display:flex;align-items:center;justify-content:center;padding:8px;border-radius:8px;color:${C.ts};min-height:44px;min-width:44px;}.nb:hover{background:${C.sfh};}.cm-i{transition:background .1s;min-height:44px;}.cm-i:hover{background:${C.sfh};}@keyframes wkR{from{transform:translateX(50px);opacity:0}to{transform:translateX(0);opacity:1}}@keyframes wkL{from{transform:translateX(-50px);opacity:0}to{transform:translateX(0);opacity:1}}.wk-r{animation:wkR .2s ease-out}.wk-l{animation:wkL .2s ease-out}@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}@media(hover:hover){.mc-cell:hover{background:${C.sfh}!important;}}.mc-cell:active{background:${C.sfh}!important;}@media(max-width:768px){.sch-container{padding:12px!important;}.sch-header{padding:12px 14px!important;}.sch-header-title{font-size:15px!important;}.sch-header-sub{font-size:11px!important;}.sch-filter-row{display:none!important;}.sch-dur-btn{min-height:44px;min-width:44px;}select,input[type="date"],input[type="number"]{min-height:44px;}.sch-week-grid>div{min-width:0!important;}}`}</style>
 
       {/* Header */}
       <div className="sch-header" style={{background:C.sf,borderBottom:`1px solid ${C.bd}`,padding:"16px 24px",position:"sticky",top:0,zIndex:20}}>
@@ -301,7 +303,7 @@ export default function Schedule({menuBtn}){
           <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:0,border:`1px solid ${C.bd}`,borderRadius:12,overflow:"hidden",background:C.sf}}>
             {DK.map(d=><div key={d} style={{padding:"8px 0",textAlign:"center",fontSize:12,fontWeight:600,color:C.tt,background:C.sfh,borderBottom:`1px solid ${C.bd}`}}>{d}</div>)}
             {mDays.map((d,i)=>{const isM=d.getMonth()===cm;const it=sdy(d,today);const ds=fd(d);const dl=gL(d);const cnt=dl.filter(l=>effSt(l,ds)!=='cancelled'&&(!activeStu||l.student_id===activeStu)).length;
-              return(<div key={i} onClick={()=>{setCur(d);changeViewMode('week');}} style={{minHeight:compact?44:90,padding:compact?4:6,borderRight:(i%7<6)?`1px solid ${C.bl}`:"none",borderBottom:`1px solid ${C.bl}`,background:it?C.as:isM?"transparent":"#FAFAF8",cursor:"pointer",transition:"background .1s"}} onMouseEnter={e=>e.currentTarget.style.background=it?C.as:C.sfh} onMouseLeave={e=>e.currentTarget.style.background=it?C.as:isM?"transparent":"#FAFAF8"}>
+              return(<div key={i} className="mc-cell" onClick={()=>{setCur(d);changeViewMode('week');if(isMobile){const dw=d.getDay();setMobileDay(dw===0?6:dw-1);}}} style={{minHeight:compact?44:90,padding:compact?4:6,borderRight:(i%7<6)?`1px solid ${C.bl}`:"none",borderBottom:`1px solid ${C.bl}`,background:it?C.as:isM?"transparent":"#FAFAF8",cursor:"pointer",transition:"background .1s"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
                   <span style={{fontSize:13,fontWeight:it?700:isM?500:400,color:it?C.ac:isM?C.tp:C.tt,width:it?24:undefined,height:it?24:undefined,borderRadius:"50%",background:it?C.ac:"transparent",color:it?"#fff":isM?C.tp:C.tt,display:"inline-flex",alignItems:"center",justifyContent:"center"}}>{d.getDate()}</span>
                   {cnt>0&&<span style={{fontSize:10,fontWeight:600,color:C.ac,background:C.al,borderRadius:4,padding:"1px 5px"}}>{cnt}건</span>}
@@ -368,7 +370,7 @@ export default function Schedule({menuBtn}){
 
       {/* Mobile weekly view — day selector + single day column */}
       {viewMode==='week'&&isMobile&&(()=>{
-        const selDate=wk[mobileDay];const selDl=gL(selDate);const selIt=sdy(selDate,today);
+        const selDate=wk[mobileDay];const selDl=gL(selDate);const selIt=sdy(selDate,today);const vd=fd(selDate);
         return(
         <div onTouchStart={onTS} onTouchEnd={onTE}>
           {/* Day selector pills */}
@@ -383,12 +385,19 @@ export default function Schedule({menuBtn}){
             })}
           </div>
 
-          {/* Mobile student filter */}
-          {students.length>0&&<div style={{display:"flex",gap:6,padding:"4px 4px 8px",overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
+          {/* Mobile student filter + settings */}
+          <div style={{display:"flex",gap:6,padding:"4px 4px 8px",overflowX:"auto",WebkitOverflowScrolling:"touch",alignItems:"center"}}>
             {students.map(st=>{const c=SC[(st.color_index||0)%8];const dim=activeStu&&activeStu!==st.id;const sel=activeStu===st.id;return(
               <button key={st.id} onClick={()=>toggleStu(st.id)} style={{display:"flex",alignItems:"center",gap:4,padding:"4px 8px",borderRadius:6,background:dim?C.sfh:c.bg,fontSize:10,fontWeight:sel?700:500,color:dim?C.tt:c.t,cursor:"pointer",opacity:dim?.4:1,border:sel?`1.5px solid ${c.b}`:"1.5px solid transparent",fontFamily:"inherit",whiteSpace:"nowrap",flexShrink:0}}><div style={{width:6,height:6,borderRadius:"50%",background:dim?C.tt:c.b}}/>{st.name}</button>);
             })}
             {activeStu&&<button onClick={()=>setActive(null)} style={{fontSize:10,color:C.ac,background:C.al,border:`1px solid ${C.ac}`,borderRadius:5,padding:"3px 8px",cursor:"pointer",fontFamily:"inherit",fontWeight:600,whiteSpace:"nowrap",flexShrink:0}}>전체</button>}
+            <button onClick={()=>setMTS(!mTimeSet)} style={{marginLeft:"auto",display:"flex",alignItems:"center",justifyContent:"center",width:32,height:32,borderRadius:8,border:`1px solid ${mTimeSet?C.ac:C.bd}`,background:mTimeSet?C.as:"transparent",cursor:"pointer",flexShrink:0,color:mTimeSet?C.ac:C.ts,fontSize:14,fontFamily:"inherit"}}>&#9881;</button>
+          </div>
+          {mTimeSet&&<div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 8px 10px",background:C.sfh,borderRadius:10,margin:"0 4px 8px"}}>
+            <span style={{fontSize:11,color:C.ts,flexShrink:0}}>시간대</span>
+            <select value={stH} onChange={e=>{const v=+e.target.value;setStH(v);localStorage.setItem('sch_stH',v);if(v>=enH){setEnH(v+1);localStorage.setItem('sch_enH',v+1);}}} style={{flex:1,padding:"6px 4px",borderRadius:6,border:`1px solid ${C.bd}`,fontSize:12,color:C.ts,background:C.sf,fontFamily:"inherit",minHeight:36}}>{Array.from({length:24},(_,i)=>i).map(h=><option key={h} value={h}>{p2(h)}:00</option>)}</select>
+            <span style={{fontSize:12,color:C.tt}}>~</span>
+            <select value={enH} onChange={e=>{const v=+e.target.value;setEnH(v);localStorage.setItem('sch_enH',v);}} style={{flex:1,padding:"6px 4px",borderRadius:6,border:`1px solid ${C.bd}`,fontSize:12,color:C.ts,background:C.sf,fontFamily:"inherit",minHeight:36}}>{Array.from({length:24-stH},(_,i)=>i+stH+1).map(h=><option key={h} value={h}>{p2(h)}:00</option>)}</select>
           </div>}
 
           {/* Single day time grid */}
@@ -398,14 +407,19 @@ export default function Schedule({menuBtn}){
               <div style={{borderRight:`1px solid ${C.bl}`}}>
                 {hrs.map(h=>(<div key={h} style={{height:SHT*4,display:"flex",alignItems:"flex-start",justifyContent:"flex-end",padding:"2px 6px 0 0",fontSize:10,color:C.tt,fontWeight:500,borderBottom:`1px solid ${C.bl}`}}>{p2(h)}</div>))}
               </div>
-              {/* Day column */}
-              <div style={{position:"relative",height:tH,background:selIt?"rgba(37,99,235,.02)":"transparent"}}>
-                {hrs.map((h,i)=>(<div key={h} style={{position:"absolute",top:i*SHT*4,left:0,right:0,height:SHT*4,borderBottom:`1px solid ${C.bl}`}}><div style={{position:"absolute",top:SHT*2-1,left:0,right:0,height:1,background:C.bl,opacity:.5}}/></div>))}
+              {/* Day column — tap empty area to add lesson */}
+              <div onClick={e=>{if(e.target!==e.currentTarget)return;const r=e.currentTarget.getBoundingClientRect();const y=e.clientY-r.top;const raw=stH*60+Math.round(y/SHT)*SMN;const sn=s5(raw);const h=Math.floor(sn/60),mn=sn%60;setEL({date:vd,start_hour:Math.max(0,Math.min(23,h)),start_min:Math.max(0,mn),duration:durPresets[0]||90,subject:"",topic:"",is_recurring:false});setMO(true);}} style={{position:"relative",height:tH,background:selIt?"rgba(37,99,235,.02)":"transparent"}}>
+                {hrs.map((h,i)=>(<div key={h} style={{position:"absolute",top:i*SHT*4,left:0,right:0,height:SHT*4,borderBottom:`1px solid ${C.bl}`,pointerEvents:"none"}}><div style={{position:"absolute",top:SHT*2-1,left:0,right:0,height:1,background:C.bl,opacity:.5}}/></div>))}
                 {selDl.map(l=>{const co=gCo(l.student_id);const st=getStu(l.student_id);const tp=((l.start_hour*60+l.start_min)-stH*60)/SMN*SHT;const hp=Math.max(l.duration/SMN*SHT,SHT);
                   const isOrig=!l.is_recurring||l.date===fd(selDate);
                   const lSt=effSt(l,fd(selDate));const isCan=lSt==='cancelled';const dim=activeStu&&l.student_id!==activeStu;
                   return(
-                    <div key={l.id} onClick={()=>openDetail(l,fd(selDate))} style={{position:"absolute",top:tp,left:4,right:4,height:hp-2,borderRadius:10,background:isCan||dim?C.sfh:co.bg,borderLeft:`4px solid ${isCan||dim?C.bd:co.b}`,padding:"6px 10px",overflow:"hidden",zIndex:dim?1:3,opacity:isCan?.45:dim?.25:1,cursor:"pointer",transition:"opacity .15s"}}>
+                    <div key={l.id}
+                      onTouchStart={e=>{lpFired.current=false;const t=e.touches[0];lpStartRef.current={x:t.clientX,y:t.clientY};lpRef.current=setTimeout(()=>{lpFired.current=true;if(navigator.vibrate)navigator.vibrate(30);setCtx({l,vd:selDate,mobile:true});},500);}}
+                      onTouchMove={e=>{if(!lpStartRef.current)return;const t=e.touches[0];if(Math.abs(t.clientX-lpStartRef.current.x)>10||Math.abs(t.clientY-lpStartRef.current.y)>10){clearTimeout(lpRef.current);lpRef.current=null;}}}
+                      onTouchEnd={()=>{clearTimeout(lpRef.current);lpRef.current=null;}}
+                      onClick={e=>{e.stopPropagation();if(lpFired.current){lpFired.current=false;return;}openDetail(l,vd);}}
+                      style={{position:"absolute",top:tp,left:4,right:4,height:hp-2,borderRadius:10,background:isCan||dim?C.sfh:co.bg,borderLeft:`4px solid ${isCan||dim?C.bd:co.b}`,padding:"6px 10px",overflow:"hidden",zIndex:dim?1:3,opacity:isCan?.45:dim?.25:1,cursor:"pointer",transition:"opacity .15s",WebkitUserSelect:"none",userSelect:"none"}}>
                       <div style={{display:"flex",alignItems:"center",gap:6}}>
                         <span style={{fontSize:13,fontWeight:600,color:isCan?C.tt:co.t,textDecoration:isCan?'line-through':'none'}}>{st?.name||""}</span>
                         <span style={{fontSize:9,fontWeight:700,color:LSTATUS[lSt]?.c,background:LSTATUS[lSt]?.bg,borderRadius:3,padding:"1px 5px",lineHeight:"16px"}}>{LSTATUS[lSt]?.l}</span>
@@ -422,8 +436,8 @@ export default function Schedule({menuBtn}){
         </div>);
       })()}
 
-      {/* Context Menu */}
-      {ctxMenu&&<>
+      {/* Context Menu — Desktop: positioned dropdown */}
+      {ctxMenu&&!isMobile&&<>
         <div style={{position:"fixed",inset:0,zIndex:50}} onClick={()=>setCtx(null)} onContextMenu={e=>{e.preventDefault();setCtx(null);}}/>
         <div style={{position:"fixed",left:Math.min(ctxMenu.x,window.innerWidth-180),top:Math.min(ctxMenu.y,window.innerHeight-280),zIndex:51,background:C.sf,border:`1px solid ${C.bd}`,borderRadius:10,boxShadow:"0 8px 24px rgba(0,0,0,.12)",padding:6,minWidth:160}} onClick={e=>e.stopPropagation()}>
           <button className="cm-i" style={cms} onClick={()=>{setEL({...ctxMenu.l,_viewDate:fd(ctxMenu.vd)});setMO(true);setCtx(null);}}>
@@ -453,6 +467,36 @@ export default function Schedule({menuBtn}){
           </button>}
         </div>
       </>}
+
+      {/* Context Menu — Mobile: bottom sheet */}
+      {ctxMenu&&isMobile&&(()=>{const co=gCo(ctxMenu.l.student_id);const st=getStu(ctxMenu.l.student_id);const mbs={display:"flex",alignItems:"center",gap:10,padding:"14px 16px",fontSize:14,color:C.tp,background:"none",border:"none",width:"100%",textAlign:"left",fontFamily:"inherit",cursor:"pointer",borderRadius:10,minHeight:48};return(<>
+        <div style={{position:"fixed",inset:0,zIndex:50,background:"rgba(0,0,0,.3)"}} onClick={()=>setCtx(null)}/>
+        <div style={{position:"fixed",bottom:0,left:0,right:0,zIndex:51,background:C.sf,borderRadius:"16px 16px 0 0",padding:"12px 16px calc(env(safe-area-inset-bottom,0px) + 16px)",boxShadow:"0 -4px 24px rgba(0,0,0,.12)",animation:"slideUp .2s ease-out"}} onClick={e=>e.stopPropagation()}>
+          <div style={{width:36,height:4,borderRadius:2,background:C.bd,margin:"0 auto 16px"}}/>
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16,padding:"0 4px"}}>
+            <div style={{width:36,height:36,borderRadius:9,background:co.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,color:co.t}}>{(st?.name||"?")[0]}</div>
+            <div><div style={{fontSize:15,fontWeight:600,color:C.tp}}>{st?.name}</div><div style={{fontSize:12,color:C.ts}}>{ctxMenu.l.subject} · {p2(ctxMenu.l.start_hour)}:{p2(ctxMenu.l.start_min)} · {ctxMenu.l.duration}분</div></div>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:2}}>
+            <button style={mbs} onClick={()=>{openDetail(ctxMenu.l,fd(ctxMenu.vd));setCtx(null);}}><span style={{fontSize:18}}>&#128196;</span>상세 보기</button>
+            <button style={mbs} onClick={()=>{setEL({...ctxMenu.l,_viewDate:fd(ctxMenu.vd)});setMO(true);setCtx(null);}}><span style={{fontSize:18}}>&#9998;</span>수정</button>
+            <button style={mbs} onClick={copyLesson}><span style={{fontSize:18}}>&#128203;</span>복사 (보강)</button>
+          </div>
+          <div style={{height:1,background:C.bd,margin:"8px 0"}}/>
+          <div style={{padding:"8px 4px 4px",fontSize:12,color:C.tt,fontWeight:600}}>상태 변경</div>
+          <div style={{display:"flex",gap:6,padding:"8px 4px 12px",flexWrap:"wrap"}}>
+            {Object.entries(LSTATUS).map(([k,v])=>{const cur=effSt(ctxMenu.l,fd(ctxMenu.vd))===k;return(<button key={k} onClick={()=>updStatus(k)} style={{fontSize:12,fontWeight:cur?700:500,color:cur?v.c:C.ts,background:cur?v.bg:'transparent',border:`1.5px solid ${cur?v.c:C.bd}`,borderRadius:8,padding:"8px 14px",cursor:"pointer",fontFamily:"inherit",minHeight:44}}>{v.l}</button>);})}
+          </div>
+          <div style={{height:1,background:C.bd,margin:"4px 0"}}/>
+          <div style={{display:"flex",flexDirection:"column",gap:2,marginTop:4}}>
+            {ctxMenu.l.is_recurring?<>
+              <button style={{...mbs,color:C.dn}} onClick={()=>{delSingle(ctxMenu.l.id,fd(ctxMenu.vd));}}><span style={{fontSize:18}}>&#128465;</span>이 수업만 삭제</button>
+              <button style={{...mbs,color:C.dn}} onClick={()=>{delFuture(ctxMenu.l.id,fd(ctxMenu.vd));}}><span style={{fontSize:18}}>&#128465;</span>이후 반복 삭제</button>
+            </>:<button style={{...mbs,color:C.dn}} onClick={()=>{del(ctxMenu.l.id);}}><span style={{fontSize:18}}>&#128465;</span>삭제</button>}
+          </div>
+          <button onClick={()=>setCtx(null)} style={{display:"flex",alignItems:"center",justifyContent:"center",width:"100%",padding:"14px 0",marginTop:8,fontSize:14,fontWeight:600,color:C.ts,background:C.sfh,border:"none",borderRadius:10,cursor:"pointer",fontFamily:"inherit",minHeight:48}}>닫기</button>
+        </div>
+      </>);})()}
 
       {mOpen&&<SchModal les={eLes} students={students} onSave={save} onClose={()=>{setMO(false);setEL(null);}} checkConflict={checkConflict} durPresets={durPresets}/>}
       {dLes&&<LessonDetailModal les={dLes} student={getStu(dLes.student_id)} onUpdate={updDetail} onClose={()=>setDL(null)}/>}

@@ -330,7 +330,7 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
       )}
 
       {/* Main grid */}
-      <div className="dash-main" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:20}}>
+      <div className="dash-main" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
         {['left','right'].map(col=>{
           const items=layout[col]||[];
           const showEndDrop=editMode&&dropTgt&&dropTgt.col===col&&dropTgt.idx>=items.length;
