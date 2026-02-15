@@ -6,11 +6,8 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianG
 import LessonDetailModal from './student/LessonDetailModal';
 import { useToast } from '@/components/Toast';
 import { C, SC } from '@/components/Colors';
-const REASON_COLORS=["#2563EB","#DC2626","#F59E0B","#16A34A","#8B5CF6","#EC4899","#06B6D4","#F97316"];
-const p2=n=>String(n).padStart(2,"0");
-const fd=d=>d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate());
-const m2s=m=>`${p2(Math.floor(m/60))}:${p2(m%60)}`;
-const bk=(e,val,set,df)=>{if(e.nativeEvent?.isComposing||e.isComposing)return;const ta=e.target,pos=ta.selectionStart;if(e.key==='*'){const ls=val.lastIndexOf('\n',pos-1)+1;if(val.substring(ls,pos).trim()===''){e.preventDefault();const nv=val.substring(0,ls)+'• '+val.substring(pos);set(nv);df?.();requestAnimationFrame(()=>{ta.selectionStart=ta.selectionEnd=ls+2;});}}if(e.key==='Enter'){const lines=val.substring(0,pos).split('\n'),cl=lines[lines.length-1];if(cl.startsWith('• ')){e.preventDefault();if(cl.trim()==='•'){const ls=pos-cl.length;const nv=val.substring(0,ls)+val.substring(pos);set(nv);df?.();requestAnimationFrame(()=>{ta.selectionStart=ta.selectionEnd=ls;});}else{const nv=val.substring(0,pos)+'\n• '+val.substring(pos);set(nv);df?.();requestAnimationFrame(()=>{ta.selectionStart=ta.selectionEnd=pos+3;});}}}};
+import { p2, fd, m2s, bk } from '@/lib/utils';
+const REASON_COLORS=["#2563EB","#DC2626","#F59E0B","#16A34A","#8B5CF6","#EC4899","#06B6D4","#F97316"];;
 const ls={display:"block",fontSize:12,fontWeight:500,color:C.tt,marginBottom:6};
 const is={width:"100%",padding:"9px 12px",borderRadius:8,border:"1px solid "+C.bd,fontSize:14,color:C.tp,background:C.sf,outline:"none",fontFamily:"inherit"};
 const IcBack=()=>(<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>);
@@ -87,16 +84,18 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
 
   // Tabs: 리포트를 수업 안 "기록" 서브탭으로, 계획 제거, 분석에서 리포트 제거
   const mainTabs=[
-    {id:"class",l:"수업",subs:[{id:"timeline",l:"타임라인"},{id:"calendar",l:"수업일정"}]},
-    {id:"study",l:"학습 관리",subs:[{id:"homework",l:"숙제"},{id:"wrong",l:"오답관리"}]},
+    {id:"class",l:"수업",subs:[{id:"timeline",l:"타임라인"},{id:"calendar",l:"수업 일정"}]},
+    {id:"study",l:"학습 관리",subs:[{id:"homework",l:"숙제"},{id:"wrong",l:"오답 관리"}]},
     {id:"analysis",l:"학습 분석",subs:[{id:"plan",l:"오버뷰"},{id:"scores",l:"성적"}]},
     {id:"archive",l:"자료실",subs:[{id:"files",l:"자료"}]}
   ];
   const curMain=mainTabs.find(m=>m.id===mainTab);
   const switchMain=(id)=>{setMainTab(id);const m=mainTabs.find(x=>x.id===id);if(m)setSubTab(m.subs[0].id);};
 
+  const[fetchError,setFetchError]=useState(false);
   const fetchAll=useCallback(async()=>{
-    if(!s.id)return;setLoading(true);
+    if(!s.id)return;setLoading(true);setFetchError(false);
+    try{
     const [a,b,c,d,e]=await Promise.all([
       supabase.from('lessons').select('*, homework(*), files(*)').eq('student_id',s.id).order('date',{ascending:false}),
       supabase.from('scores').select('*').eq('student_id',s.id).order('created_at'),
@@ -104,7 +103,7 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
       supabase.from('reports').select('*').eq('student_id',s.id).order('date',{ascending:false}),
       supabase.from('study_plans').select('*').eq('student_id',s.id).order('date',{ascending:false}),
     ]);
-    if(a.error||b.error||c.error||d.error||e.error)toast?.('데이터를 불러오지 못했습니다','error');
+    if(a.error||b.error||c.error||d.error||e.error){toast?.('데이터를 불러오지 못했습니다','error');setFetchError(true);}
     setLessons(a.data||[]);setScores(b.data||[]);setWrongs(c.data||[]);
     const allReps=d.data||[];
     setReports(allReps.filter(r=>r.type!=='plan'));
@@ -119,9 +118,11 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
     // Fetch standalone files (not linked to lessons)
     const{data:sf}=await supabase.from('files').select('*').eq('student_id',s.id).is('lesson_id',null).order('created_at',{ascending:false});
     setStandaloneFiles(sf||[]);
+    }catch{toast?.('데이터를 불러오지 못했습니다','error');setFetchError(true);}
     setLoading(false);
   },[s.id]);
   useEffect(()=>{fetchAll();},[fetchAll]);
+  useEffect(()=>{return()=>{Object.values(wTimers.current).forEach(clearTimeout);};},[]);
 
   const allFiles=lessons.flatMap(l=>(l.files||[]).map(f=>({...f,lesDate:l.date,lesTopic:l.topic||l.subject})));
   const wBooks=[...new Set(wrongs.map(w=>w.book).filter(Boolean))];
@@ -252,6 +253,7 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
   };
 
   if(loading)return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:C.tt,fontSize:14}}>불러오는 중...</div></div>);
+  if(fetchError&&!lessons.length)return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:12}}><div style={{fontSize:14,color:C.dn}}>데이터를 불러오지 못했습니다</div><button onClick={fetchAll} style={{padding:"8px 20px",borderRadius:8,border:`1px solid ${C.bd}`,background:C.sf,color:C.tp,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>다시 시도</button></div>);
 
   return(
     <div className="sd-container" style={{padding:28}}>

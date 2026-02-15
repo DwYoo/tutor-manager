@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { C, STATUS } from '@/components/Colors';
-const p2=n=>String(n).padStart(2,"0");
+import { p2 } from '@/lib/utils';
 const IcL=()=>(<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>);
 const IcR=()=>(<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>);
 const CustomTooltip=({active,payload})=>{if(!active||!payload?.length)return null;const d=payload[0].payload;return(<div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:10,padding:"10px 14px",boxShadow:"0 4px 12px rgba(0,0,0,.08)"}}><div style={{fontSize:12,color:C.tt,marginBottom:4}}>{d.month}</div><div style={{fontSize:16,fontWeight:700,color:C.ac}}>₩{payload[0].value.toLocaleString()}</div></div>);};
@@ -26,14 +26,20 @@ export default function Tuition({menuBtn}){
   const prevM=()=>{const m=month===1?12:month-1;const y=month===1?year-1:year;setCurMonth(y+"-"+p2(m));setEditId(null);setEditForm({});};
   const nextM=()=>{const m=month===12?1:month+1;const y=month===12?year+1:year;setCurMonth(y+"-"+p2(m));setEditId(null);setEditForm({});};
 
+  const[fetchError,setFetchError]=useState(false);
+  const[saving,setSaving]=useState(false);
   const fetchData=useCallback(async()=>{
-    setLoading(true);
-    const[sRes,tRes,lRes]=await Promise.all([
-      supabase.from('students').select('*').order('created_at'),
-      supabase.from('tuition').select('*'),
-      supabase.from('lessons').select('*'),
-    ]);
-    setStudents(sRes.data||[]);setTuitions(tRes.data||[]);setLessons(lRes.data||[]);setLoading(false);
+    setLoading(true);setFetchError(false);
+    try{
+      const[sRes,tRes,lRes]=await Promise.all([
+        supabase.from('students').select('*').order('created_at'),
+        supabase.from('tuition').select('*'),
+        supabase.from('lessons').select('*'),
+      ]);
+      if(sRes.error||tRes.error||lRes.error){setFetchError(true);setLoading(false);return;}
+      setStudents(sRes.data||[]);setTuitions(tRes.data||[]);setLessons(lRes.data||[]);
+    }catch{setFetchError(true);}
+    setLoading(false);
   },[]);
   useEffect(()=>{fetchData();},[fetchData]);
 
@@ -108,32 +114,34 @@ export default function Tuition({menuBtn}){
   const cancelEdit=()=>{setEditId(null);setEditForm({});};
 
   const saveEdit=async(studentId,autoFee)=>{
-    const totalDueVal=parseInt(editForm.totalDue)||0;
-    const carryoverVal=parseInt(editForm.carryover)||0;
-    // fee_override: 청구액이 자동계산(수업료+이월)과 다르면 수동값 저장
-    const feeOverride=(totalDueVal!==(autoFee+carryoverVal))?totalDueVal:null;
-    const existing=tuitions.find(t=>t.student_id===studentId&&t.month===curMonth);
-    const payload={
-      student_id:studentId,month:curMonth,
-      status:editForm.status,
-      amount:parseInt(editForm.amount)||0,
-      carryover:parseInt(editForm.carryover)||0,
-      fee_override:feeOverride,
-      memo:editForm.memo,
-      paid_date:editForm.paid_date||null,
-      classes:countLessons(studentId,year,month),
-      user_id:user.id,
-    };
-    if(existing){
-      await supabase.from('tuition').update(payload).eq('id',existing.id);
-      setTuitions(p=>p.map(t=>t.id===existing.id?{...t,...payload}:t));
-    }else{
-      const{data,error}=await supabase.from('tuition').insert(payload).select().single();
-      if(!error&&data)setTuitions(p=>[...p,data]);
-    }
-    await supabase.from('students').update({fee_status:editForm.status}).eq('id',studentId);
-    setStudents(p=>p.map(s=>s.id===studentId?{...s,fee_status:editForm.status}:s));
-    setEditId(null);setEditForm({});
+    if(saving)return;setSaving(true);
+    try{
+      const totalDueVal=parseInt(editForm.totalDue)||0;
+      const carryoverVal=parseInt(editForm.carryover)||0;
+      const feeOverride=(totalDueVal!==(autoFee+carryoverVal))?totalDueVal:null;
+      const existing=tuitions.find(t=>t.student_id===studentId&&t.month===curMonth);
+      const payload={
+        student_id:studentId,month:curMonth,
+        status:editForm.status,
+        amount:parseInt(editForm.amount)||0,
+        carryover:parseInt(editForm.carryover)||0,
+        fee_override:feeOverride,
+        memo:editForm.memo,
+        paid_date:editForm.paid_date||null,
+        classes:countLessons(studentId,year,month),
+        user_id:user.id,
+      };
+      if(existing){
+        await supabase.from('tuition').update(payload).eq('id',existing.id);
+        setTuitions(p=>p.map(t=>t.id===existing.id?{...t,...payload}:t));
+      }else{
+        const{data,error}=await supabase.from('tuition').insert(payload).select().single();
+        if(!error&&data)setTuitions(p=>[...p,data]);
+      }
+      await supabase.from('students').update({fee_status:editForm.status}).eq('id',studentId);
+      setStudents(p=>p.map(s=>s.id===studentId?{...s,fee_status:editForm.status}:s));
+      setEditId(null);setEditForm({});
+    }finally{setSaving(false);}
   };
 
   // Reset override (되돌리기)
@@ -146,6 +154,7 @@ export default function Tuition({menuBtn}){
   };
 
   if(loading)return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:C.tt,fontSize:14}}>불러오는 중...</div></div>);
+  if(fetchError)return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:12}}><div style={{fontSize:14,color:C.dn}}>데이터를 불러오지 못했습니다</div><button onClick={fetchData} style={{padding:"8px 20px",borderRadius:8,border:`1px solid ${C.bd}`,background:C.sf,color:C.tp,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>다시 시도</button></div>);
 
   const eis={padding:"4px 6px",borderRadius:6,border:"1px solid "+C.bd,fontSize:12,fontFamily:"inherit"};
 
@@ -219,7 +228,7 @@ export default function Tuition({menuBtn}){
                     <td style={{padding:"10px 12px"}}>
                       {isEditing?(
                         <div style={{display:"flex",gap:4}}>
-                          <button onClick={()=>saveEdit(s.id,r.autoFee)} style={{background:C.pr,color:"#fff",border:"none",borderRadius:6,padding:"4px 10px",fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>저장</button>
+                          <button disabled={saving} onClick={()=>saveEdit(s.id,r.autoFee)} style={{background:saving?"#999":C.pr,color:"#fff",border:"none",borderRadius:6,padding:"4px 10px",fontSize:10,fontWeight:600,cursor:saving?"not-allowed":"pointer",fontFamily:"inherit"}}>{saving?"저장 중...":"저장"}</button>
                           <button onClick={cancelEdit} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:6,padding:"4px 8px",fontSize:10,cursor:"pointer",fontFamily:"inherit"}}>취소</button>
                         </div>
                       ):(<button onClick={()=>startEdit(r)} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,fontSize:11,fontFamily:"inherit"}}>수정</button>)}

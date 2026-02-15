@@ -4,8 +4,7 @@ import { useAuth } from '@/components/AuthProvider';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/components/Toast';
 import { C, SC, STATUS } from '@/components/Colors';
-const DK=["일","월","화","수","목","금","토"];const p2=n=>String(n).padStart(2,"0");
-const fd=d=>`${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`;
+import { p2, fd, DK, lessonOnDate } from '@/lib/utils';
 const ls={display:"block",fontSize:12,fontWeight:500,color:C.tt,marginBottom:6};
 const is={width:"100%",padding:"9px 12px",borderRadius:8,border:`1px solid ${C.bd}`,fontSize:14,color:C.tp,background:C.sf,outline:"none",fontFamily:"inherit"};
 const IcP=()=><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
@@ -27,31 +26,31 @@ export default function Students({onDetail,menuBtn}){
   const[showAdd,setShowAdd]=useState(false);
   const[editStu,setEditStu]=useState(null);
   const[form,setForm]=useState({name:'',grade:'',subject:'',school:'',phone:'',parent_phone:'',fee:'',fee_per_class:''});
+  const[saving,setSaving]=useState(false);
 
+  const[fetchError,setFetchError]=useState(false);
   useEffect(()=>{fetchStudents();},[]);
-  const fetchStudents=async()=>{const[sRes,lRes]=await Promise.all([supabase.from('students').select('*').order('created_at'),supabase.from('lessons').select('*').order('date')]);if(sRes.error||lRes.error){toast?.('데이터를 불러오지 못했습니다','error');}setStudents(sRes.data||[]);setLessons(lRes.data||[]);setLoading(false);};
-
-  const lessonOnDate=(l,date)=>{const ds=fd(date),dw=date.getDay()===0?7:date.getDay();const ld=(l.date||"").slice(0,10);if(l.is_recurring&&l.recurring_exceptions&&l.recurring_exceptions.includes(ds))return false;if(ld===ds)return true;if(l.is_recurring&&+l.recurring_day===dw){if(ds<ld)return false;if(l.recurring_end_date&&ds>=(l.recurring_end_date+"").slice(0,10))return false;return true;}return false;};
+  const fetchStudents=async()=>{setFetchError(false);try{const[sRes,lRes]=await Promise.all([supabase.from('students').select('*').order('created_at'),supabase.from('lessons').select('*').order('date')]);if(sRes.error||lRes.error){toast?.('데이터를 불러오지 못했습니다','error');setFetchError(true);}setStudents(sRes.data||[]);setLessons(lRes.data||[]);}catch{toast?.('데이터를 불러오지 못했습니다','error');setFetchError(true);}setLoading(false);};
   const getNextClass=(sid)=>{const now=new Date();for(let offset=0;offset<90;offset++){const d=new Date(now);d.setDate(now.getDate()+offset);const sLessons=lessons.filter(l=>l.student_id===sid&&lessonOnDate(l,d));for(const l of sLessons){const lm=l.start_hour*60+l.start_min;if(offset===0&&lm<=now.getHours()*60+now.getMinutes())continue;return `${d.getMonth()+1}/${d.getDate()}(${DK[d.getDay()]}) ${p2(l.start_hour)}:${p2(l.start_min)}`;}}return null;};
 
   const openAdd=()=>{setEditStu(null);setForm({name:'',grade:'',subject:'',school:'',phone:'',parent_phone:'',fee:'',fee_per_class:''});setShowAdd(true);};
   const openEdit=(s,e)=>{e.stopPropagation();setEditStu(s);setForm({name:s.name||'',grade:s.grade||'',subject:s.subject||'',school:s.school||'',phone:s.phone||'',parent_phone:s.parent_phone||'',fee:String(s.fee||''),fee_per_class:String(s.fee_per_class||'')});setShowAdd(true);};
 
   const saveStudent=async()=>{
-    if(!form.name.trim())return;
+    if(!form.name.trim()||saving)return;setSaving(true);
     const payload={...form,fee:parseInt(form.fee)||0,fee_per_class:parseInt(form.fee_per_class)||0};
     delete payload.fee;delete payload.fee_per_class;
     const full={...form,fee:parseInt(form.fee)||0,fee_per_class:parseInt(form.fee_per_class)||0};
     if(editStu){
       const{error}=await supabase.from('students').update(full).eq('id',editStu.id);
-      if(error){toast?.('학생 정보 저장에 실패했습니다','error');return;}
+      if(error){toast?.('학생 정보 저장에 실패했습니다','error');setSaving(false);return;}
       toast?.('학생 정보가 저장되었습니다');fetchStudents();
     }else{
       const{error}=await supabase.from('students').insert({...full,color_index:students.length%8,fee_status:'unpaid',user_id:user.id});
-      if(error){toast?.('학생 추가에 실패했습니다','error');return;}
+      if(error){toast?.('학생 추가에 실패했습니다','error');setSaving(false);return;}
       toast?.('학생이 추가되었습니다');fetchStudents();
     }
-    setShowAdd(false);setEditStu(null);
+    setShowAdd(false);setEditStu(null);setSaving(false);
   };
 
   const deleteStudent=async(id,e)=>{e.stopPropagation();if(!confirm('정말 삭제하시겠습니까?'))return;const{error}=await supabase.from('students').delete().eq('id',id);if(error){toast?.('삭제에 실패했습니다','error');return;}toast?.('학생이 삭제되었습니다');fetchStudents();};
@@ -71,6 +70,7 @@ export default function Students({onDetail,menuBtn}){
   const onDE=()=>{setDragId(null);setDropIdx(null);};
 
   if(loading)return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:C.tt,fontSize:14}}>불러오는 중...</div></div>);
+  if(fetchError&&!students.length)return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:12}}><div style={{fontSize:14,color:C.dn}}>데이터를 불러오지 못했습니다</div><button onClick={()=>{setLoading(true);fetchStudents();}} style={{padding:"8px 20px",borderRadius:8,border:`1px solid ${C.bd}`,background:C.sf,color:C.tp,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>다시 시도</button></div>);
 
   return(
     <div className="stu-container" style={{padding:28}}>
@@ -165,7 +165,7 @@ export default function Students({onDetail,menuBtn}){
             </div>
             <div style={{display:"flex",gap:10,marginTop:20,justifyContent:"flex-end"}}>
               <button onClick={()=>{setShowAdd(false);setEditStu(null);}} style={{background:C.sfh,color:C.ts,border:`1px solid ${C.bd}`,borderRadius:8,padding:"10px 20px",fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>취소</button>
-              <button onClick={saveStudent} style={{background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"10px 24px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{editStu?"저장":"추가"}</button>
+              <button disabled={saving} onClick={saveStudent} style={{background:saving?"#999":C.pr,color:"#fff",border:"none",borderRadius:8,padding:"10px 24px",fontSize:13,fontWeight:600,cursor:saving?"not-allowed":"pointer",fontFamily:"inherit"}}>{saving?(editStu?"저장 중...":"추가 중..."):(editStu?"저장":"추가")}</button>
             </div>
           </div>
         </div>

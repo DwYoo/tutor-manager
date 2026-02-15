@@ -3,9 +3,8 @@ import { useState, useEffect, Fragment } from 'react';
 import { supabase } from '@/lib/supabase';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
 import { C, SC } from '@/components/Colors';
+import { p2, m2s } from '@/lib/utils';
 const REASON_COLORS=["#2563EB","#DC2626","#F59E0B","#16A34A","#8B5CF6","#EC4899","#06B6D4","#F97316"];
-const p2=n=>String(n).padStart(2,"0");
-const m2s=m=>`${p2(Math.floor(m/60))}:${p2(m%60)}`;
 const ScoreTooltip=({active,payload})=>{if(!active||!payload?.length)return null;const d=payload[0].payload;return(<div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:10,padding:"10px 14px",boxShadow:"0 4px 12px rgba(0,0,0,.08)"}}><div style={{fontSize:12,color:C.tt,marginBottom:4}}>{d.label||d.date}</div><div style={{fontSize:16,fontWeight:700,color:C.ac}}>{d.score}점</div></div>);};
 
 export default function ShareView({ token }) {
@@ -110,7 +109,7 @@ export default function ShareView({ token }) {
   const lessonFiles = pastLessons.flatMap(l => (l.files || []).map(f => ({ ...f, lesDate: l.date, lesTopic: l.topic || l.subject })));
 
   const tabs = [
-    { id: "lessons", l: "수업", count: 0, subs: [{ id: "history", l: "수업이력" }, { id: "schedule", l: "수업일정" }] },
+    { id: "lessons", l: "수업", count: 0, subs: [{ id: "history", l: "수업 이력" }, { id: "schedule", l: "수업 일정" }] },
     { id: "study", l: "학습 관리", count: 0 },
     { id: "analysis", l: "학습 분석", count: 0 },
     { id: "files", l: "자료실", count: lessonFiles.length + standaloneFiles.length },
@@ -202,7 +201,7 @@ export default function ShareView({ token }) {
 
         {/* === 수업 탭 === */}
         {tab === "lessons" && (<div>
-          {/* 수업이력 서브탭 */}
+          {/* 수업 이력 서브탭 */}
           {subTab === "history" && (<div>
             {pastLessons.length === 0 ? (
               <Empty text="수업 기록이 없습니다" />
@@ -267,7 +266,7 @@ export default function ShareView({ token }) {
             )}
           </div>)}
 
-          {/* 수업일정 서브탭 */}
+          {/* 수업 일정 서브탭 */}
           {subTab === "schedule" && (<div>
             {/* Calendar View */}
             {(() => {
