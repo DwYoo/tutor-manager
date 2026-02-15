@@ -386,12 +386,14 @@ export default function Schedule({menuBtn}){
           </div>
 
           {/* Mobile student filter + settings */}
-          <div style={{display:"flex",gap:6,padding:"4px 4px 8px",overflowX:"auto",WebkitOverflowScrolling:"touch",alignItems:"center"}}>
-            {students.map(st=>{const c=SC[(st.color_index||0)%8];const dim=activeStu&&activeStu!==st.id;const sel=activeStu===st.id;return(
-              <button key={st.id} onClick={()=>toggleStu(st.id)} style={{display:"flex",alignItems:"center",gap:4,padding:"4px 8px",borderRadius:6,background:dim?C.sfh:c.bg,fontSize:10,fontWeight:sel?700:500,color:dim?C.tt:c.t,cursor:"pointer",opacity:dim?.4:1,border:sel?`1.5px solid ${c.b}`:"1.5px solid transparent",fontFamily:"inherit",whiteSpace:"nowrap",flexShrink:0}}><div style={{width:6,height:6,borderRadius:"50%",background:dim?C.tt:c.b}}/>{st.name}</button>);
-            })}
-            {activeStu&&<button onClick={()=>setActive(null)} style={{fontSize:10,color:C.ac,background:C.al,border:`1px solid ${C.ac}`,borderRadius:5,padding:"3px 8px",cursor:"pointer",fontFamily:"inherit",fontWeight:600,whiteSpace:"nowrap",flexShrink:0}}>전체</button>}
-            <button onClick={()=>setMTS(!mTimeSet)} style={{marginLeft:"auto",display:"flex",alignItems:"center",justifyContent:"center",width:32,height:32,borderRadius:8,border:`1px solid ${mTimeSet?C.ac:C.bd}`,background:mTimeSet?C.as:"transparent",cursor:"pointer",flexShrink:0,color:mTimeSet?C.ac:C.ts,fontSize:14,fontFamily:"inherit"}}>&#9881;</button>
+          <div style={{display:"flex",alignItems:"center",padding:"4px 4px 8px",gap:6}}>
+            <div style={{flex:1,display:"flex",gap:6,overflowX:"auto",WebkitOverflowScrolling:"touch",minWidth:0}}>
+              {students.map(st=>{const c=SC[(st.color_index||0)%8];const dim=activeStu&&activeStu!==st.id;const sel=activeStu===st.id;return(
+                <button key={st.id} onClick={()=>toggleStu(st.id)} style={{display:"flex",alignItems:"center",gap:4,padding:"4px 8px",borderRadius:6,background:dim?C.sfh:c.bg,fontSize:10,fontWeight:sel?700:500,color:dim?C.tt:c.t,cursor:"pointer",opacity:dim?.4:1,border:sel?`1.5px solid ${c.b}`:"1.5px solid transparent",fontFamily:"inherit",whiteSpace:"nowrap",flexShrink:0}}><div style={{width:6,height:6,borderRadius:"50%",background:dim?C.tt:c.b}}/>{st.name}</button>);
+              })}
+              {activeStu&&<button onClick={()=>setActive(null)} style={{fontSize:10,color:C.ac,background:C.al,border:`1px solid ${C.ac}`,borderRadius:5,padding:"3px 8px",cursor:"pointer",fontFamily:"inherit",fontWeight:600,whiteSpace:"nowrap",flexShrink:0}}>전체</button>}
+            </div>
+            <button onClick={()=>setMTS(!mTimeSet)} style={{display:"flex",alignItems:"center",justifyContent:"center",width:32,height:32,borderRadius:8,border:`1px solid ${mTimeSet?C.ac:C.bd}`,background:mTimeSet?C.as:"transparent",cursor:"pointer",flexShrink:0,color:mTimeSet?C.ac:C.ts,fontSize:14,fontFamily:"inherit"}}>&#9881;</button>
           </div>
           {mTimeSet&&<div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 8px 10px",background:C.sfh,borderRadius:10,margin:"0 4px 8px"}}>
             <span style={{fontSize:11,color:C.ts,flexShrink:0}}>시간대</span>
@@ -480,7 +482,7 @@ export default function Schedule({menuBtn}){
           <div style={{display:"flex",flexDirection:"column",gap:2}}>
             <button style={mbs} onClick={()=>{openDetail(ctxMenu.l,fd(ctxMenu.vd));setCtx(null);}}><span style={{fontSize:18}}>&#128196;</span>상세 보기</button>
             <button style={mbs} onClick={()=>{setEL({...ctxMenu.l,_viewDate:fd(ctxMenu.vd)});setMO(true);setCtx(null);}}><span style={{fontSize:18}}>&#9998;</span>수정</button>
-            <button style={mbs} onClick={copyLesson}><span style={{fontSize:18}}>&#128203;</span>복사 (보강)</button>
+            <button style={mbs} onClick={copyLesson}><span style={{fontSize:18}}>&#128203;</span>복사</button>
           </div>
           <div style={{height:1,background:C.bd,margin:"8px 0"}}/>
           <div style={{padding:"8px 4px 4px",fontSize:12,color:C.tt,fontWeight:600}}>상태 변경</div>
