@@ -59,7 +59,6 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
   const [planWeakness,setPlanWeakness]=useState("");
   const [planOpportunity,setPlanOpportunity]=useState("");
   const [planThreat,setPlanThreat]=useState("");
-  const [planPrivateMemo,setPlanPrivateMemo]=useState("");
   const [planComments,setPlanComments]=useState([]);
   const [planSaving,setPlanSaving]=useState(false);
   const [scoreGoal,setScoreGoal]=useState(s.score_goal||"");
@@ -81,7 +80,6 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
   const [editStudyPlanTitle,setEditStudyPlanTitle]=useState("");
   const [editStudyPlanBody,setEditStudyPlanBody]=useState("");
   const [editStudyPlanShared,setEditStudyPlanShared]=useState(false);
-  const [lesPage,setLesPage]=useState(0);
   const [fileDrag,setFileDrag]=useState(false);
   const [uploading,setUploading]=useState(false);
   const [standaloneFiles,setStandaloneFiles]=useState([]);
@@ -128,7 +126,6 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
     setPlanWeakness(s.plan_weakness||"");
     setPlanOpportunity(s.plan_opportunity||"");
     setPlanThreat(s.plan_threat||"");
-    setPlanPrivateMemo(s.plan_private_memo||"");
     // Fetch standalone files (not linked to lessons)
     const{data:sf}=await supabase.from('files').select('*').eq('student_id',s.id).is('lesson_id',null).order('created_at',{ascending:false});
     setStandaloneFiles(sf||[]);
@@ -188,11 +185,11 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
   const savePlanFields=async()=>{
     setPlanSaving(true);setPlanSaved(false);
     try{
-      const full={plan_strategy:planStrategy,plan_strength:planStrength,plan_weakness:planWeakness,plan_opportunity:planOpportunity,plan_threat:planThreat,plan_private_memo:planPrivateMemo};
+      const full={plan_strategy:planStrategy,plan_strength:planStrength,plan_weakness:planWeakness,plan_opportunity:planOpportunity,plan_threat:planThreat};
       const{error}=await supabase.from('students').update(full).eq('id',s.id);
       if(error){
         // Fallback: try without new columns
-        const{error:e2}=await supabase.from('students').update({plan_strategy:planStrategy,plan_strength:planStrength,plan_weakness:planWeakness,plan_opportunity:planOpportunity,plan_threat:planThreat}).eq('id',s.id);
+        const{error:e2}=await supabase.from('students').update({plan_strategy:planStrategy,plan_strength:planStrength,plan_weakness:planWeakness}).eq('id',s.id);
         if(e2){toast?.('계획 저장에 실패했습니다','error');setPlanSaving(false);return;}
       }
       setPlanEditing(false);toast?.('계획이 저장되었습니다');
@@ -213,13 +210,6 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
     const{error}=await supabase.from('reports').update({title:editCommentTitle,body:editCommentText,is_shared:!editCommentShared}).eq('id',id);
     if(error){toast?.('기록 수정에 실패했습니다','error');return;}
     setPlanComments(p=>p.map(c=>c.id===id?{...c,title:editCommentTitle,body:editCommentText,is_shared:!editCommentShared}:c));setEditingComment(null);setEditCommentText("");setEditCommentTitle("");
-  };
-  const deletePlanComment=async(id)=>{
-    if(!confirm('이 학습 리포트를 삭제하시겠습니까?'))return;
-    const{error}=await supabase.from('reports').delete().eq('id',id);
-    if(error){toast?.('삭제에 실패했습니다','error');return;}
-    setPlanComments(p=>p.filter(c=>c.id!==id));
-    toast?.('학습 리포트가 삭제되었습니다');
   };
   const addStudyPlan=async()=>{
     if(!studyPlanTitle.trim()){toast?.('제목을 입력해주세요','error');return;}
@@ -340,17 +330,14 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
           const doneLessons=lessons.filter(l=>isLessonDone(l));
           const upcomingLessons=lessons.filter(l=>!isLessonDone(l));
           const nextOne=upcomingLessons.length?[upcomingLessons[upcomingLessons.length-1]]:[];
-          const tlLessonsAll=[...nextOne,...doneLessons];
-          const PER_PAGE_L=50;
-          const tlLessons=tlLessonsAll.slice(0,(lesPage+1)*PER_PAGE_L);
-          const hasMore=tlLessonsAll.length>tlLessons.length;
+          const tlLessons=[...nextOne,...doneLessons];
           const doneCount=doneLessons.length;
           return(<div>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
             <h3 style={{fontSize:16,fontWeight:700,color:C.tp}}>수업 타임라인</h3>
             <span style={{fontSize:12,color:C.tt}}>총 {doneCount}회</span>
           </div>
-          {tlLessonsAll.length===0?(<div style={{textAlign:"center",padding:40,color:C.tt,background:C.sf,border:"1px solid "+C.bd,borderRadius:14}}><div style={{fontSize:14}}>수업 기록이 없습니다</div></div>):(
+          {tlLessons.length===0?(<div style={{textAlign:"center",padding:40,color:C.tt,background:C.sf,border:"1px solid "+C.bd,borderRadius:14}}><div style={{fontSize:14}}>수업 기록이 없습니다</div></div>):(
             <div style={{position:"relative",paddingLeft:28}}>
               <div style={{position:"absolute",left:7,top:16,bottom:16,width:2,background:C.bl}}/>
               {tlLessons.map((l,i)=>{
@@ -406,7 +393,6 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
                   </div>
                 );
               })}
-              {hasMore&&<div style={{textAlign:"center",paddingTop:12}}><button onClick={()=>setLesPage(p=>p+1)} style={{background:C.sfh,border:"1px solid "+C.bd,borderRadius:8,padding:"10px 24px",fontSize:13,color:C.ac,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>더 보기 ({tlLessonsAll.length-tlLessons.length}건 남음)</button></div>}
             </div>
           )}
         </div>);})()}
@@ -1000,10 +986,6 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
                 <textarea value={planThreat} onChange={e=>{setPlanThreat(e.target.value);e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px';}} onKeyDown={e=>bk(e,planThreat,setPlanThreat)} ref={el=>{if(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}}} style={{...is,minHeight:60,resize:"none",fontSize:12,background:"transparent",border:"1px solid #FDE68A",overflow:"hidden"}} placeholder="위협 요인 기록..."/>
               </div>
             </div>
-            {!isParent&&<div style={{background:C.sfh,border:"1px solid "+C.bd,borderRadius:14,padding:16,marginBottom:12}}>
-              <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span style={{fontSize:13,fontWeight:600,color:C.ts}}>비공개 메모</span></div>
-              <textarea value={planPrivateMemo} onChange={e=>{setPlanPrivateMemo(e.target.value);e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px';}} onKeyDown={e=>bk(e,planPrivateMemo,setPlanPrivateMemo)} ref={el=>{if(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}}} style={{...is,minHeight:60,resize:"none",fontSize:12,overflow:"hidden"}} placeholder="선생님만 볼 수 있는 메모..."/>
-            </div>}
             <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginBottom:20}}>
               <button onClick={()=>setPlanEditing(false)} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:8,padding:"8px 16px",fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>취소</button>
               <button onClick={savePlanFields} style={{background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"8px 20px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",opacity:planSaving?.6:1}}>{planSaving?"저장 중...":"저장"}</button>
@@ -1032,10 +1014,6 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
                 <div style={{fontSize:12,color:planThreat?C.tp:C.tt,lineHeight:1.7,whiteSpace:"pre-wrap",minHeight:20}}>{planThreat||"미작성"}</div>
               </div>
             </div>
-            {!isParent&&planPrivateMemo&&<div style={{background:C.sfh,border:"1px solid "+C.bd,borderRadius:14,padding:16,marginBottom:4}}>
-              <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span style={{fontSize:13,fontWeight:600,color:C.ts}}>비공개 메모</span></div>
-              <div style={{fontSize:12,color:C.tp,lineHeight:1.7,whiteSpace:"pre-wrap"}}>{planPrivateMemo}</div>
-            </div>}
           </>)}
 
           {/* 학습 계획 */}
@@ -1121,7 +1099,7 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
                       <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
                         <span style={{fontSize:14,fontWeight:600,color:C.tp}}>{c.title||"리포트"}</span>
                         {c.is_shared?<span style={{background:C.as,color:C.ac,padding:"2px 8px",borderRadius:5,fontSize:10,fontWeight:600}}>공유됨</span>:<span style={{background:C.sfh,color:C.tt,padding:"2px 8px",borderRadius:5,fontSize:10}}>비공개</span>}
-                        {!isParent&&editingComment!==c.id&&(<><button onClick={()=>{setEditingComment(c.id);setEditCommentTitle(c.title||"");setEditCommentText(c.body||"");setEditCommentShared(!c.is_shared);}} style={{background:"none",border:"none",fontSize:10,color:C.ac,cursor:"pointer",fontFamily:"inherit",padding:0}}>수정</button><button onClick={()=>deletePlanComment(c.id)} style={{background:"none",border:"none",fontSize:10,color:C.dn,cursor:"pointer",fontFamily:"inherit",padding:0}}>삭제</button></>)}
+                        {!isParent&&editingComment!==c.id&&<button onClick={()=>{setEditingComment(c.id);setEditCommentTitle(c.title||"");setEditCommentText(c.body||"");setEditCommentShared(!c.is_shared);}} style={{background:"none",border:"none",fontSize:10,color:C.ac,cursor:"pointer",fontFamily:"inherit",padding:0}}>수정</button>}
                       </div>
                       <span style={{fontSize:12,color:C.tt,flexShrink:0}}>{c.date}</span>
                     </div>
