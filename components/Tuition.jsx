@@ -282,7 +282,7 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
                       ):(
                         <div>
                           <span style={{fontWeight:700,color:C.tp}}>₩{r.totalDue.toLocaleString()}</span>
-                          {r.isOverridden&&<button onClick={()=>resetFee(s.id)} style={{marginLeft:6,fontSize:9,color:"#fff",cursor:"pointer",background:C.ac,padding:"3px 8px",borderRadius:4,border:"none",fontWeight:600,fontFamily:"inherit",display:"inline-flex",alignItems:"center",gap:3}} title="자동계산으로 되돌리기">수동 ✕ 자동으로</button>}
+                          {r.isOverridden&&<button onClick={()=>resetFee(s.id)} style={{marginLeft:6,fontSize:9,color:"#e67e22",cursor:"pointer",background:"none",padding:"2px 6px",borderRadius:4,border:"1px solid #e67e22",fontWeight:600,fontFamily:"inherit"}} title="클릭하면 자동계산으로 되돌립니다">수동</button>}
                         </div>
                       )}
                     </td>
