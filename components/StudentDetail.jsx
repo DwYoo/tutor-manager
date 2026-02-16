@@ -323,9 +323,9 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
           const isLessonDone=(l)=>{const end=new Date(l.date+"T00:00:00");end.setHours(l.start_hour,l.start_min+l.duration,0,0);return now>=end;};
           const isLessonInProgress=(l)=>{const st=new Date(l.date+"T00:00:00");st.setHours(l.start_hour,l.start_min,0,0);const end=new Date(l.date+"T00:00:00");end.setHours(l.start_hour,l.start_min+l.duration,0,0);return now>=st&&now<end;};
           const getLessonStatus=(l)=>{const s=l.status||'scheduled';if(s!=='scheduled')return s;if(isLessonInProgress(l))return'in_progress';if(isLessonDone(l))return'completed';return'scheduled';};
-          const doneLessons=lessons.filter(l=>isLessonDone(l));
-          const upcomingLessons=lessons.filter(l=>!isLessonDone(l));
-          const nextOne=upcomingLessons.length?[upcomingLessons[upcomingLessons.length-1]]:[];
+          const doneLessons=lessons.filter(l=>isLessonDone(l)).sort((a,b)=>{if(a.date!==b.date)return b.date.localeCompare(a.date);return(b.start_hour*60+b.start_min)-(a.start_hour*60+a.start_min);});
+          const upcomingLessons=lessons.filter(l=>!isLessonDone(l)).sort((a,b)=>{if(a.date!==b.date)return a.date.localeCompare(b.date);return(a.start_hour*60+a.start_min)-(b.start_hour*60+b.start_min);});
+          const nextOne=upcomingLessons.length?[upcomingLessons[0]]:[];
           const tlLessons=[...nextOne,...doneLessons];
           const doneCount=doneLessons.length;
           return(<div>
