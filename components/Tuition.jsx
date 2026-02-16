@@ -28,6 +28,7 @@ export default function Tuition({menuBtn}){
   const[rcptFiles,setRcptFiles]=useState([]);
   const[rcptUploading,setRcptUploading]=useState(false);
   const[rcptDragOver,setRcptDragOver]=useState(false);
+  const[sealImg,setSealImg]=useState(()=>{try{return localStorage.getItem('rcpt-seal')||'';}catch{return '';}});
   const[hiddenStudents,setHiddenStudents]=useState(()=>{try{return JSON.parse(localStorage.getItem('tuition-hidden')||'{}');}catch{return{};}});
   const[showHidden,setShowHidden]=useState(false);
 
@@ -272,7 +273,7 @@ export default function Tuition({menuBtn}){
 <p style="text-align:right;margin:20px 6px 0;font-size:12px;">${f.issueYear||''}년 &nbsp;&nbsp; ${f.issueMonth||''}월 &nbsp;&nbsp; ${f.issueDay||''}일</p>
 <div style="margin-top:24px;display:flex;justify-content:space-between;align-items:flex-end;font-size:11px;">
 <span>학원설립·운영자 또는 교습자</span>
-<span>${f.tutorName||''} &nbsp;&nbsp;&nbsp;(서명 또는 인)</span>
+<span style="display:inline-flex;align-items:center;gap:6px;">${f.tutorName||''}${sealImg?`<img src="${sealImg}" style="height:40px;width:40px;object-fit:contain;vertical-align:middle;"/>`:' &nbsp;&nbsp;&nbsp;(서명 또는 인)'}</span>
 </div>
 </div>
 <div style="text-align:right;font-size:8px;color:#999;margin-top:12px;">210mm×297mm[일반용지 70g/㎡(재활용품)]</div>
@@ -576,9 +577,23 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
               <div><label style={rls}>월</label><input value={rcptForm.issueMonth||''} onChange={e=>setRcptForm(p=>({...p,issueMonth:e.target.value}))} style={ris}/></div>
               <div><label style={rls}>일</label><input value={rcptForm.issueDay||''} onChange={e=>setRcptForm(p=>({...p,issueDay:e.target.value}))} style={ris}/></div>
             </div>
-            <div style={{marginBottom:24}}>
+            <div style={{marginBottom:16}}>
               <label style={rls}>교습자 / 학원명</label>
               <input value={rcptForm.tutorName||''} onChange={e=>setRcptForm(p=>({...p,tutorName:e.target.value}))} style={ris} placeholder="이름 또는 학원명 (자동 저장)"/>
+            </div>
+            <div style={{marginBottom:24}}>
+              <label style={rls}>인감 / 서명 이미지</label>
+              <div style={{display:"flex",alignItems:"center",gap:10}}>
+                {sealImg?<>
+                  <img src={sealImg} style={{width:40,height:40,objectFit:"contain",border:"1px solid "+C.bd,borderRadius:6,padding:2,background:"#fff"}} alt="인감"/>
+                  <button onClick={()=>{setSealImg('');try{localStorage.removeItem('rcpt-seal');}catch{}}} style={{background:"none",border:"1px solid "+C.bd,borderRadius:6,padding:"4px 10px",fontSize:11,cursor:"pointer",color:C.ts,fontFamily:"inherit"}}>삭제</button>
+                </>:
+                <label style={{background:C.sfh,border:"1px solid "+C.bd,borderRadius:6,padding:"6px 12px",fontSize:11,cursor:"pointer",color:C.tp,fontFamily:"inherit"}}>
+                  이미지 등록
+                  <input type="file" accept="image/*" style={{display:"none"}} onChange={e=>{const file=e.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>{const d=ev.target?.result;if(d){setSealImg(d);try{localStorage.setItem('rcpt-seal',d);}catch{}}};reader.readAsDataURL(file);e.target.value='';}}/>
+                </label>}
+                <span style={{fontSize:10,color:C.tt}}>한 번 등록하면 자동 적용</span>
+              </div>
             </div>
             <div style={{display:"flex",justifyContent:"flex-end",gap:10}}>
               <button onClick={()=>setReceiptData(null)} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:8,padding:"10px 20px",fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>닫기</button>
