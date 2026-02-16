@@ -288,6 +288,9 @@ export default function Schedule({menuBtn}){
   const wheelAcc=useRef(0);const wheelTimer=useRef(null);
   const onWh=e=>{if(Math.abs(e.deltaX)<Math.abs(e.deltaY))return;e.preventDefault();wheelAcc.current+=e.deltaX;clearTimeout(wheelTimer.current);wheelTimer.current=setTimeout(()=>{if(Math.abs(wheelAcc.current)>30)nW(wheelAcc.current>0?1:-1);wheelAcc.current=0;},50);};
   useEffect(()=>{const g=gridRef.current;if(!g)return;g.addEventListener('wheel',onWh,{passive:false});return()=>{g.removeEventListener('wheel',onWh);clearTimeout(wheelTimer.current);clearTimeout(lpRef.current);};},[cur]);
+  // Auto-scroll to current time on mount
+  const scrolledRef=useRef(false);
+  useEffect(()=>{if(scrolledRef.current||!gridRef.current||loading)return;scrolledRef.current=true;const nowM=new Date().getHours()*60+new Date().getMinutes();const stM=stH*60;if(nowM>stM){const tp=((nowM-stM)/SMN)*SHT;gridRef.current.scrollTop=Math.max(0,tp-100);};},[loading]);
 
   if(loading)return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:C.tt,fontSize:14}}>불러오는 중...</div></div>);
   if(fetchError)return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:12}}><div style={{fontSize:14,color:C.dn}}>데이터를 불러오지 못했습니다</div><button onClick={fetchData} style={{padding:"8px 20px",borderRadius:8,border:`1px solid ${C.bd}`,background:C.sf,color:C.tp,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>다시 시도</button></div>);
@@ -396,6 +399,8 @@ export default function Schedule({menuBtn}){
                     </div>
                   );
                 })}
+                {/* Current time indicator */}
+                {it&&(()=>{const nowM=new Date().getHours()*60+new Date().getMinutes();const stM=stH*60,enM=enH*60;if(nowM>=stM&&nowM<=enM){const tp=((nowM-stM)/SMN)*SHT;return(<div style={{position:"absolute",top:tp,left:0,right:0,zIndex:10,pointerEvents:"none"}}><div style={{position:"relative",height:0}}><div style={{position:"absolute",left:-3,top:-4,width:8,height:8,borderRadius:"50%",background:"#DC2626"}}/><div style={{position:"absolute",left:4,right:0,top:-0.5,height:1.5,background:"#DC2626"}}/></div></div>);}return null;})()}
               </div>
             );
           })}
@@ -466,6 +471,8 @@ export default function Schedule({menuBtn}){
                     </div>
                   );
                 })}
+                {/* Current time indicator (mobile) */}
+                {selIt&&(()=>{const nowM=new Date().getHours()*60+new Date().getMinutes();const stM=stH*60,enM=enH*60;if(nowM>=stM&&nowM<=enM){const tp=((nowM-stM)/SMN)*SHT;return(<div style={{position:"absolute",top:tp,left:0,right:0,zIndex:10,pointerEvents:"none"}}><div style={{position:"relative",height:0}}><div style={{position:"absolute",left:-3,top:-4,width:8,height:8,borderRadius:"50%",background:"#DC2626"}}/><div style={{position:"absolute",left:4,right:0,top:-0.5,height:1.5,background:"#DC2626"}}/></div></div>);}return null;})()}
               </div>
             </div>
           </div>
