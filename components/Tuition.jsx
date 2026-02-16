@@ -253,11 +253,13 @@ export default function Tuition({menuBtn}){
   const printReceipt=()=>{
     const f=rcptForm;
     try{if(f.tutorName)localStorage.setItem('rcpt-tutor',f.tutorName);}catch{}
+    const seal=sealImg||(()=>{try{return localStorage.getItem('rcpt-seal')||'';}catch{return '';}})();
     const tFee=parseInt(f.tuitionFee)||0;
     const e1=parseInt(f.etcAmt1)||0;
     const e2=parseInt(f.etcAmt2)||0;
     const total=tFee+e1+e2;
     const cs='border:1px solid #000;padding:6px 8px;font-size:11px;';
+    const sealHtml=seal?`<img src="${seal}" style="height:40px;width:40px;object-fit:contain;vertical-align:middle;print-color-adjust:exact;-webkit-print-color-adjust:exact;"/>`:'&nbsp;&nbsp;&nbsp;(서명 또는 인)';
     const makeR=(title)=>`<div style="flex:1;width:0;display:flex;flex-direction:column;justify-content:space-between;height:100%;">
 <div>
 <div style="border:3px double #000;padding:8px 10px;text-align:center;font-size:16px;font-weight:bold;letter-spacing:4px;margin-bottom:12px;">${title}</div>
@@ -276,7 +278,7 @@ export default function Tuition({menuBtn}){
 <p style="text-align:right;margin:20px 6px 0;font-size:12px;">${f.issueYear||''}년 &nbsp;&nbsp; ${f.issueMonth||''}월 &nbsp;&nbsp; ${f.issueDay||''}일</p>
 <div style="margin-top:24px;display:flex;justify-content:space-between;align-items:flex-end;font-size:11px;">
 <span>학원설립·운영자 또는 교습자</span>
-<span style="display:inline-flex;align-items:center;gap:6px;">${f.tutorName||''}${sealImg?`<img src="${sealImg}" style="height:40px;width:40px;object-fit:contain;vertical-align:middle;"/>`:' &nbsp;&nbsp;&nbsp;(서명 또는 인)'}</span>
+<span style="display:inline-flex;align-items:center;gap:6px;">${f.tutorName||''}${sealHtml}</span>
 </div>
 </div>
 <div style="text-align:right;font-size:8px;color:#999;margin-top:12px;">210mm×297mm[일반용지 70g/㎡(재활용품)]</div>
@@ -285,12 +287,13 @@ export default function Tuition({menuBtn}){
 <style>
 @page{size:210mm 297mm;margin:15mm 12mm;}
 *{margin:0;padding:0;box-sizing:border-box;}
-body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',serif;font-size:11px;color:#000;width:210mm;height:297mm;}
+body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',serif;font-size:11px;color:#000;width:210mm;height:297mm;print-color-adjust:exact;-webkit-print-color-adjust:exact;}
 .rcpt-wrap{display:flex;gap:16px;width:100%;height:100%;padding:15mm 12mm;box-sizing:border-box;}
+img{print-color-adjust:exact;-webkit-print-color-adjust:exact;}
 @media print{body{padding:0;width:auto;height:auto;}.rcpt-wrap{padding:0;height:267mm;}}
 </style></head><body>
 <div class="rcpt-wrap">${makeR('교습비등 영수증 원부')}${makeR('교습비등 영수증')}</div>
-<script>window.onload=function(){setTimeout(function(){window.print();},400);}<\/script>
+<script>window.onload=function(){var imgs=document.querySelectorAll('img');if(!imgs.length){setTimeout(function(){window.print();},300);return;}var loaded=0;function check(){loaded++;if(loaded>=imgs.length)setTimeout(function(){window.print();},300);}for(var i=0;i<imgs.length;i++){if(imgs[i].complete&&imgs[i].naturalWidth>0){loaded++;}else{imgs[i].onload=check;imgs[i].onerror=check;}}if(loaded>=imgs.length)setTimeout(function(){window.print();},300);}<\/script>
 </body></html>`;
     const w=window.open('','_blank','width=794,height=1123');
     if(w){w.document.write(html);w.document.close();}
