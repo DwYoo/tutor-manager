@@ -169,7 +169,7 @@ export default function Tuition({menuBtn}){
     setRcptForm({
       serialNo:`${String(year).slice(-2)}${p2(month)}-${p2((idx??0)+1)}`,period:`${year}년 ${month}월`,
       regNo:p2((idx??0)+1),
-      name:r.student.name||'',birthDate:'',subject:r.student.subject||'',
+      name:r.student.name||'',birthDate:r.student.birth_date||'',subject:r.student.subject||'',
       tuitionFee:String(r.paidAmount||0),
       etcLabel1:'',etcAmt1:'',etcLabel2:'',etcAmt2:'',
       tutorName:(()=>{try{return localStorage.getItem('rcpt-tutor')||'';}catch{return '';}})(),
