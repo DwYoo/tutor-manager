@@ -59,6 +59,7 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
     if(data.top!==undefined)u.topic=data.top;if(data.content!==undefined)u.content=data.content;
     if(data.feedback!==undefined)u.feedback=data.feedback;if(data.tMemo!==undefined)u.private_memo=data.tMemo;
     if(data.planShared!==undefined)u.plan_shared=data.planShared;if(data.planPrivate!==undefined)u.plan_private=data.planPrivate;
+    if(data.isShared!==undefined)u.is_shared=data.isShared;
     if(Object.keys(u).length)await supabase.from('lessons').update(u).eq('id',id);
     const les=lessons.find(l=>l.id===id);const oldHw=les?.homework||[],newHw=data.hw||[];
     const toDel=oldHw.filter(h=>!newHw.some(n=>n.id===h.id));
