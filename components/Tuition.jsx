@@ -21,6 +21,8 @@ export default function Tuition({menuBtn}){
   const[editId,setEditId]=useState(null);
   const[editForm,setEditForm]=useState({});
   const[memoPopup,setMemoPopup]=useState(null);
+  const[receiptData,setReceiptData]=useState(null);
+  const[rcptForm,setRcptForm]=useState({});
 
   const year=+curMonth.split("-")[0],month=+curMonth.split("-")[1];
   const prevM=()=>{const m=month===1?12:month-1;const y=month===1?year-1:year;setCurMonth(y+"-"+p2(m));setEditId(null);setEditForm({});};
@@ -110,6 +112,7 @@ export default function Tuition({menuBtn}){
       status:autoStatus(r.paidAmount,r.totalDue),
       memo:r.record.memo||"",
       fee_per_class:r.student.fee_per_class||0,
+      tuitionFee:r.autoFee,
     });
   };
   const cancelEdit=()=>{setEditId(null);setEditForm({});};
@@ -121,7 +124,9 @@ export default function Tuition({menuBtn}){
       const carryoverVal=parseInt(editForm.carryover)||0;
       const editedFeePerClass=parseInt(editForm.fee_per_class)||0;
       const editedAutoFee=editedFeePerClass*lessonCnt;
-      const feeOverride=(totalDueVal!==(editedAutoFee+carryoverVal))?totalDueVal:null;
+      const editedTuitionFee=parseInt(editForm.tuitionFee)||0;
+      const effectiveAutoFee=(editedTuitionFee!==editedAutoFee)?editedTuitionFee:editedAutoFee;
+      const feeOverride=(totalDueVal!==(effectiveAutoFee+carryoverVal))?totalDueVal:null;
       const existing=tuitions.find(t=>t.student_id===studentId&&t.month===curMonth);
       const payload={
         student_id:studentId,month:curMonth,
@@ -157,10 +162,54 @@ export default function Tuition({menuBtn}){
     }
   };
 
+  /* Receipt */
+  const openReceipt=(r)=>{
+    const d=new Date();
+    setReceiptData(r);
+    setRcptForm({
+      serialNo:'',period:`${year}년 ${month}월`,regNo:'',
+      name:r.student.name||'',birthDate:'',subject:r.student.subject||'',
+      tuitionFee:String(r.autoFee||0),
+      etcLabel1:'',etcAmt1:'',etcLabel2:'',etcAmt2:'',
+      tutorName:(()=>{try{return localStorage.getItem('rcpt-tutor')||'';}catch{return '';}})(),
+      issueYear:String(d.getFullYear()),issueMonth:String(d.getMonth()+1),issueDay:String(d.getDate()),
+    });
+  };
+  const printReceipt=()=>{
+    const f=rcptForm;
+    try{if(f.tutorName)localStorage.setItem('rcpt-tutor',f.tutorName);}catch{}
+    const tFee=parseInt(f.tuitionFee)||0;
+    const e1=parseInt(f.etcAmt1)||0;
+    const e2=parseInt(f.etcAmt2)||0;
+    const cs='border:1px solid #000;padding:8px;font-size:13px;';
+    const makeR=(title)=>`<div style="flex:1;max-width:380px;">
+<div style="border:3px double #000;padding:10px 12px;text-align:center;font-size:20px;font-weight:bold;letter-spacing:4px;margin-bottom:16px;">${title}</div>
+<table style="width:100%;border-collapse:collapse;" cellpadding="0">
+<tr><td style="${cs}" colspan="2">일련번호 : ${f.serialNo||''}</td><td style="${cs}" colspan="2">연월(분기) : ${f.period||''}</td></tr>
+<tr><td style="${cs}text-align:center;font-weight:bold;width:50px;" rowspan="2">납부자</td><td style="${cs}">등록번호 : ${f.regNo||''}</td><td style="${cs}" colspan="2">성명 : ${f.name||''}</td></tr>
+<tr><td style="${cs}">생년월일 : ${f.birthDate||''}</td><td style="${cs}" colspan="2">교습과목 : ${f.subject||''}</td></tr>
+<tr><td style="${cs}text-align:center;font-weight:bold;width:50px;" rowspan="3">납부<br>명세</td><td style="${cs}text-align:center;vertical-align:middle;width:110px;" rowspan="3">교습비<br><br><b style="font-size:15px;">${tFee>0?tFee.toLocaleString()+'원':''}</b></td><td style="${cs}text-align:center;font-weight:bold;" colspan="2">기타경비</td></tr>
+<tr><td style="${cs}min-width:55px;">${f.etcLabel1||''}</td><td style="${cs}min-width:55px;">${e1>0?e1.toLocaleString()+'원':''}</td></tr>
+<tr><td style="${cs}">${f.etcLabel2||''}</td><td style="${cs}">${e2>0?e2.toLocaleString()+'원':''}</td></tr>
+</table>
+<p style="text-align:center;margin:24px 0 8px;font-size:14px;font-weight:bold;">위와 같이 영수하였음을 증명합니다.</p>
+<p style="font-size:10px;color:#555;margin:4px 0 24px;">※ 본 서식 외 교육감이 지정한 영수증을 사용할 수 있습니다.</p>
+<p style="text-align:right;margin:28px 8px 0;font-size:14px;">${f.issueYear||''}년 &nbsp;&nbsp; ${f.issueMonth||''}월 &nbsp;&nbsp; ${f.issueDay||''}일</p>
+<div style="margin-top:32px;display:flex;justify-content:space-between;align-items:flex-end;font-size:13px;">
+<span>학원설립·운영자 또는 교습자</span>
+<span>${f.tutorName||''} &nbsp;&nbsp;&nbsp;(서명 또는 인)</span>
+</div></div>`;
+    const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>교습비등 영수증</title><style>@page{size:A4 landscape;margin:12mm;}body{margin:0;padding:24px;font-family:'Batang','NanumMyeongjo',serif;font-size:13px;color:#000;}@media print{body{padding:0;}}</style></head><body><div style="display:flex;gap:28px;justify-content:center;align-items:flex-start;">${makeR('교습비등 영수증 원부')}${makeR('교습비등 영수증')}</div><script>window.onload=function(){setTimeout(function(){window.print();},400);}<\/script></body></html>`;
+    const w=window.open('','_blank','width=960,height=700');
+    if(w){w.document.write(html);w.document.close();}
+  };
+
   if(loading)return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:C.tt,fontSize:14}}>불러오는 중...</div></div>);
   if(fetchError)return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:12}}><div style={{fontSize:14,color:C.dn}}>데이터를 불러오지 못했습니다</div><button onClick={fetchData} style={{padding:"8px 20px",borderRadius:8,border:`1px solid ${C.bd}`,background:C.sf,color:C.tp,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>다시 시도</button></div>);
 
   const eis={padding:"4px 6px",borderRadius:6,border:"1px solid "+C.bd,fontSize:12,fontFamily:"inherit"};
+  const rls={display:"block",fontSize:11,fontWeight:500,color:C.tt,marginBottom:3};
+  const ris={width:"100%",padding:"7px 10px",borderRadius:6,border:"1px solid "+C.bd,fontSize:13,fontFamily:"inherit",color:C.tp,background:C.sf,outline:"none",boxSizing:"border-box"};
 
   return(
     <div className="tui-container" style={{padding:28}}>
@@ -205,7 +254,10 @@ export default function Tuition({menuBtn}){
                       <>₩{(s.fee_per_class||0).toLocaleString()}</>}
                     </td>
                     <td style={{padding:"10px 12px",fontWeight:600}}>{r.lessonCnt}회</td>
-                    <td style={{padding:"10px 12px",fontWeight:500,color:C.tp}}>₩{r.autoFee.toLocaleString()}</td>
+                    <td style={{padding:"10px 12px",fontWeight:500,color:C.tp}}>
+                      {isEditing?<input type="number" value={editForm.tuitionFee} onChange={e=>{const tf=e.target.value;const carry=parseInt(editForm.carryover)||0;setEditForm(p=>({...p,tuitionFee:tf,totalDue:(parseInt(tf)||0)+carry}));}} style={{...eis,width:90}}/>:
+                      <>₩{r.autoFee.toLocaleString()}</>}
+                    </td>
                     <td style={{padding:"10px 12px"}}>
                       {isEditing?<input type="number" value={editForm.carryover} onChange={e=>setEditForm(p=>({...p,carryover:e.target.value}))} style={{...eis,width:80}}/>:
                       r.carryover!==0?<><span style={{color:r.carryover>0?C.dn:C.ac,fontWeight:600}}>{r.carryover>0?"+":"−"}₩{Math.abs(r.carryover).toLocaleString()}</span><div style={{fontSize:9,color:r.carryover>0?C.dn:C.ac}}>{r.carryover>0?"미납이월":"선납"}</div></>:<span style={{color:C.tt}}>-</span>}
@@ -238,7 +290,7 @@ export default function Tuition({menuBtn}){
                           <button disabled={saving} onClick={()=>saveEdit(s.id,r.lessonCnt)} style={{background:saving?"#999":C.pr,color:"#fff",border:"none",borderRadius:6,padding:"4px 10px",fontSize:10,fontWeight:600,cursor:saving?"not-allowed":"pointer",fontFamily:"inherit"}}>{saving?"저장 중...":"저장"}</button>
                           <button onClick={cancelEdit} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:6,padding:"4px 8px",fontSize:10,cursor:"pointer",fontFamily:"inherit"}}>취소</button>
                         </div>
-                      ):(<button onClick={()=>startEdit(r)} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,fontSize:11,fontFamily:"inherit"}}>수정</button>)}
+                      ):(<div style={{display:"flex",gap:4,alignItems:"center"}}><button onClick={()=>startEdit(r)} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,fontSize:11,fontFamily:"inherit"}}>수정</button><button onClick={()=>openReceipt(r)} style={{background:C.as,border:"1px solid "+C.ac,borderRadius:5,cursor:"pointer",color:C.ac,fontSize:10,fontWeight:600,padding:"3px 8px",fontFamily:"inherit"}}>영수증</button></div>)}
                     </td>
                   </tr>
                 );
@@ -278,6 +330,57 @@ export default function Tuition({menuBtn}){
               <button onClick={()=>setMemoPopup(null)} style={{background:"none",border:"none",cursor:"pointer",fontSize:16,color:C.tt,fontFamily:"inherit",padding:4}}>✕</button>
             </div>
             <div style={{fontSize:13,color:C.ts,lineHeight:1.6,whiteSpace:"pre-wrap",background:C.sfh,borderRadius:8,padding:14}}>{memoPopup.memo}</div>
+          </div>
+        </div>
+      )}
+
+      {/* Receipt modal */}
+      {receiptData&&(
+        <div onClick={()=>setReceiptData(null)} style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.35)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:C.sf,borderRadius:14,padding:28,width:"100%",maxWidth:500,maxHeight:"90vh",overflow:"auto",boxShadow:"0 8px 30px rgba(0,0,0,.12)"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+              <h2 style={{fontSize:17,fontWeight:700,color:C.tp,margin:0}}>교습비 영수증 발행</h2>
+              <button onClick={()=>setReceiptData(null)} style={{background:"none",border:"none",cursor:"pointer",fontSize:18,color:C.tt,fontFamily:"inherit"}}>✕</button>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
+              <div><label style={rls}>일련번호</label><input value={rcptForm.serialNo||''} onChange={e=>setRcptForm(p=>({...p,serialNo:e.target.value}))} style={ris} placeholder="001"/></div>
+              <div><label style={rls}>연월(분기)</label><input value={rcptForm.period||''} onChange={e=>setRcptForm(p=>({...p,period:e.target.value}))} style={ris}/></div>
+            </div>
+            <div style={{fontSize:12,fontWeight:600,color:C.tt,marginBottom:8,borderBottom:"1px solid "+C.bd,paddingBottom:4}}>납부자 정보</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
+              <div><label style={rls}>성명</label><input value={rcptForm.name||''} onChange={e=>setRcptForm(p=>({...p,name:e.target.value}))} style={ris}/></div>
+              <div><label style={rls}>교습과목</label><input value={rcptForm.subject||''} onChange={e=>setRcptForm(p=>({...p,subject:e.target.value}))} style={ris}/></div>
+              <div><label style={rls}>등록번호</label><input value={rcptForm.regNo||''} onChange={e=>setRcptForm(p=>({...p,regNo:e.target.value}))} style={ris} placeholder="선택사항"/></div>
+              <div><label style={rls}>생년월일</label><input value={rcptForm.birthDate||''} onChange={e=>setRcptForm(p=>({...p,birthDate:e.target.value}))} style={ris} placeholder="선택사항"/></div>
+            </div>
+            <div style={{fontSize:12,fontWeight:600,color:C.tt,marginBottom:8,borderBottom:"1px solid "+C.bd,paddingBottom:4}}>납부 명세</div>
+            <div style={{marginBottom:12}}>
+              <label style={rls}>교습비</label>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <input type="number" value={rcptForm.tuitionFee||''} onChange={e=>setRcptForm(p=>({...p,tuitionFee:e.target.value}))} style={{...ris,flex:1}}/>
+                <span style={{fontSize:12,color:C.tt,flexShrink:0}}>원</span>
+              </div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:16}}>
+              <div><label style={rls}>기타경비 1 항목</label><input value={rcptForm.etcLabel1||''} onChange={e=>setRcptForm(p=>({...p,etcLabel1:e.target.value}))} style={ris} placeholder="예: 교재비"/></div>
+              <div><label style={rls}>기타경비 1 금액</label><div style={{display:"flex",alignItems:"center",gap:6}}><input type="number" value={rcptForm.etcAmt1||''} onChange={e=>setRcptForm(p=>({...p,etcAmt1:e.target.value}))} style={{...ris,flex:1}}/><span style={{fontSize:12,color:C.tt,flexShrink:0}}>원</span></div></div>
+              <div><label style={rls}>기타경비 2 항목</label><input value={rcptForm.etcLabel2||''} onChange={e=>setRcptForm(p=>({...p,etcLabel2:e.target.value}))} style={ris} placeholder="선택사항"/></div>
+              <div><label style={rls}>기타경비 2 금액</label><div style={{display:"flex",alignItems:"center",gap:6}}><input type="number" value={rcptForm.etcAmt2||''} onChange={e=>setRcptForm(p=>({...p,etcAmt2:e.target.value}))} style={{...ris,flex:1}}/><span style={{fontSize:12,color:C.tt,flexShrink:0}}>원</span></div></div>
+            </div>
+            <div style={{fontSize:12,fontWeight:600,color:C.tt,marginBottom:8,borderBottom:"1px solid "+C.bd,paddingBottom:4}}>발행 정보</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:12}}>
+              <div><label style={rls}>년</label><input value={rcptForm.issueYear||''} onChange={e=>setRcptForm(p=>({...p,issueYear:e.target.value}))} style={ris}/></div>
+              <div><label style={rls}>월</label><input value={rcptForm.issueMonth||''} onChange={e=>setRcptForm(p=>({...p,issueMonth:e.target.value}))} style={ris}/></div>
+              <div><label style={rls}>일</label><input value={rcptForm.issueDay||''} onChange={e=>setRcptForm(p=>({...p,issueDay:e.target.value}))} style={ris}/></div>
+            </div>
+            <div style={{marginBottom:24}}>
+              <label style={rls}>교습자 / 학원명</label>
+              <input value={rcptForm.tutorName||''} onChange={e=>setRcptForm(p=>({...p,tutorName:e.target.value}))} style={ris} placeholder="이름 또는 학원명 (자동 저장)"/>
+            </div>
+            <div style={{display:"flex",justifyContent:"flex-end",gap:10}}>
+              <button onClick={()=>setReceiptData(null)} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:8,padding:"10px 20px",fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>닫기</button>
+              <button onClick={printReceipt} style={{background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"10px 24px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>인쇄</button>
+            </div>
           </div>
         </div>
       )}
