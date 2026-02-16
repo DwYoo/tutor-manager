@@ -25,6 +25,7 @@ export default function ShareView({ token }) {
   const [showHwDetail, setShowHwDetail] = useState(false);
   const [hwFilters, setHwFilters] = useState(new Set());
   const [showWrongList, setShowWrongList] = useState(false);
+  const [showHwList, setShowHwList] = useState(false);
   const [chartMode, setChartMode] = useState("grade");
   const [wExpanded, setWExpanded] = useState({});
   const [calMonth, setCalMonth] = useState(new Date());
@@ -445,8 +446,15 @@ export default function ShareView({ token }) {
         {tab === "study" && (<div>
           {/* Homework section */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp, margin: 0 }}>숙제 현황</h3>
-            {allHw.length > 0 && <span style={{ fontSize: 13, fontWeight: 700, color: hwAvg >= 100 ? C.su : hwAvg > 30 ? C.wn : hwAvg > 0 ? "#EA580C" : C.ts, background: hwAvg >= 100 ? C.sb : hwAvg > 30 ? C.wb : hwAvg > 0 ? "#FFF7ED" : C.sfh, padding: "4px 12px", borderRadius: 8 }}>완료율 {hwAvg}%</span>}
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp, margin: 0 }}>숙제 현황</h3>
+              {allHw.length > 0 && <span style={{ fontSize: 13, fontWeight: 700, color: hwAvg >= 100 ? C.su : hwAvg > 30 ? C.wn : hwAvg > 0 ? "#EA580C" : C.ts, background: hwAvg >= 100 ? C.sb : hwAvg > 30 ? C.wb : hwAvg > 0 ? "#FFF7ED" : C.sfh, padding: "4px 12px", borderRadius: 8 }}>완료율 {hwAvg}%</span>}
+            </div>
+            {allHw.length > 0 && (
+              <button onClick={() => setShowHwList(!showHwList)} style={{ padding: "4px 12px", border: "1px solid " + C.bd, borderRadius: 8, background: C.sf, fontSize: 11, color: C.ts, cursor: "pointer", fontFamily: "inherit" }}>
+                {showHwList ? "상세 숨김" : "상세 보기"}
+              </button>
+            )}
           </div>
           {allHw.length === 0 ? <Empty text="숙제 기록이 없습니다" /> : (() => {
             const toggleHwFilter = (key) => {
@@ -469,13 +477,13 @@ export default function ShareView({ token }) {
               return false;
             });
             return (<>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(120px,1fr))", gap: 10, marginBottom: 16 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(120px,1fr))", gap: 10, marginBottom: showHwList ? 16 : 28 }}>
                 <FilterCard label="전체" value={allHw.length + "건"} color={C.tp} bg={C.sfh} active={isAllSelected} onClick={() => toggleHwFilter("all")} />
                 <FilterCard label="완료" value={hwDone + "건"} color={C.su} bg={C.sb} active={hwFilters.has("done")} onClick={() => toggleHwFilter("done")} />
                 <FilterCard label="진행중" value={hwInProg + "건"} color={C.wn} bg={C.wb} active={hwFilters.has("prog")} onClick={() => toggleHwFilter("prog")} />
                 <FilterCard label="미시작" value={hwNotStarted + "건"} color={C.dn} bg={C.db} active={hwFilters.has("none")} onClick={() => toggleHwFilter("none")} />
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 28 }}>
+              {showHwList && <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 28 }}>
                 {filteredHw.length === 0 ? (
                   <div style={{ textAlign: "center", padding: 20, color: C.tt, fontSize: 13 }}>해당하는 숙제가 없습니다</div>
                 ) : filteredHw.map(h => {
@@ -501,7 +509,7 @@ export default function ShareView({ token }) {
                   </div>
                   );
                 })}
-              </div>
+              </div>}
             </>);
           })()}
 
