@@ -127,10 +127,8 @@ export default function Tuition({menuBtn}){
       const totalDueVal=parseInt(editForm.totalDue)||0;
       const carryoverVal=parseInt(editForm.carryover)||0;
       const editedFeePerClass=parseInt(editForm.fee_per_class)||0;
-      const editedAutoFee=editedFeePerClass*lessonCnt;
-      const editedTuitionFee=parseInt(editForm.tuitionFee)||0;
-      const effectiveAutoFee=(editedTuitionFee!==editedAutoFee)?editedTuitionFee:editedAutoFee;
-      const feeOverride=(totalDueVal!==(effectiveAutoFee+carryoverVal))?totalDueVal:null;
+      const autoTotalDue=editedFeePerClass*lessonCnt+carryoverVal;
+      const feeOverride=(totalDueVal!==autoTotalDue)?totalDueVal:null;
       const existing=tuitions.find(t=>t.student_id===studentId&&t.month===curMonth);
       const payload={
         student_id:studentId,month:curMonth,
@@ -269,6 +267,17 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
         <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:18}}><div style={{fontSize:12,color:C.tt,marginBottom:4}}>수납률</div><div style={{fontSize:20,fontWeight:700,color:collectRate>=90?C.su:C.wn}}>{collectRate}%</div><div style={{height:5,background:C.bl,borderRadius:3,marginTop:6,overflow:"hidden"}}><div style={{height:"100%",width:collectRate+"%",background:collectRate>=90?C.su:C.wn,borderRadius:3}}/></div></div>
       </div>
 
+      {/* Cash receipt alert */}
+      {(()=>{const missed=monthRecs.filter(r=>{const rec=r.record;return !rec.cash_receipt_issued&&(r.paidAmount>0||rec.paid_date);});return missed.length>0?(
+        <div style={{background:"#FEF3C7",border:"1px solid #F59E0B",borderRadius:12,padding:"14px 18px",marginBottom:20,display:"flex",alignItems:"flex-start",gap:10}}>
+          <span style={{fontSize:18,lineHeight:1,flexShrink:0}}>&#9888;&#65039;</span>
+          <div style={{flex:1}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#92400E",marginBottom:4}}>현금영수증 미발행 ({missed.length}건)</div>
+            <div style={{fontSize:12,color:"#A16207",lineHeight:1.6}}>{missed.map((r,i)=><span key={r.student.id}>{i>0?", ":""}<strong>{r.student.name}</strong></span>)} — 납부 확인되었으나 현금영수증이 아직 발행되지 않았습니다.</div>
+          </div>
+        </div>
+      ):null;})()}
+
       {/* Main grid */}
       <div className="tu-grid" style={{display:"grid",gridTemplateColumns:"1fr 280px",gap:20}}>
         {/* Table */}
@@ -286,7 +295,7 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
                   <tr key={s.id} className="tr" style={{borderBottom:"1px solid "+C.bl}}>
                     <td style={{padding:"10px 12px",fontWeight:600,color:C.tp}}>{s.name}</td>
                     <td style={{padding:"10px 12px",color:C.ts}}>
-                      {isEditing?<input type="number" value={editForm.fee_per_class} onChange={e=>setEditForm(p=>({...p,fee_per_class:e.target.value}))} style={{...eis,width:80}}/>:
+                      {isEditing?<input type="number" value={editForm.fee_per_class} onChange={e=>{const fpc=e.target.value;const newFee=(parseInt(fpc)||0)*r.lessonCnt;const carry=parseInt(editForm.carryover)||0;const newTotal=newFee+carry;const a=parseInt(editForm.amount)||0;setEditForm(p=>({...p,fee_per_class:fpc,tuitionFee:newFee,totalDue:newTotal,status:autoStatus(a,newTotal)}));}} style={{...eis,width:80}}/>:
                       <>₩{(s.fee_per_class||0).toLocaleString()}</>}
                     </td>
                     <td style={{padding:"10px 12px",fontWeight:600}}>{r.lessonCnt}회</td>
