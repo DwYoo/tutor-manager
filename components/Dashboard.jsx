@@ -14,6 +14,7 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
   const[lessons,setLessons]=useState([]);
   const[tuitions,setTuitions]=useState([]);
   const[scores,setScores]=useState([]);
+  const[textbooks,setTextbooks]=useState([]);
   const[loading,setLoading]=useState(true);
   const[weekOff,setWeekOff]=useState(0);
   const[dLes,setDLes]=useState(null);
@@ -26,14 +27,15 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
   const fetchData=useCallback(async()=>{
     setLoading(true);setFetchError(false);
     try{
-      const[sRes,lRes,tRes,scRes]=await Promise.all([
+      const[sRes,lRes,tRes,scRes,tbRes]=await Promise.all([
         supabase.from('students').select('*').order('created_at'),
         supabase.from('lessons').select('*, homework(*)').order('date'),
         supabase.from('tuition').select('*'),
         supabase.from('scores').select('*').order('date'),
+        supabase.from('textbooks').select('*').order('created_at',{ascending:false}).then(r=>r,()=>({data:[],error:null})),
       ]);
       if(sRes.error||lRes.error||tRes.error||scRes.error){setFetchError(true);setLoading(false);return;}
-      setStudents(sRes.data||[]);setLessons(lRes.data||[]);setTuitions(tRes.data||[]);setScores(scRes.data||[]);
+      setStudents(sRes.data||[]);setLessons(lRes.data||[]);setTuitions(tRes.data||[]);setScores(scRes.data||[]);setTextbooks(tbRes.data||[]);
     }catch{setFetchError(true);}
     setLoading(false);
   },[]);
@@ -358,7 +360,7 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
           {editMode&&dropTgt&&dropTgt.col==='bottom'&&dropTgt.idx>=(layout.bottom||[]).length&&<div style={{height:3,background:C.ac,borderRadius:2}}/>}
         </div>
       )}
-      {dLes&&<LessonDetailModal les={dLes} student={getStu(dLes.student_id)} onUpdate={updDetail} onClose={()=>setDLes(null)}/>}
+      {dLes&&<LessonDetailModal les={dLes} student={getStu(dLes.student_id)} textbooks={textbooks.filter(tb=>tb.student_id===dLes.student_id)} onUpdate={updDetail} onClose={()=>setDLes(null)}/>}
     </div>
   );
 }
