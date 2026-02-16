@@ -56,10 +56,10 @@ export default function Home() {
   )
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#FAFAF9' }}>
+    <div className="app-root" style={{ display: 'flex', height: '100vh', background: '#FAFAF9', overflow: 'hidden' }}>
       <style>{`
         @media(min-width:1024px){.menu-toggle{display:none!important;}.mobile-nav{display:none!important;}}
-        @media(max-width:1023px){.mobile-nav{display:flex!important;}}
+        @media(max-width:1023px){.mobile-nav{display:flex!important;}.app-root{height:auto!important;overflow:visible!important;}}
       `}</style>
 
       {/* Desktop sidebar */}
@@ -89,7 +89,7 @@ export default function Home() {
       )}
 
       {/* Main content */}
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ flex: 1, minWidth: 0, overflowY: 'auto' }}>
         <div style={{ animation: 'fadeIn .3s ease', paddingBottom: 64 }} className="main-content-area">
           <style>{`@media(min-width:1024px){.main-content-area{padding-bottom:0!important;}}`}</style>
           {page === 'dashboard' && <Dashboard onNav={setPage} onDetail={goDetail} menuBtn={<MenuButton />} />}
