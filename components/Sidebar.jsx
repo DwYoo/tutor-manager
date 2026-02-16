@@ -12,7 +12,7 @@ const ICONS={dashboard:IcDash,schedule:IcCal,students:IcStu,tuition:IcFee};
 
 export default function Sidebar({nav,page,onNav,onClose,isDesktop,user,onSignOut}){
   return(
-    <div style={{width:240,background:C.sf,borderRight:"1px solid "+C.bd,display:"flex",flexDirection:"column",height:"100vh",position:isDesktop?"sticky":"relative",top:0}}>
+    <div style={{width:240,background:C.sf,borderRight:"1px solid "+C.bd,display:"flex",flexDirection:"column",height:"100%",flexShrink:0}}>
       <style>{`
         .sb-item{display:flex;align-items:center;gap:12px;width:100%;padding:11px 16px;border-radius:12px;border:none;font-size:13px;cursor:pointer;font-family:inherit;margin-bottom:2px;transition:all .15s;}
         .sb-item:hover{background:${C.sfh};}

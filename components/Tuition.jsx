@@ -345,7 +345,7 @@ export default function Tuition({menuBtn}){
 <tr><td style="${cs}" colspan="2">일련번호 : ${f.serialNo||''}</td><td style="${cs}" colspan="2">연월(분기) : ${f.period||''}</td></tr>
 <tr><td style="${cs}text-align:center;font-weight:bold;width:32px;" rowspan="2">납부자</td><td style="${cs}">등록번호 : ${f.regNo||''}</td><td style="${cs}" colspan="2">성명 : ${f.name||''}</td></tr>
 <tr><td style="${cs}">생년월일 : ${bd6}</td><td style="${cs}" colspan="2">교습과목 : ${f.subject||''}</td></tr>
-<tr><td style="${cs}text-align:center;font-weight:bold;width:32px;" rowspan="4">납부<br>명세</td><td style="${cs}text-align:center;vertical-align:middle;width:72px;" rowspan="4"><div>교습비</div><div style="border-top:1px solid #000;margin:4px 0;"></div><div style="font-size:10px;font-weight:bold;">${tFee>0?tFee.toLocaleString()+'원':''}</div></td><td style="${cs}text-align:center;font-weight:bold;" colspan="2">기타경비</td></tr>
+<tr><td style="${cs}text-align:center;font-weight:bold;width:32px;" rowspan="4">납부<br>명세</td><td style="${cs}padding:0;width:72px;vertical-align:middle;" rowspan="4"><table style="width:100%;border-collapse:collapse;height:100%;"><tr><td style="padding:4px;text-align:center;font-size:10px;border-bottom:1px solid #000;">교습비</td></tr><tr><td style="padding:4px;text-align:center;font-size:10px;font-weight:bold;">${tFee>0?tFee.toLocaleString()+'원':''}</td></tr></table></td><td style="${cs}text-align:center;font-weight:bold;" colspan="2">기타경비</td></tr>
 <tr><td style="${cs}text-align:center;font-weight:bold;">항목</td><td style="${cs}text-align:center;font-weight:bold;">금액</td></tr>
 <tr><td style="${cs}">${f.etcLabel1||''}</td><td style="${cs}">${e1>0?e1.toLocaleString()+'원':''}</td></tr>
 <tr><td style="${cs}">${f.etcLabel2||''}</td><td style="${cs}">${e2>0?e2.toLocaleString()+'원':''}</td></tr>
@@ -362,11 +362,11 @@ export default function Tuition({menuBtn}){
 </div>`;
     const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>교습비등 영수증</title>
 <style>
-@page{size:210mm 297mm;margin:15mm 10mm;}
+@page{size:210mm 297mm;margin:12mm 10mm;}
 *{margin:0;padding:0;box-sizing:border-box;}
-body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',serif;font-size:10px;color:#000;width:210mm;min-height:297mm;}
-.rcpt-wrap{display:flex;gap:10mm;width:100%;height:267mm;padding:15mm 10mm;box-sizing:border-box;justify-content:center;}
-@media print{body{padding:0;width:auto;height:auto;}.rcpt-wrap{padding:0;height:267mm;}}
+body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',serif;font-size:10px;color:#000;width:210mm;height:297mm;overflow:hidden;}
+.rcpt-wrap{display:flex;gap:10mm;width:100%;height:100%;padding:12mm 10mm;box-sizing:border-box;justify-content:center;}
+@media print{body{padding:0;width:auto;height:auto;overflow:hidden;}.rcpt-wrap{padding:0;height:273mm;}}
 </style></head><body>
 <div class="rcpt-wrap">${makeR('교습비등 영수증 원부')}${makeR('교습비등 영수증')}</div>
 <script>window.onload=function(){setTimeout(function(){window.print();},400);}<\/script>
@@ -497,7 +497,7 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
                     </td>
                     <td style={{padding:"10px 12px"}}>
                       {isEditing?<select value={editForm.status} onChange={e=>setEditForm(p=>({...p,status:e.target.value}))} style={{...eis,fontSize:11}}>{STATUS.map(x=>(<option key={x.id} value={x.id}>{x.l}</option>))}</select>:
-                      <span style={{background:st.bg,color:st.c,padding:"6px 12px",borderRadius:5,fontSize:10,fontWeight:600,display:"inline-block",minHeight:44,lineHeight:"32px",boxSizing:"border-box"}}>{st.l}</span>}
+                      <span style={{background:st.bg,color:st.c,padding:"3px 8px",borderRadius:6,fontSize:11,fontWeight:600,letterSpacing:"-0.3px",whiteSpace:"nowrap"}}>{st.l}</span>}
                     </td>
                     <td style={{padding:"10px 12px"}}>
                       {isEditing?<input type="date" value={editForm.paid_date||''} onChange={e=>setEditForm(p=>({...p,paid_date:e.target.value}))} style={{...eis,width:120,fontSize:11}}/>:
