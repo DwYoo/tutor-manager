@@ -27,6 +27,7 @@ export default function Tuition({menuBtn}){
   const[rcptForm,setRcptForm]=useState({});
   const[rcptFiles,setRcptFiles]=useState([]);
   const[rcptUploading,setRcptUploading]=useState(false);
+  const[rcptDragOver,setRcptDragOver]=useState(false);
   const[hiddenStudents,setHiddenStudents]=useState(()=>{try{return JSON.parse(localStorage.getItem('tuition-hidden')||'{}');}catch{return{};}});
   const[showHidden,setShowHidden]=useState(false);
 
@@ -45,7 +46,7 @@ export default function Tuition({menuBtn}){
         supabase.from('lessons').select('*'),
         supabase.from('receipt_files').select('*').order('created_at',{ascending:false}),
       ]);
-      if(sRes.error||tRes.error||lRes.error){setFetchError(true);setLoading(false);return;}
+      if(sRes.error||tRes.error||lRes.error||rfRes.error){setFetchError(true);setLoading(false);return;}
       setStudents(sRes.data||[]);setTuitions(tRes.data||[]);setLessons(lRes.data||[]);setRcptFiles(rfRes.data||[]);
     }catch{setFetchError(true);}
     setLoading(false);
@@ -292,20 +293,25 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
   };
 
   /* Receipt file storage */
-  const uploadRcptFile=async(e)=>{
-    const files=e.target.files;if(!files?.length)return;
+  const uploadRcptFiles=async(fileList)=>{
+    if(!fileList?.length)return;
     setRcptUploading(true);
+    let ok=0,fail=0;
     try{
-      for(const file of files){
-        const ext=file.name.split('.').pop()||'pdf';
+      for(const file of fileList){
         const path=`${user.id}/${curMonth}/${Date.now()}_${file.name}`;
         const{error:upErr}=await supabase.storage.from('receipts').upload(path,file);
-        if(upErr){console.error(upErr);continue;}
+        if(upErr){console.error('Storage upload error:',upErr);fail++;continue;}
         const{data,error:dbErr}=await supabase.from('receipt_files').insert({user_id:user.id,month:curMonth,file_name:file.name,file_path:path,file_size:file.size,mime_type:file.type||'application/pdf'}).select().single();
-        if(!dbErr&&data)setRcptFiles(p=>[data,...p]);
+        if(dbErr){console.error('DB insert error:',dbErr);await supabase.storage.from('receipts').remove([path]);fail++;continue;}
+        if(data)setRcptFiles(p=>[data,...p]);
+        ok++;
       }
-    }finally{setRcptUploading(false);e.target.value='';}
+    }finally{setRcptUploading(false);}
+    if(fail>0)toast?.(`${fail}개 파일 업로드 실패`,'error');
+    else if(ok>0)toast?.(`${ok}개 파일 업로드 완료`);
   };
+  const uploadRcptFile=async(e)=>{await uploadRcptFiles(e.target.files);e.target.value='';};
   const deleteRcptFile=async(f)=>{
     if(!confirm(`"${f.file_name}" 파일을 삭제하시겠습니까?`))return;
     await supabase.storage.from('receipts').remove([f.file_path]);
@@ -375,7 +381,7 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
                 const isEditing=editId===(rec.id||s.id);
                 return(
                   <tr key={s.id} className="tr" style={{borderBottom:"1px solid "+C.bl,opacity:curHidden.includes(s.id)?0.45:1}}>
-                    <td style={{padding:"10px 12px",fontWeight:600,color:C.tp}}><div style={{display:"flex",alignItems:"center",gap:4}}>{!isEditing&&<button onClick={()=>toggleHideStudent(s.id)} style={{fontSize:10,fontWeight:600,color:curHidden.includes(s.id)?C.ac:"#DC2626",background:curHidden.includes(s.id)?"#EFF6FF":"#FEF2F2",border:"1px solid "+(curHidden.includes(s.id)?"#BFDBFE":"#FECACA"),cursor:"pointer",padding:"2px 5px",borderRadius:4,fontFamily:"inherit",lineHeight:1}} title={curHidden.includes(s.id)?"다시 표시":"숨기기"}>{curHidden.includes(s.id)?"표시":"숨김"}</button>}<span style={{color:C.tt,fontSize:10,fontWeight:400}}>{stuNumMap[s.id]||""}</span><span style={{color:r.isArchived?C.ts:C.tp}}>{s.name}</span>{r.isArchived&&<span style={{fontSize:8,color:C.tt,background:C.sfh,padding:"1px 4px",borderRadius:3}}>보관</span>}</div></td>
+                    <td style={{padding:"10px 12px",fontWeight:600,color:C.tp}}><div style={{display:"flex",alignItems:"center",gap:4}}>{!isEditing&&<button onClick={()=>toggleHideStudent(s.id)} style={{fontSize:14,color:curHidden.includes(s.id)?C.ac:C.tt,background:"none",border:"none",cursor:"pointer",padding:"0 2px",fontFamily:"monospace",lineHeight:1}} title={curHidden.includes(s.id)?"다시 표시":"숨기기"}>{curHidden.includes(s.id)?"+":"−"}</button>}<span style={{color:r.isArchived?C.ts:C.tp}}>{s.name}</span>{r.isArchived&&<span style={{fontSize:8,color:C.tt,background:C.sfh,padding:"1px 4px",borderRadius:3}}>보관</span>}</div></td>
                     <td style={{padding:"10px 12px",color:C.ts}}>
                       {isEditing?<input type="number" value={editForm.fee_per_class} onChange={e=>{const fpc=e.target.value;const cls=editForm.classesOverride!==""?parseInt(editForm.classesOverride)||0:r.autoLessonCnt;const newFee=(parseInt(fpc)||0)*cls;const carry=parseInt(editForm.carryover)||0;const newTotal=newFee+carry;const a=parseInt(editForm.amount)||0;setEditForm(p=>({...p,fee_per_class:fpc,tuitionFee:newFee,totalDue:newTotal,status:autoStatus(a,newTotal)}));}} style={{...eis,width:80}}/>:
                       <>₩{(s.fee_per_class||0).toLocaleString()}</>}
@@ -458,16 +464,21 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
           </div>
 
           {/* Receipt file storage */}
-          <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:18}}>
+          <div style={{background:C.sf,border:"2px "+(rcptDragOver?"dashed "+C.ac:"solid "+C.bd),borderRadius:14,padding:18,transition:"border .15s"}}
+            onDragOver={e=>{e.preventDefault();e.stopPropagation();setRcptDragOver(true);}}
+            onDragEnter={e=>{e.preventDefault();e.stopPropagation();setRcptDragOver(true);}}
+            onDragLeave={e=>{e.preventDefault();e.stopPropagation();if(!e.currentTarget.contains(e.relatedTarget))setRcptDragOver(false);}}
+            onDrop={e=>{e.preventDefault();e.stopPropagation();setRcptDragOver(false);const dt=e.dataTransfer;if(dt?.files?.length){const allowed=['.pdf','.jpg','.jpeg','.png'];const valid=[...dt.files].filter(f=>allowed.some(ext=>f.name.toLowerCase().endsWith(ext)));if(valid.length)uploadRcptFiles(valid);else toast?.('PDF, JPG, PNG 파일만 업로드 가능합니다','error');}}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
               <div style={{fontSize:13,fontWeight:600,color:C.tp}}>영수증 보관함</div>
               <label style={{background:C.as,color:C.ac,border:"1px solid "+C.ac,borderRadius:6,padding:"4px 10px",fontSize:10,fontWeight:600,cursor:rcptUploading?"not-allowed":"pointer",fontFamily:"inherit",opacity:rcptUploading?.5:1}}>
-                {rcptUploading?"업로드 중...":"파일 추가"}
+                {rcptUploading?"업로드 중...":"+"}
                 <input type="file" accept=".pdf,.jpg,.jpeg,.png" multiple onChange={uploadRcptFile} style={{display:"none"}} disabled={rcptUploading}/>
               </label>
             </div>
+            {rcptDragOver?<div style={{textAlign:"center",padding:24,color:C.ac,fontSize:12,fontWeight:500}}>파일을 놓아주세요</div>:<>
             <div style={{fontSize:11,color:C.tt,marginBottom:8}}>{month}월 파일 ({curMonthFiles.length})</div>
-            {curMonthFiles.length===0?<div style={{textAlign:"center",padding:16,color:C.tt,fontSize:11}}>이번 달 영수증 파일이 없습니다</div>:
+            {curMonthFiles.length===0?<div style={{textAlign:"center",padding:16,color:C.tt,fontSize:11}}>파일을 드래그하거나 + 버튼으로 추가</div>:
             <div style={{display:"flex",flexDirection:"column",gap:6,maxHeight:200,overflow:"auto"}}>
               {curMonthFiles.map(f=>(
                 <div key={f.id} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 8px",background:C.sfh,borderRadius:8,fontSize:11}}>
@@ -491,6 +502,7 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
                 })}
               </div>
             </>)}
+          </>}
           </div>
         </div>
       </div>
