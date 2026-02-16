@@ -82,16 +82,17 @@ export default function Tuition({menuBtn}){
   const activeStudents=students.filter(s=>!s.archived).sort((a,b)=>(a.sort_order??Infinity)-(b.sort_order??Infinity));
   const monthRecs=activeStudents.map(s=>{
     const rec=tuitions.find(t=>t.student_id===s.id&&t.month===curMonth);
-    const lessonCnt=countLessons(s.id,year,month);
+    const autoLessonCnt=countLessons(s.id,year,month);
+    const lessonCnt=(rec&&rec.classes_override!=null)?rec.classes_override:autoLessonCnt;
+    const classesOverridden=(rec&&rec.classes_override!=null);
     const autoFee=(s.fee_per_class||0)*lessonCnt;
     const carryover=rec?.carryover||0;
     const autoTotalDue=autoFee+carryover;
-    // fee_override가 있으면 청구액 수동값, 없으면 자동계산(수업료+이월)
-    const totalDue=(rec&&rec.fee_override!=null)?rec.fee_override:autoTotalDue;
+    const feeManual=!!(rec&&rec.fee_manual&&rec.fee_override!=null);
+    const totalDue=feeManual?rec.fee_override:autoTotalDue;
     const paidAmount=rec?.amount||0;
     const status=autoStatus(paidAmount,totalDue);
-    const isOverridden=(rec&&rec.fee_override!=null);
-    return{student:s,record:rec||{student_id:s.id,month:curMonth,status:"unpaid",amount:0,carryover:0,memo:""},lessonCnt,autoFee,carryover,autoTotalDue,totalDue,paidAmount,status,isOverridden};
+    return{student:s,record:rec||{student_id:s.id,month:curMonth,status:"unpaid",amount:0,carryover:0,memo:""},autoLessonCnt,lessonCnt,classesOverridden,autoFee,carryover,autoTotalDue,totalDue,paidAmount,status,feeManual,hasSavedOverride:!!(rec&&rec.fee_override!=null)};
   });
 
   const totalFee=monthRecs.reduce((a,r)=>a+r.totalDue,0);
@@ -120,42 +121,54 @@ export default function Tuition({menuBtn}){
       tuitionFee:r.autoFee,
       paid_date:r.record.paid_date||"",
       cash_receipt_issued:!!r.record.cash_receipt_issued,
+      classesOverride:r.classesOverridden?String(r.lessonCnt):"",
+      feeManual:r.feeManual,
     });
   };
   const cancelEdit=()=>{setEditId(null);setEditForm({});};
 
-  const saveEdit=async(studentId,lessonCnt)=>{
+  const saveEdit=async(studentId,autoLessonCnt)=>{
     if(saving)return;setSaving(true);
     try{
       const totalDueVal=parseInt(editForm.totalDue)||0;
       const carryoverVal=parseInt(editForm.carryover)||0;
       const editedFeePerClass=parseInt(editForm.fee_per_class)||0;
-      const autoTotalDue=editedFeePerClass*lessonCnt+carryoverVal;
-      const feeOverride=(totalDueVal!==autoTotalDue)?totalDueVal:null;
+      const classesOv=editForm.classesOverride!==""?parseInt(editForm.classesOverride):null;
+      const effectiveLessons=(classesOv!=null)?classesOv:autoLessonCnt;
+      const autoTotalDue=editedFeePerClass*effectiveLessons+carryoverVal;
+      const isManual=(totalDueVal!==autoTotalDue);
+      const feeOverride=isManual?totalDueVal:(editForm.feeManual?totalDueVal:null);
       const existing=tuitions.find(t=>t.student_id===studentId&&t.month===curMonth);
       const payload={
         student_id:studentId,month:curMonth,
         status:editForm.status,
         amount:parseInt(editForm.amount)||0,
-        carryover:parseInt(editForm.carryover)||0,
+        carryover:carryoverVal,
         fee_override:feeOverride,
+        fee_manual:isManual,
+        classes_override:(classesOv!=null&&classesOv!==autoLessonCnt)?classesOv:null,
         memo:editForm.memo,
         paid_date:editForm.paid_date||null,
         cash_receipt_issued:!!editForm.cash_receipt_issued,
-        classes:countLessons(studentId,year,month),
+        classes:autoLessonCnt,
         user_id:user.id,
       };
+      let ok=false;
       if(existing){
-        await supabase.from('tuition').update(payload).eq('id',existing.id);
-        setTuitions(p=>p.map(t=>t.id===existing.id?{...t,...payload}:t));
+        const{error}=await supabase.from('tuition').update(payload).eq('id',existing.id);
+        if(error){toast?.('저장에 실패했습니다: '+error.message,'error');return;}
+        setTuitions(p=>p.map(t=>t.id===existing.id?{...t,...payload}:t));ok=true;
       }else{
         const{data,error}=await supabase.from('tuition').insert(payload).select().single();
-        if(!error&&data)setTuitions(p=>[...p,data]);
+        if(error){toast?.('저장에 실패했습니다: '+error.message,'error');return;}
+        if(data){setTuitions(p=>[...p,data]);ok=true;}
       }
-      const feePerClass=parseInt(editForm.fee_per_class)||0;
-      await supabase.from('students').update({fee_status:editForm.status,fee_per_class:feePerClass}).eq('id',studentId);
-      setStudents(p=>p.map(s=>s.id===studentId?{...s,fee_status:editForm.status,fee_per_class:feePerClass}:s));
-      setEditId(null);setEditForm({});
+      if(ok){
+        const feePerClass=editedFeePerClass;
+        await supabase.from('students').update({fee_status:editForm.status,fee_per_class:feePerClass}).eq('id',studentId);
+        setStudents(p=>p.map(s=>s.id===studentId?{...s,fee_status:editForm.status,fee_per_class:feePerClass}:s));
+        setEditId(null);setEditForm({});
+      }
     }finally{setSaving(false);}
   };
 
@@ -172,13 +185,24 @@ export default function Tuition({menuBtn}){
     }
   };
 
-  // Reset override (되돌리기)
-  const resetFee=async(studentId)=>{
+  // 자동↔수동 토글 (이전 수동값 보존)
+  const toggleFeeMode=async(studentId)=>{
     const existing=tuitions.find(t=>t.student_id===studentId&&t.month===curMonth);
-    if(existing){
-      await supabase.from('tuition').update({fee_override:null}).eq('id',existing.id);
-      setTuitions(p=>p.map(t=>t.id===existing.id?{...t,fee_override:null}:t));
-    }
+    if(!existing)return;
+    const newManual=!existing.fee_manual;
+    const update={fee_manual:newManual};
+    if(!newManual)update.fee_override=existing.fee_override; // 수동값 보존
+    const{error}=await supabase.from('tuition').update(update).eq('id',existing.id);
+    if(error)return;
+    setTuitions(p=>p.map(t=>t.id===existing.id?{...t,...update}:t));
+  };
+  const toggleClassesMode=async(studentId)=>{
+    const existing=tuitions.find(t=>t.student_id===studentId&&t.month===curMonth);
+    if(!existing)return;
+    const newVal=existing.classes_override!=null?null:countLessons(studentId,year,month);
+    const{error}=await supabase.from('tuition').update({classes_override:newVal}).eq('id',existing.id);
+    if(error)return;
+    setTuitions(p=>p.map(t=>t.id===existing.id?{...t,classes_override:newVal}:t));
   };
 
   /* Receipt */
@@ -326,13 +350,16 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
                   <tr key={s.id} className="tr" style={{borderBottom:"1px solid "+C.bl}}>
                     <td style={{padding:"10px 12px",fontWeight:600,color:C.tp}}>{s.name}</td>
                     <td style={{padding:"10px 12px",color:C.ts}}>
-                      {isEditing?<input type="number" value={editForm.fee_per_class} onChange={e=>{const fpc=e.target.value;const newFee=(parseInt(fpc)||0)*r.lessonCnt;const carry=parseInt(editForm.carryover)||0;const newTotal=newFee+carry;const a=parseInt(editForm.amount)||0;setEditForm(p=>({...p,fee_per_class:fpc,tuitionFee:newFee,totalDue:newTotal,status:autoStatus(a,newTotal)}));}} style={{...eis,width:80}}/>:
+                      {isEditing?<input type="number" value={editForm.fee_per_class} onChange={e=>{const fpc=e.target.value;const cls=editForm.classesOverride!==""?parseInt(editForm.classesOverride)||0:r.autoLessonCnt;const newFee=(parseInt(fpc)||0)*cls;const carry=parseInt(editForm.carryover)||0;const newTotal=newFee+carry;const a=parseInt(editForm.amount)||0;setEditForm(p=>({...p,fee_per_class:fpc,tuitionFee:newFee,totalDue:newTotal,status:autoStatus(a,newTotal)}));}} style={{...eis,width:80}}/>:
                       <>₩{(s.fee_per_class||0).toLocaleString()}</>}
                     </td>
-                    <td style={{padding:"10px 12px",fontWeight:600}}>{r.lessonCnt}회</td>
+                    <td style={{padding:"10px 12px"}}>
+                      {isEditing?<div style={{display:"flex",alignItems:"center",gap:4}}><input type="number" value={editForm.classesOverride!==""?editForm.classesOverride:r.autoLessonCnt} onChange={e=>{const cv=e.target.value;const cls=parseInt(cv)||0;const fpc=parseInt(editForm.fee_per_class)||0;const newFee=fpc*cls;const carry=parseInt(editForm.carryover)||0;const newTotal=newFee+carry;const a=parseInt(editForm.amount)||0;setEditForm(p=>({...p,classesOverride:cv,tuitionFee:newFee,totalDue:newTotal,status:autoStatus(a,newTotal)}));}} style={{...eis,width:50}}/><span style={{fontSize:10}}>회</span></div>:
+                      <div><span style={{fontWeight:600}}>{r.lessonCnt}회</span>{r.classesOverridden?<button onClick={()=>toggleClassesMode(s.id)} style={{marginLeft:4,fontSize:8,color:"#e67e22",cursor:"pointer",background:"none",padding:"1px 4px",borderRadius:3,border:"1px solid #e67e22",fontWeight:600,fontFamily:"inherit"}}>수동</button>:<span style={{marginLeft:4,fontSize:8,color:C.ac,background:C.as,padding:"1px 4px",borderRadius:3,fontWeight:600}}>자동</span>}</div>}
+                    </td>
                     <td style={{padding:"10px 12px",fontWeight:500,color:C.tp}}>
                       {isEditing?<input type="number" value={editForm.tuitionFee} onChange={e=>{const tf=e.target.value;const carry=parseInt(editForm.carryover)||0;setEditForm(p=>({...p,tuitionFee:tf,totalDue:(parseInt(tf)||0)+carry}));}} style={{...eis,width:90}}/>:
-                      <div><span>₩{r.autoFee.toLocaleString()}</span><span style={{marginLeft:6,fontSize:9,color:C.ac,background:C.as,padding:"2px 6px",borderRadius:4,fontWeight:600}}>자동</span></div>}
+                      <span>₩{r.autoFee.toLocaleString()}</span>}
                     </td>
                     <td style={{padding:"10px 12px"}}>
                       {isEditing?<input type="number" value={editForm.carryover} onChange={e=>setEditForm(p=>({...p,carryover:e.target.value}))} style={{...eis,width:80}}/>:
@@ -344,7 +371,7 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
                       ):(
                         <div>
                           <span style={{fontWeight:700,color:C.tp}}>₩{r.totalDue.toLocaleString()}</span>
-                          {r.isOverridden?<button onClick={()=>resetFee(s.id)} style={{marginLeft:6,fontSize:9,color:"#e67e22",cursor:"pointer",background:"none",padding:"2px 6px",borderRadius:4,border:"1px solid #e67e22",fontWeight:600,fontFamily:"inherit"}} title="클릭하면 자동계산으로 되돌립니다">수동</button>:<span style={{marginLeft:6,fontSize:9,color:C.ac,background:C.as,padding:"2px 6px",borderRadius:4,fontWeight:600}}>자동</span>}
+                          {r.feeManual?<button onClick={()=>toggleFeeMode(s.id)} style={{marginLeft:6,fontSize:9,color:"#e67e22",cursor:"pointer",background:"none",padding:"2px 6px",borderRadius:4,border:"1px solid #e67e22",fontWeight:600,fontFamily:"inherit"}} title="클릭하면 자동계산으로 전환">수동</button>:r.hasSavedOverride?<button onClick={()=>toggleFeeMode(s.id)} style={{marginLeft:6,fontSize:9,color:C.ac,cursor:"pointer",background:C.as,padding:"2px 6px",borderRadius:4,border:"none",fontWeight:600,fontFamily:"inherit"}} title="클릭하면 이전 수동값으로 전환">자동</button>:<span style={{marginLeft:6,fontSize:9,color:C.ac,background:C.as,padding:"2px 6px",borderRadius:4,fontWeight:600}}>자동</span>}
                         </div>
                       )}
                     </td>
@@ -371,7 +398,7 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
                     <td style={{padding:"10px 12px"}}>
                       {isEditing?(
                         <div style={{display:"flex",gap:4}}>
-                          <button disabled={saving} onClick={()=>saveEdit(s.id,r.lessonCnt)} style={{background:saving?"#999":C.pr,color:"#fff",border:"none",borderRadius:6,padding:"4px 10px",fontSize:10,fontWeight:600,cursor:saving?"not-allowed":"pointer",fontFamily:"inherit"}}>{saving?"저장 중...":"저장"}</button>
+                          <button disabled={saving} onClick={()=>saveEdit(s.id,r.autoLessonCnt)} style={{background:saving?"#999":C.pr,color:"#fff",border:"none",borderRadius:6,padding:"4px 10px",fontSize:10,fontWeight:600,cursor:saving?"not-allowed":"pointer",fontFamily:"inherit"}}>{saving?"저장 중...":"저장"}</button>
                           <button onClick={cancelEdit} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:6,padding:"4px 8px",fontSize:10,cursor:"pointer",fontFamily:"inherit"}}>취소</button>
                         </div>
                       ):(<div style={{display:"flex",gap:10,alignItems:"center"}}><button onClick={()=>startEdit(r)} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,fontSize:11,fontFamily:"inherit"}}>수정</button><button onClick={()=>openReceipt(r,idx)} style={{background:C.as,border:"1px solid "+C.ac,borderRadius:5,cursor:"pointer",color:C.ac,fontSize:10,fontWeight:600,padding:"3px 8px",fontFamily:"inherit"}}>영수증</button></div>)}
