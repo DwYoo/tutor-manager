@@ -238,7 +238,7 @@ export default function Tuition({menuBtn}){
 
   /* Receipt */
   const openReceipt=(r,idx)=>{
-    const d=new Date();
+    const pd=r.record.paid_date?new Date(r.record.paid_date+'T00:00:00'):new Date();
     setReceiptData(r);
     setRcptForm({
       serialNo:`${String(year).slice(-2)}${p2(month)}-${p2(stuNumMap[r.student.id]||((idx??0)+1))}`,period:`${year}년 ${month}월`,
@@ -247,7 +247,7 @@ export default function Tuition({menuBtn}){
       tuitionFee:String(r.paidAmount||0),
       etcLabel1:'',etcAmt1:'',etcLabel2:'',etcAmt2:'',
       tutorName:(()=>{try{return localStorage.getItem('rcpt-tutor')||'';}catch{return '';}})(),
-      issueYear:String(d.getFullYear()),issueMonth:String(d.getMonth()+1),issueDay:String(d.getDate()),
+      issueYear:String(pd.getFullYear()),issueMonth:String(pd.getMonth()+1),issueDay:String(pd.getDate()),
     });
   };
   const printReceipt=()=>{
