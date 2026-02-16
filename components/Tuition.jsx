@@ -115,6 +115,8 @@ export default function Tuition({menuBtn}){
       memo:r.record.memo||"",
       fee_per_class:r.student.fee_per_class||0,
       tuitionFee:r.autoFee,
+      paid_date:r.record.paid_date||"",
+      cash_receipt_issued:!!r.record.cash_receipt_issued,
     });
   };
   const cancelEdit=()=>{setEditId(null);setEditForm({});};
@@ -138,6 +140,7 @@ export default function Tuition({menuBtn}){
         fee_override:feeOverride,
         memo:editForm.memo,
         paid_date:editForm.paid_date||null,
+        cash_receipt_issued:!!editForm.cash_receipt_issued,
         classes:countLessons(studentId,year,month),
         user_id:user.id,
       };
@@ -153,6 +156,19 @@ export default function Tuition({menuBtn}){
       setStudents(p=>p.map(s=>s.id===studentId?{...s,fee_status:editForm.status,fee_per_class:feePerClass}:s));
       setEditId(null);setEditForm({});
     }finally{setSaving(false);}
+  };
+
+  // Toggle cash receipt issued
+  const toggleCashReceipt=async(studentId)=>{
+    const existing=tuitions.find(t=>t.student_id===studentId&&t.month===curMonth);
+    const newVal=existing?!existing.cash_receipt_issued:true;
+    if(existing){
+      await supabase.from('tuition').update({cash_receipt_issued:newVal}).eq('id',existing.id);
+      setTuitions(p=>p.map(t=>t.id===existing.id?{...t,cash_receipt_issued:newVal}:t));
+    }else{
+      const{data}=await supabase.from('tuition').insert({student_id:studentId,month:curMonth,cash_receipt_issued:newVal,status:'unpaid',amount:0,carryover:0,user_id:user.id}).select().single();
+      if(data)setTuitions(p=>[...p,data]);
+    }
   };
 
   // Reset override (되돌리기)
@@ -259,7 +275,7 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
         <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,overflow:"auto"}}>
           <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
             <thead><tr style={{borderBottom:"1px solid "+C.bd}}>
-              {["학생","회당단가","횟수","수업료","이월","청구액","납부","상태","메모",""].map((h,i)=>(<th key={i} style={{padding:"12px",textAlign:"left",fontSize:11,fontWeight:600,color:C.tt,background:C.sfh,whiteSpace:"nowrap"}}>{h}</th>))}
+              {["학생","회당단가","횟수","수업료","이월","청구액","납부","상태","입금일","현금영수증","메모",""].map((h,i)=>(<th key={i} style={{padding:"12px",textAlign:h==="현금영수증"?"center":"left",fontSize:11,fontWeight:600,color:C.tt,background:C.sfh,whiteSpace:"nowrap"}}>{h}</th>))}
             </tr></thead>
             <tbody>
               {monthRecs.map((r,idx)=>{
@@ -299,6 +315,14 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
                     <td style={{padding:"10px 12px"}}>
                       {isEditing?<select value={editForm.status} onChange={e=>setEditForm(p=>({...p,status:e.target.value}))} style={{...eis,fontSize:11}}>{STATUS.map(x=>(<option key={x.id} value={x.id}>{x.l}</option>))}</select>:
                       <span style={{background:st.bg,color:st.c,padding:"6px 12px",borderRadius:5,fontSize:10,fontWeight:600,display:"inline-block",minHeight:44,lineHeight:"32px",boxSizing:"border-box"}}>{st.l}</span>}
+                    </td>
+                    <td style={{padding:"10px 12px"}}>
+                      {isEditing?<input type="date" value={editForm.paid_date||''} onChange={e=>setEditForm(p=>({...p,paid_date:e.target.value}))} style={{...eis,width:120,fontSize:11}}/>:
+                      rec.paid_date?<span style={{fontSize:11,color:C.ts}}>{rec.paid_date}</span>:<span style={{fontSize:11,color:C.tt}}>-</span>}
+                    </td>
+                    <td style={{padding:"10px 12px",textAlign:"center"}}>
+                      {isEditing?<input type="checkbox" checked={!!editForm.cash_receipt_issued} onChange={e=>setEditForm(p=>({...p,cash_receipt_issued:e.target.checked}))} style={{width:16,height:16,cursor:"pointer",accentColor:C.pr}}/>:
+                      <span onClick={()=>toggleCashReceipt(s.id)} style={{fontSize:13,cursor:"pointer"}}>{rec.cash_receipt_issued?"\u2705":"\u2B1C"}</span>}
                     </td>
                     <td style={{padding:"10px 12px"}}>
                       {isEditing?<input value={editForm.memo} onChange={e=>setEditForm(p=>({...p,memo:e.target.value}))} style={{...eis,width:80,fontSize:11}} placeholder="메모"/>:
