@@ -54,6 +54,33 @@ function SchModal({les,students,onSave,onClose,checkConflict,durPresets}){
   </div>);
 }
 
+/* ── Personal Event Modal ── */
+function PersonalEventModal({pe,onSave,onClose}){
+  const ed=!!pe?.id;
+  const[f,sF]=useState({title:pe?.title||"",date:pe?.date||fd(new Date()),start_hour:pe?.start_hour??9,start_min:pe?.start_min??0,duration:pe?.duration||60,memo:pe?.memo||""});
+  const u=(k,v)=>sF(p=>({...p,[k]:v}));
+  const go=()=>{onSave({...f,id:pe?.id||undefined});};
+  useEffect(()=>{const h=e=>{if(e.key==="Escape")onClose();};window.addEventListener("keydown",h);return()=>window.removeEventListener("keydown",h);},[onClose]);
+  return(<div style={{position:"fixed",inset:0,zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,.35)"}} onClick={onClose}>
+    <div onClick={e=>e.stopPropagation()} className="detail-modal" style={{background:C.sf,borderRadius:16,width:"100%",maxWidth:480,padding:28,boxShadow:"0 20px 60px rgba(0,0,0,.15)"}}>
+      <div style={{display:"flex",justifyContent:"space-between",marginBottom:20}}><h2 style={{fontSize:18,fontWeight:700,color:C.tp}}>{ed?"일정 수정":"일정 추가"}</h2><button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,display:"flex",minHeight:44,minWidth:44,alignItems:"center",justifyContent:"center"}}><IcX/></button></div>
+      <div style={{display:"flex",flexDirection:"column",gap:12}}>
+        <div><label style={ls}>제목</label><input value={f.title} onChange={e=>u("title",e.target.value)} style={is} placeholder="일정 제목..."/></div>
+        <div><label style={ls}>날짜</label><input type="date" value={f.date} onChange={e=>u("date",e.target.value)} style={is}/></div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+          <div><label style={ls}>시작(시)</label><select value={f.start_hour} onChange={e=>u("start_hour",+e.target.value)} style={is}>{Array.from({length:24},(_,i)=>i).map(h=>(<option key={h} value={h}>{p2(h)}</option>))}</select></div>
+          <div><label style={ls}>시작(분)</label><select value={f.start_min} onChange={e=>u("start_min",+e.target.value)} style={is}>{[0,5,10,15,20,25,30,35,40,45,50,55].map(m=>(<option key={m} value={m}>{p2(m)}</option>))}</select></div>
+          <div><label style={ls}>시간(분)</label><input type="number" value={f.duration} onChange={e=>u("duration",+e.target.value)} style={is} step="15"/></div>
+        </div>
+        <div><label style={ls}>메모</label><textarea value={f.memo} onChange={e=>u("memo",e.target.value)} style={{...is,minHeight:80,resize:"vertical"}} placeholder="일정 관련 메모..."/></div>
+      </div>
+      <div style={{display:"flex",gap:10,marginTop:20,justifyContent:"flex-end"}}>
+        <button onClick={onClose} style={{background:C.sfh,color:C.ts,border:`1px solid ${C.bd}`,borderRadius:8,padding:"10px 20px",fontSize:13,cursor:"pointer",fontFamily:"inherit",minHeight:44}}>취소</button><button onClick={go} style={{background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"10px 24px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",minHeight:44}}>{ed?"저장":"추가"}</button>
+      </div>
+    </div>
+  </div>);
+}
+
 /* ── Main Schedule ── */
 export default function Schedule({menuBtn}){
   const tog=menuBtn;
@@ -63,8 +90,10 @@ export default function Schedule({menuBtn}){
   const[lessons,setLessons]=useState([]);
   const[students,setStudents]=useState([]);
   const[textbooks,setTextbooks]=useState([]);
+  const[personalEvents,setPersonalEvents]=useState([]);
   const[loading,setLoading]=useState(true);
   const[mOpen,setMO]=useState(false);const[eLes,setEL]=useState(null);const[dLes,setDL]=useState(null);
+  const[peOpen,setPEOpen]=useState(false);const[editPE,setEditPE]=useState(null);
   const[stH,setStH]=useState(()=>{try{const v=localStorage.getItem('sch_stH');return v?+v:9;}catch{return 9;}});
   const[enH,setEnH]=useState(()=>{try{const v=localStorage.getItem('sch_enH');return v?+v:22;}catch{return 22;}});
   const[dcState,setDC]=useState(null);
@@ -89,15 +118,17 @@ export default function Schedule({menuBtn}){
   const fetchData=useCallback(async()=>{
     setLoading(true);setFetchError(false);
     try{
-      const[sRes,lRes,tbRes]=await Promise.all([
+      const[sRes,lRes,tbRes,peRes]=await Promise.all([
         supabase.from('students').select('*').order('created_at'),
         supabase.from('lessons').select('*, homework(*), files(*)').order('date'),
         supabase.from('textbooks').select('*').order('created_at',{ascending:false}).then(r=>r,()=>({data:[],error:null})),
+        supabase.from('personal_events').select('*').order('date').then(r=>r,()=>({data:[],error:null})),
       ]);
       if(sRes.error||lRes.error){setFetchError(true);setLoading(false);return;}
       setStudents(sRes.data||[]);
       setLessons(lRes.data||[]);
       setTextbooks(tbRes.data||[]);
+      setPersonalEvents(peRes.data||[]);
     }catch{setFetchError(true);}
     setLoading(false);
   },[]);
@@ -118,6 +149,7 @@ export default function Schedule({menuBtn}){
 
   const nW=d=>{setSlide(d>0?'r':'l');setAnim(k=>k+1);if(viewMode==='month'){const t=new Date(cur);t.setMonth(t.getMonth()+d);setCur(t);}else{const t=new Date(cur);t.setDate(t.getDate()+d*7);setCur(t);}};
   const gL=date=>lessons.filter(l=>lessonOnDate(l,date));
+  const gPE=date=>personalEvents.filter(e=>e.date===fd(date));
 
   const gCo=sid=>{const st=students.find(x=>x.id===sid);return SC[(st?.color_index||0)%8];};
   const getStu=sid=>students.find(x=>x.id===sid);
@@ -202,6 +234,22 @@ export default function Schedule({menuBtn}){
       pushUndo(async()=>{await supabase.from('lessons').update({recurring_end_date:oldEnd||null}).eq('id',id);setLessons(p=>p.map(l=>l.id===id?{...l,recurring_end_date:oldEnd||null}:l));},`${st?.name||''} 이후 반복 삭제`);
     }
   };
+  const savePE=async(f)=>{
+    if(editPE?.id){
+      // Update
+      const{error}=await supabase.from('personal_events').update({title:f.title,date:f.date,start_hour:f.start_hour,start_min:f.start_min,duration:f.duration,memo:f.memo}).eq('id',editPE.id);
+      if(!error)setPersonalEvents(p=>p.map(e=>e.id===editPE.id?{...e,...f}:e));
+    }else{
+      // Insert
+      const{data,error}=await supabase.from('personal_events').insert({title:f.title,date:f.date,start_hour:f.start_hour,start_min:f.start_min,duration:f.duration,memo:f.memo,user_id:user.id}).select().single();
+      if(!error&&data)setPersonalEvents(p=>[...p,data]);
+    }
+    setPEOpen(false);setEditPE(null);
+  };
+  const delPE=async(id)=>{
+    await supabase.from('personal_events').delete().eq('id',id);
+    setPersonalEvents(p=>p.filter(e=>e.id!==id));
+  };
   const updDetail=async(id,data)=>{
     const u={};
     if(data.top!==undefined)u.topic=data.top;
@@ -210,6 +258,7 @@ export default function Schedule({menuBtn}){
     if(data.tMemo!==undefined)u.private_memo=data.tMemo;
     if(data.planShared!==undefined)u.plan_shared=data.planShared;
     if(data.planPrivate!==undefined)u.plan_private=data.planPrivate;
+    if(data.isShared!==undefined)u.is_shared=data.isShared;
     if(Object.keys(u).length)await supabase.from('lessons').update(u).eq('id',id);
     // Sync homework to DB
     const les=lessons.find(l=>l.id===id);
@@ -309,6 +358,7 @@ export default function Schedule({menuBtn}){
               <button onClick={()=>changeViewMode('month')} style={{padding:"5px 10px",fontSize:11,fontWeight:viewMode==='month'?700:500,border:"none",cursor:"pointer",fontFamily:"inherit",background:viewMode==='month'?C.pr:'transparent',color:viewMode==='month'?'#fff':C.ts,borderLeft:`1px solid ${C.bd}`,minHeight:44}}>월간</button>
             </div>
             {viewMode==='month'&&<button onClick={()=>setCompact(!compact)} style={{padding:"5px 10px",fontSize:11,fontWeight:500,border:`1px solid ${C.bd}`,cursor:"pointer",fontFamily:"inherit",background:compact?C.al:'transparent',color:compact?C.ac:C.ts,borderRadius:8,minHeight:44}}>{compact?"확대":"축소"}</button>}
+            {viewMode==='week'&&<button onClick={()=>{setEditPE(null);setPEOpen(true);}} style={{display:"flex",alignItems:"center",gap:4,background:C.sfh,color:C.ts,border:`1px solid ${C.bd}`,borderRadius:8,padding:"7px 16px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",minHeight:44}}><IcP/> 외부일정</button>}
             <button onClick={()=>{setEL(null);setMO(true);}} style={{display:"flex",alignItems:"center",gap:4,background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"7px 16px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",minHeight:44}}><IcP/> 수업 추가</button>
           </div>
         </div>
@@ -394,6 +444,16 @@ export default function Schedule({menuBtn}){
                     </div>
                   );
                 })}
+                {gPE(date).map(e=>{const tp=((e.start_hour*60+e.start_min)-stH*60)/SMN*SHT;const hp=Math.max(e.duration/SMN*SHT,SHT);
+                  return(
+                    <div key={`pe-${e.id}`} className="lb" onClick={()=>{setEditPE(e);setPEOpen(true);}} onContextMenu={ev=>{ev.preventDefault();setCtx({pe:e});}} style={{position:"absolute",top:tp,left:3,right:3,height:hp-2,borderRadius:8,background:"rgba(120,113,108,0.15)",border:`2px dashed ${C.tt}`,padding:"4px 8px",overflow:"hidden",zIndex:2,cursor:"pointer",opacity:0.6}}>
+                      <div style={{display:"flex",alignItems:"center",gap:4}}>
+                        <span style={{fontSize:11,fontWeight:600,color:C.tt}}>📅 {e.title||"일정"}</span>
+                      </div>
+                      {hp>32&&<div style={{fontSize:10,color:C.tt,opacity:.7,marginTop:1}}>{p2(e.start_hour)}:{p2(e.start_min)} · {e.duration}분</div>}
+                    </div>
+                  );
+                })}
               </div>
             );
           })}
@@ -464,6 +524,20 @@ export default function Schedule({menuBtn}){
                     </div>
                   );
                 })}
+                {gPE(selDate).map(e=>{const tp=((e.start_hour*60+e.start_min)-stH*60)/SMN*SHT;const hp=Math.max(e.duration/SMN*SHT,SHT);
+                  return(
+                    <div key={`pe-${e.id}`}
+                      onTouchStart={e=>{lpFired.current=false;lpRef.current=setTimeout(()=>{lpFired.current=true;if(navigator.vibrate)navigator.vibrate(30);setCtx({pe:e,mobile:true});},500);}}
+                      onTouchEnd={()=>{clearTimeout(lpRef.current);lpRef.current=null;}}
+                      onClick={ev=>{ev.stopPropagation();if(lpFired.current){lpFired.current=false;return;}setEditPE(e);setPEOpen(true);}}
+                      style={{position:"absolute",top:tp,left:4,right:4,height:hp-2,borderRadius:10,background:"rgba(120,113,108,0.15)",border:`2px dashed ${C.tt}`,padding:"6px 10px",overflow:"hidden",zIndex:2,cursor:"pointer",opacity:0.6,WebkitUserSelect:"none",userSelect:"none"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:6}}>
+                        <span style={{fontSize:13,fontWeight:600,color:C.tt}}>📅 {e.title||"일정"}</span>
+                      </div>
+                      <div style={{fontSize:11,color:C.tt,opacity:.8,marginTop:1}}>{p2(e.start_hour)}:{p2(e.start_min)} ~ {m2s(e.start_hour*60+e.start_min+e.duration)} ({e.duration}분)</div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -474,36 +548,59 @@ export default function Schedule({menuBtn}){
       {ctxMenu&&!isMobile&&<>
         <div style={{position:"fixed",inset:0,zIndex:50}} onClick={()=>setCtx(null)} onContextMenu={e=>{e.preventDefault();setCtx(null);}}/>
         <div style={{position:"fixed",left:Math.min(ctxMenu.x,window.innerWidth-180),top:Math.min(ctxMenu.y,window.innerHeight-280),zIndex:51,background:C.sf,border:`1px solid ${C.bd}`,borderRadius:10,boxShadow:"0 8px 24px rgba(0,0,0,.12)",padding:6,minWidth:160}} onClick={e=>e.stopPropagation()}>
-          <button className="cm-i" style={cms} onClick={()=>{setEL({...ctxMenu.l,_viewDate:fd(ctxMenu.vd)});setMO(true);setCtx(null);}}>
-            <span style={{marginRight:8}}>&#9998;</span>수정
-          </button>
-          <button className="cm-i" style={cms} onClick={copyLesson}>
-            <span style={{marginRight:8}}>&#128203;</span>복사
-          </button>
-          <div style={{height:1,background:C.bd,margin:"4px 0"}}/>
-          <div style={{padding:"6px 8px",fontSize:10,color:C.tt,fontWeight:600}}>상태 변경</div>
-          <div style={{display:"flex",gap:4,padding:"2px 8px 8px"}}>
-            {Object.entries(LSTATUS).map(([k,v])=>{
-              const cur=effSt(ctxMenu.l,fd(ctxMenu.vd))===k;
-              return(<button key={k} onClick={()=>updStatus(k)} style={{fontSize:10,fontWeight:cur?700:500,color:cur?v.c:C.ts,background:cur?v.bg:'transparent',border:`1px solid ${cur?v.c:C.bd}`,borderRadius:5,padding:"3px 7px",cursor:"pointer",fontFamily:"inherit",minHeight:44}}>{v.l}</button>);
-            })}
-          </div>
-          <div style={{height:1,background:C.bd,margin:"4px 0"}}/>
-          {ctxMenu.l.is_recurring?<>
-            <button className="cm-i" style={{...cms,color:C.dn}} onClick={()=>{delSingle(ctxMenu.l.id,fd(ctxMenu.vd));}}>
-              <span style={{marginRight:8}}>&#128465;</span>이 수업만 삭제
+          {ctxMenu.pe?(<>
+            <button className="cm-i" style={cms} onClick={()=>{setEditPE(ctxMenu.pe);setPEOpen(true);setCtx(null);}}>
+              <span style={{marginRight:8}}>&#9998;</span>수정
             </button>
-            <button className="cm-i" style={{...cms,color:C.dn}} onClick={()=>{delFuture(ctxMenu.l.id,fd(ctxMenu.vd));}}>
-              <span style={{marginRight:8}}>&#128465;</span>이후 반복 삭제
+            <button className="cm-i" style={{...cms,color:C.dn}} onClick={()=>{delPE(ctxMenu.pe.id);setCtx(null);}}>
+              <span style={{marginRight:8}}>&#128465;</span>삭제
             </button>
-          </>:<button className="cm-i" style={{...cms,color:C.dn}} onClick={()=>{del(ctxMenu.l.id);}}>
-            <span style={{marginRight:8}}>&#128465;</span>삭제
-          </button>}
+          </>):(<>
+            <button className="cm-i" style={cms} onClick={()=>{setEL({...ctxMenu.l,_viewDate:fd(ctxMenu.vd)});setMO(true);setCtx(null);}}>
+              <span style={{marginRight:8}}>&#9998;</span>수정
+            </button>
+            <button className="cm-i" style={cms} onClick={copyLesson}>
+              <span style={{marginRight:8}}>&#128203;</span>복사
+            </button>
+            <div style={{height:1,background:C.bd,margin:"4px 0"}}/>
+            <div style={{padding:"6px 8px",fontSize:10,color:C.tt,fontWeight:600}}>상태 변경</div>
+            <div style={{display:"flex",gap:4,padding:"2px 8px 8px"}}>
+              {Object.entries(LSTATUS).map(([k,v])=>{
+                const cur=effSt(ctxMenu.l,fd(ctxMenu.vd))===k;
+                return(<button key={k} onClick={()=>updStatus(k)} style={{fontSize:10,fontWeight:cur?700:500,color:cur?v.c:C.ts,background:cur?v.bg:'transparent',border:`1px solid ${cur?v.c:C.bd}`,borderRadius:5,padding:"3px 7px",cursor:"pointer",fontFamily:"inherit",minHeight:44}}>{v.l}</button>);
+              })}
+            </div>
+            <div style={{height:1,background:C.bd,margin:"4px 0"}}/>
+            {ctxMenu.l.is_recurring?<>
+              <button className="cm-i" style={{...cms,color:C.dn}} onClick={()=>{delSingle(ctxMenu.l.id,fd(ctxMenu.vd));}}>
+                <span style={{marginRight:8}}>&#128465;</span>이 수업만 삭제
+              </button>
+              <button className="cm-i" style={{...cms,color:C.dn}} onClick={()=>{delFuture(ctxMenu.l.id,fd(ctxMenu.vd));}}>
+                <span style={{marginRight:8}}>&#128465;</span>이후 반복 삭제
+              </button>
+            </>:<button className="cm-i" style={{...cms,color:C.dn}} onClick={()=>{del(ctxMenu.l.id);}}>
+              <span style={{marginRight:8}}>&#128465;</span>삭제
+            </button>}
+          </>)}
         </div>
       </>}
 
       {/* Context Menu — Mobile: bottom sheet */}
-      {ctxMenu&&isMobile&&(()=>{const co=gCo(ctxMenu.l.student_id);const st=getStu(ctxMenu.l.student_id);const mbs={display:"flex",alignItems:"center",gap:10,padding:"14px 16px",fontSize:14,color:C.tp,background:"none",border:"none",width:"100%",textAlign:"left",fontFamily:"inherit",cursor:"pointer",borderRadius:10,minHeight:48};return(<>
+      {ctxMenu&&isMobile&&(()=>{const mbs={display:"flex",alignItems:"center",gap:10,padding:"14px 16px",fontSize:14,color:C.tp,background:"none",border:"none",width:"100%",textAlign:"left",fontFamily:"inherit",cursor:"pointer",borderRadius:10,minHeight:48};if(ctxMenu.pe){return(<>
+        <div style={{position:"fixed",inset:0,zIndex:50,background:"rgba(0,0,0,.3)"}} onClick={()=>setCtx(null)}/>
+        <div style={{position:"fixed",bottom:0,left:0,right:0,zIndex:51,background:C.sf,borderRadius:"16px 16px 0 0",padding:"12px 16px calc(env(safe-area-inset-bottom,0px) + 16px)",boxShadow:"0 -4px 24px rgba(0,0,0,.12)",animation:"slideUp .2s ease-out"}} onClick={e=>e.stopPropagation()}>
+          <div style={{width:36,height:4,borderRadius:2,background:C.bd,margin:"0 auto 16px"}}/>
+          <div style={{padding:"0 4px 12px"}}>
+            <div style={{fontSize:16,fontWeight:600,color:C.tp}}>📅 {ctxMenu.pe.title||"일정"}</div>
+            <div style={{fontSize:12,color:C.ts,marginTop:2}}>{p2(ctxMenu.pe.start_hour)}:{p2(ctxMenu.pe.start_min)} · {ctxMenu.pe.duration}분</div>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:2}}>
+            <button style={mbs} onClick={()=>{setEditPE(ctxMenu.pe);setPEOpen(true);setCtx(null);}}><span style={{fontSize:18}}>&#9998;</span>수정</button>
+            <button style={{...mbs,color:C.dn}} onClick={()=>{delPE(ctxMenu.pe.id);setCtx(null);}}><span style={{fontSize:18}}>&#128465;</span>삭제</button>
+          </div>
+          <button onClick={()=>setCtx(null)} style={{display:"flex",alignItems:"center",justifyContent:"center",width:"100%",padding:"14px 0",marginTop:8,fontSize:14,fontWeight:600,color:C.ts,background:C.sfh,border:"none",borderRadius:10,cursor:"pointer",fontFamily:"inherit",minHeight:48}}>닫기</button>
+        </div>
+      </>);}const co=gCo(ctxMenu.l.student_id);const st=getStu(ctxMenu.l.student_id);return(<>
         <div style={{position:"fixed",inset:0,zIndex:50,background:"rgba(0,0,0,.3)"}} onClick={()=>setCtx(null)}/>
         <div style={{position:"fixed",bottom:0,left:0,right:0,zIndex:51,background:C.sf,borderRadius:"16px 16px 0 0",padding:"12px 16px calc(env(safe-area-inset-bottom,0px) + 16px)",boxShadow:"0 -4px 24px rgba(0,0,0,.12)",animation:"slideUp .2s ease-out"}} onClick={e=>e.stopPropagation()}>
           <div style={{width:36,height:4,borderRadius:2,background:C.bd,margin:"0 auto 16px"}}/>
@@ -533,6 +630,7 @@ export default function Schedule({menuBtn}){
       </>);})()}
 
       {mOpen&&<SchModal les={eLes} students={students} onSave={save} onClose={()=>{setMO(false);setEL(null);}} checkConflict={checkConflict} durPresets={durPresets}/>}
+      {peOpen&&<PersonalEventModal pe={editPE} onSave={savePE} onClose={()=>{setPEOpen(false);setEditPE(null);}}/>}
       {dLes&&<LessonDetailModal les={dLes} student={getStu(dLes.student_id)} textbooks={textbooks.filter(t=>t.student_id===dLes.student_id)} onUpdate={updDetail} onClose={()=>setDL(null)}/>}
       {undoToast&&<div style={{position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",zIndex:200,background:C.pr,color:"#fff",padding:"10px 20px",borderRadius:10,fontSize:13,fontWeight:500,boxShadow:"0 4px 16px rgba(0,0,0,.2)",display:"flex",alignItems:"center",gap:10,fontFamily:"inherit",animation:"slideUp .2s ease-out"}}>
         <span>{undoToast}</span>

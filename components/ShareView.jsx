@@ -46,12 +46,12 @@ export default function ShareView({ token }) {
       let a, b, c, d, f, g, tb;
       try {
         [a, b, c, d, f, g, tb] = await Promise.all([
-          supabase.from('lessons').select('*, homework(*)').eq('student_id', stu.id).order('date', { ascending: false }),
+          supabase.from('lessons').select('*, homework(*)').eq('student_id', stu.id).eq('is_shared', true).order('date', { ascending: false }),
           supabase.from('scores').select('*').eq('student_id', stu.id).order('created_at'),
           supabase.from('wrong_answers').select('*').eq('student_id', stu.id).order('created_at', { ascending: false }),
-          supabase.from('reports').select('*').eq('student_id', stu.id).order('date', { ascending: false }),
+          supabase.from('reports').select('*').eq('student_id', stu.id).eq('is_shared', true).order('date', { ascending: false }),
           supabase.from('files').select('*').eq('student_id', stu.id).is('lesson_id', null).order('created_at', { ascending: false }),
-          supabase.from('study_plans').select('*').eq('student_id', stu.id).order('date', { ascending: false }),
+          supabase.from('study_plans').select('*').eq('student_id', stu.id).eq('is_shared', true).order('date', { ascending: false }),
           supabase.from('textbooks').select('*').eq('student_id', stu.id).order('created_at', { ascending: false }).then(r => r, () => ({ data: [], error: null })),
         ]);
       } catch { setError('fetch_error'); setLoading(false); return; }
