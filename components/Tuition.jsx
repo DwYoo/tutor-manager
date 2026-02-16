@@ -274,7 +274,7 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
                     <td style={{padding:"10px 12px",fontWeight:600}}>{r.lessonCnt}회</td>
                     <td style={{padding:"10px 12px",fontWeight:500,color:C.tp}}>
                       {isEditing?<input type="number" value={editForm.tuitionFee} onChange={e=>{const tf=e.target.value;const carry=parseInt(editForm.carryover)||0;setEditForm(p=>({...p,tuitionFee:tf,totalDue:(parseInt(tf)||0)+carry}));}} style={{...eis,width:90}}/>:
-                      <>₩{r.autoFee.toLocaleString()}</>}
+                      <div><span>₩{r.autoFee.toLocaleString()}</span><span style={{marginLeft:6,fontSize:9,color:C.ac,background:C.as,padding:"2px 6px",borderRadius:4,fontWeight:600}}>자동</span></div>}
                     </td>
                     <td style={{padding:"10px 12px"}}>
                       {isEditing?<input type="number" value={editForm.carryover} onChange={e=>setEditForm(p=>({...p,carryover:e.target.value}))} style={{...eis,width:80}}/>:
@@ -286,7 +286,7 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
                       ):(
                         <div>
                           <span style={{fontWeight:700,color:C.tp}}>₩{r.totalDue.toLocaleString()}</span>
-                          {r.isOverridden&&<button onClick={()=>resetFee(s.id)} style={{marginLeft:6,fontSize:9,color:"#e67e22",cursor:"pointer",background:"none",padding:"2px 6px",borderRadius:4,border:"1px solid #e67e22",fontWeight:600,fontFamily:"inherit"}} title="클릭하면 자동계산으로 되돌립니다">수동</button>}
+                          {r.isOverridden?<button onClick={()=>resetFee(s.id)} style={{marginLeft:6,fontSize:9,color:"#e67e22",cursor:"pointer",background:"none",padding:"2px 6px",borderRadius:4,border:"1px solid #e67e22",fontWeight:600,fontFamily:"inherit"}} title="클릭하면 자동계산으로 되돌립니다">수동</button>:<span style={{marginLeft:6,fontSize:9,color:C.ac,background:C.as,padding:"2px 6px",borderRadius:4,fontWeight:600}}>자동</span>}
                         </div>
                       )}
                     </td>
