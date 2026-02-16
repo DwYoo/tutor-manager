@@ -36,7 +36,7 @@ export default function Tuition({menuBtn}){
   const[hiddenStudents,setHiddenStudents]=useState(()=>{try{return JSON.parse(localStorage.getItem('tuition-hidden')||'{}');}catch{return{};}});
   const[showHidden,setShowHidden]=useState(false);
 
-  // Sync seal image from Supabase Storage (cross-device)
+  // Sync seal image & tutor name from Supabase Storage (cross-device)
   const uploadSealToStorage=async(dataUrl)=>{
     if(!user?.id||!dataUrl)return;
     try{
@@ -47,16 +47,35 @@ export default function Tuition({menuBtn}){
       await supabase.storage.from('receipts').upload(path,blob,{contentType:'image/png'});
     }catch(e){console.error('Seal upload error:',e);}
   };
+  const uploadTutorNameToStorage=async(name)=>{
+    if(!user?.id)return;
+    try{
+      const path=`${user.id}/seal/tutor-name.txt`;
+      const blob=new Blob([name],{type:'text/plain'});
+      await supabase.storage.from('receipts').remove([path]);
+      if(name)await supabase.storage.from('receipts').upload(path,blob,{contentType:'text/plain'});
+    }catch(e){console.error('Tutor name upload error:',e);}
+  };
   useEffect(()=>{
     if(!user?.id)return;
     let cancelled=false;
     (async()=>{
       setSealLoading(true);
       try{
-        const path=`${user.id}/seal/current.png`;
-        const{data,error}=await supabase.storage.from('receipts').download(path);
+        const sealPath=`${user.id}/seal/current.png`;
+        const namePath=`${user.id}/seal/tutor-name.txt`;
+        const[sealRes,nameRes]=await Promise.all([
+          supabase.storage.from('receipts').download(sealPath),
+          supabase.storage.from('receipts').download(namePath),
+        ]);
         if(cancelled)return;
-        if(error){setSealLoading(false);return;}
+        // Tutor name
+        if(!nameRes.error&&nameRes.data){
+          const txt=await nameRes.data.text();
+          if(!cancelled&&txt){try{localStorage.setItem('rcpt-tutor',txt);}catch{}}
+        }
+        // Seal image
+        if(sealRes.error){setSealLoading(false);return;}
         const reader=new FileReader();
         reader.onload=(ev)=>{
           if(cancelled)return;
@@ -65,11 +84,18 @@ export default function Tuition({menuBtn}){
           setSealLoading(false);
         };
         reader.onerror=()=>{if(!cancelled)setSealLoading(false);};
-        reader.readAsDataURL(data);
+        reader.readAsDataURL(sealRes.data);
       }catch{if(!cancelled)setSealLoading(false);}
     })();
     return()=>{cancelled=true;};
   },[user?.id]);
+
+  // Close receipt modal on ESC
+  useEffect(()=>{
+    const onKey=(e)=>{if(e.key==='Escape')setReceiptData(null);};
+    window.addEventListener('keydown',onKey);
+    return()=>window.removeEventListener('keydown',onKey);
+  },[]);
 
   const year=+curMonth.split("-")[0],month=+curMonth.split("-")[1];
   const prevM=()=>{const m=month===1?12:month-1;const y=month===1?year-1:year;setCurMonth(y+"-"+p2(m));setEditId(null);setEditForm({});};
@@ -289,7 +315,7 @@ export default function Tuition({menuBtn}){
   };
   const printReceipt=()=>{
     const f=rcptForm;
-    try{if(f.tutorName)localStorage.setItem('rcpt-tutor',f.tutorName);}catch{}
+    try{if(f.tutorName){localStorage.setItem('rcpt-tutor',f.tutorName);uploadTutorNameToStorage(f.tutorName);}}catch{}
     const tFee=parseInt(f.tuitionFee)||0;
     const e1=parseInt(f.etcAmt1)||0;
     const e2=parseInt(f.etcAmt2)||0;
