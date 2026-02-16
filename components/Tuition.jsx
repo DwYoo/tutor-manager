@@ -345,9 +345,9 @@ export default function Tuition({menuBtn}){
 <tr><td style="${cs}" colspan="2">일련번호 : ${f.serialNo||''}</td><td style="${cs}" colspan="2">연월(분기) : ${f.period||''}</td></tr>
 <tr><td style="${cs}text-align:center;font-weight:bold;width:32px;" rowspan="2">납부자</td><td style="${cs}">등록번호 : ${f.regNo||''}</td><td style="${cs}" colspan="2">성명 : ${f.name||''}</td></tr>
 <tr><td style="${cs}">생년월일 : ${bd6}</td><td style="${cs}" colspan="2">교습과목 : ${f.subject||''}</td></tr>
-<tr><td style="${cs}text-align:center;font-weight:bold;width:32px;" rowspan="4">납부<br>명세</td><td style="${cs}padding:0;width:72px;vertical-align:middle;" rowspan="4"><table style="width:100%;border-collapse:collapse;height:100%;"><tr><td style="padding:4px;text-align:center;font-size:10px;border-bottom:1px solid #000;">교습비</td></tr><tr><td style="padding:4px;text-align:center;font-size:10px;font-weight:bold;">${tFee>0?tFee.toLocaleString()+'원':''}</td></tr></table></td><td style="${cs}text-align:center;font-weight:bold;" colspan="2">기타경비</td></tr>
+<tr><td style="${cs}text-align:center;font-weight:bold;width:32px;" rowspan="4">납부<br>명세</td><td style="${cs}text-align:center;vertical-align:middle;width:72px;" rowspan="2">교습비</td><td style="${cs}text-align:center;font-weight:bold;" colspan="2">기타경비</td></tr>
 <tr><td style="${cs}text-align:center;font-weight:bold;">항목</td><td style="${cs}text-align:center;font-weight:bold;">금액</td></tr>
-<tr><td style="${cs}">${f.etcLabel1||''}</td><td style="${cs}">${e1>0?e1.toLocaleString()+'원':''}</td></tr>
+<tr><td style="${cs}text-align:center;vertical-align:middle;font-weight:bold;" rowspan="2">${tFee>0?tFee.toLocaleString()+'원':''}</td><td style="${cs}">${f.etcLabel1||''}</td><td style="${cs}">${e1>0?e1.toLocaleString()+'원':''}</td></tr>
 <tr><td style="${cs}">${f.etcLabel2||''}</td><td style="${cs}">${e2>0?e2.toLocaleString()+'원':''}</td></tr>
 <tr><td style="${cs}text-align:center;font-weight:bold;">합계</td><td style="${cs}text-align:center;font-weight:bold;" colspan="3">${total>0?total.toLocaleString()+'원':''}</td></tr>
 </table>
