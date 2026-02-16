@@ -25,7 +25,7 @@ export default function Students({onDetail,menuBtn}){
   const[loading,setLoading]=useState(true);
   const[showAdd,setShowAdd]=useState(false);
   const[editStu,setEditStu]=useState(null);
-  const[form,setForm]=useState({name:'',grade:'',subject:'',school:'',phone:'',parent_phone:'',fee:'',fee_per_class:''});
+  const[form,setForm]=useState({name:'',grade:'',subject:'',school:'',phone:'',parent_phone:'',fee:'',fee_per_class:'',birth_date:''});
   const[saving,setSaving]=useState(false);
   const[busyIds,setBusy]=useState(new Set());
   const markBusy=(id)=>setBusy(p=>{const n=new Set(p);n.add(id);return n;});
@@ -36,8 +36,8 @@ export default function Students({onDetail,menuBtn}){
   const fetchStudents=async()=>{setFetchError(false);try{const[sRes,lRes]=await Promise.all([supabase.from('students').select('*').order('created_at'),supabase.from('lessons').select('*').order('date')]);if(sRes.error||lRes.error){toast?.('데이터를 불러오지 못했습니다','error');setFetchError(true);}setStudents(sRes.data||[]);setLessons(lRes.data||[]);}catch{toast?.('데이터를 불러오지 못했습니다','error');setFetchError(true);}setLoading(false);};
   const getNextClass=(sid)=>{const now=new Date();for(let offset=0;offset<90;offset++){const d=new Date(now);d.setDate(now.getDate()+offset);const sLessons=lessons.filter(l=>l.student_id===sid&&lessonOnDate(l,d));for(const l of sLessons){const lm=l.start_hour*60+l.start_min;if(offset===0&&lm<=now.getHours()*60+now.getMinutes())continue;return {time:`${d.getMonth()+1}/${d.getDate()}(${DK[d.getDay()]}) ${p2(l.start_hour)}:${p2(l.start_min)}`,topic:l.topic||""};}}return null;};
 
-  const openAdd=()=>{setEditStu(null);setForm({name:'',grade:'',subject:'',school:'',phone:'',parent_phone:'',fee:'',fee_per_class:''});setShowAdd(true);};
-  const openEdit=(s,e)=>{e.stopPropagation();setEditStu(s);setForm({name:s.name||'',grade:s.grade||'',subject:s.subject||'',school:s.school||'',phone:s.phone||'',parent_phone:s.parent_phone||'',fee:String(s.fee||''),fee_per_class:String(s.fee_per_class||'')});setShowAdd(true);};
+  const openAdd=()=>{setEditStu(null);setForm({name:'',grade:'',subject:'',school:'',phone:'',parent_phone:'',fee:'',fee_per_class:'',birth_date:''});setShowAdd(true);};
+  const openEdit=(s,e)=>{e.stopPropagation();setEditStu(s);setForm({name:s.name||'',grade:s.grade||'',subject:s.subject||'',school:s.school||'',phone:s.phone||'',parent_phone:s.parent_phone||'',fee:String(s.fee||''),fee_per_class:String(s.fee_per_class||''),birth_date:s.birth_date||''});setShowAdd(true);};
 
   const saveStudent=async()=>{
     if(!form.name.trim()||saving)return;setSaving(true);
@@ -156,13 +156,14 @@ export default function Students({onDetail,menuBtn}){
               {[
                 {k:'name',l:'이름',ph:'학생 이름'},
                 {k:'grade',l:'학년',ph:'예: 고2'},
+                {k:'birth_date',l:'생년월일',ph:'예: 2008-03-15',type:'date'},
                 {k:'subject',l:'과목',ph:'예: 수학'},
                 {k:'school',l:'학교',ph:'학교명'},
                 {k:'phone',l:'연락처',ph:'010-0000-0000'},
                 {k:'parent_phone',l:'학부모 연락처',ph:'010-0000-0000'},
                 {k:'fee',l:'월 수업료 (참고용)',ph:'예: 400000'},
                 {k:'fee_per_class',l:'수업당 단가',ph:'예: 50000'},
-              ].map(f=>(<div key={f.k}><label style={ls}>{f.l}</label><input value={form[f.k]} onChange={e=>setForm(p=>({...p,[f.k]:e.target.value}))} style={is} placeholder={f.ph}/></div>))}
+              ].map(f=>(<div key={f.k}><label style={ls}>{f.l}</label><input type={f.type||'text'} value={form[f.k]} onChange={e=>setForm(p=>({...p,[f.k]:e.target.value}))} style={is} placeholder={f.ph}/></div>))}
             </div>
             <div style={{display:"flex",gap:10,marginTop:20,justifyContent:"flex-end"}}>
               <button onClick={()=>{setShowAdd(false);setEditStu(null);}} style={{background:C.sfh,color:C.ts,border:`1px solid ${C.bd}`,borderRadius:8,padding:"10px 20px",fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>취소</button>

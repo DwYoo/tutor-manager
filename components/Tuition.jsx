@@ -21,6 +21,8 @@ export default function Tuition({menuBtn}){
   const[editId,setEditId]=useState(null);
   const[editForm,setEditForm]=useState({});
   const[memoPopup,setMemoPopup]=useState(null);
+  const[memoText,setMemoText]=useState('');
+  const[memoSaving,setMemoSaving]=useState(false);
   const[receiptData,setReceiptData]=useState(null);
   const[rcptForm,setRcptForm]=useState({});
 
@@ -169,7 +171,7 @@ export default function Tuition({menuBtn}){
     setRcptForm({
       serialNo:`${String(year).slice(-2)}${p2(month)}-${p2((idx??0)+1)}`,period:`${year}년 ${month}월`,
       regNo:p2((idx??0)+1),
-      name:r.student.name||'',birthDate:'',subject:r.student.subject||'',
+      name:r.student.name||'',birthDate:r.student.birth_date||'',subject:r.student.subject||'',
       tuitionFee:String(r.paidAmount||0),
       etcLabel1:'',etcAmt1:'',etcLabel2:'',etcAmt2:'',
       tutorName:(()=>{try{return localStorage.getItem('rcpt-tutor')||'';}catch{return '';}})(),
@@ -300,7 +302,7 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
                     </td>
                     <td style={{padding:"10px 12px"}}>
                       {isEditing?<input value={editForm.memo} onChange={e=>setEditForm(p=>({...p,memo:e.target.value}))} style={{...eis,width:80,fontSize:11}} placeholder="메모"/>:
-                      rec.memo?<span onClick={()=>setMemoPopup({name:s.name,memo:rec.memo})} style={{fontSize:10,color:C.tt,background:C.sfh,padding:"2px 6px",borderRadius:4,cursor:"pointer"}}>💬</span>:null}
+                      rec.memo?<span onClick={()=>{setMemoPopup({name:s.name,studentId:s.id});setMemoText(rec.memo);}} style={{fontSize:10,color:C.tt,background:C.sfh,padding:"2px 6px",borderRadius:4,cursor:"pointer"}}>💬</span>:null}
                     </td>
                     <td style={{padding:"10px 12px"}}>
                       {isEditing?(
@@ -342,12 +344,29 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
       {/* Memo popup */}
       {memoPopup&&(
         <div onClick={()=>setMemoPopup(null)} style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.3)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}}>
-          <div onClick={e=>e.stopPropagation()} style={{background:C.sf,borderRadius:14,padding:24,minWidth:280,maxWidth:400,boxShadow:"0 8px 30px rgba(0,0,0,.12)"}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:C.sf,borderRadius:14,padding:24,minWidth:280,maxWidth:400,width:"100%",boxShadow:"0 8px 30px rgba(0,0,0,.12)"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
               <div style={{fontSize:14,fontWeight:700,color:C.tp}}>{memoPopup.name} 메모</div>
               <button onClick={()=>setMemoPopup(null)} style={{background:"none",border:"none",cursor:"pointer",fontSize:16,color:C.tt,fontFamily:"inherit",padding:4}}>✕</button>
             </div>
-            <div style={{fontSize:13,color:C.ts,lineHeight:1.6,whiteSpace:"pre-wrap",background:C.sfh,borderRadius:8,padding:14}}>{memoPopup.memo}</div>
+            <textarea value={memoText} onChange={e=>setMemoText(e.target.value)} style={{width:"100%",minHeight:100,padding:12,borderRadius:8,border:"1px solid "+C.bd,fontSize:13,color:C.tp,background:C.sfh,outline:"none",fontFamily:"inherit",lineHeight:1.6,resize:"vertical",boxSizing:"border-box"}} placeholder="메모를 입력하세요"/>
+            <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:12}}>
+              <button onClick={()=>setMemoPopup(null)} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:8,padding:"8px 16px",fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>취소</button>
+              <button disabled={memoSaving} onClick={async()=>{
+                setMemoSaving(true);
+                try{
+                  const existing=tuitions.find(t=>t.student_id===memoPopup.studentId&&t.month===curMonth);
+                  if(existing){
+                    await supabase.from('tuition').update({memo:memoText}).eq('id',existing.id);
+                    setTuitions(p=>p.map(t=>t.id===existing.id?{...t,memo:memoText}:t));
+                  }else{
+                    const{data}=await supabase.from('tuition').insert({student_id:memoPopup.studentId,month:curMonth,memo:memoText,status:'unpaid',amount:0,carryover:0,user_id:user.id}).select().single();
+                    if(data)setTuitions(p=>[...p,data]);
+                  }
+                  setMemoPopup(null);
+                }finally{setMemoSaving(false);}
+              }} style={{background:memoSaving?"#999":C.pr,color:"#fff",border:"none",borderRadius:8,padding:"8px 16px",fontSize:12,fontWeight:600,cursor:memoSaving?"not-allowed":"pointer",fontFamily:"inherit"}}>{memoSaving?"저장 중...":"저장"}</button>
+            </div>
           </div>
         </div>
       )}
