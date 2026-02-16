@@ -39,7 +39,7 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
   const [wFilter,setWFilter]=useState("");const [wPage,setWPage]=useState(0);const [wSearch,setWSearch]=useState("");const [wBulkMode,setWBulkMode]=useState(false);const [wSelected,setWSelected]=useState(new Set());
   const [wExpanded,setWExpanded]=useState(()=>{try{const s=localStorage.getItem("wExp_"+student.id);return s?JSON.parse(s):{};}catch{return{};}});
   useEffect(()=>{try{localStorage.setItem("wExp_"+student.id,JSON.stringify(wExpanded));}catch{}},[wExpanded,student.id]);
-  const [hwFilter,setHwFilter]=useState(null);
+  const [hwFilter,setHwFilter]=useState(new Set());
   const PER_PAGE=20;
   const [showAddScore,setShowAddScore]=useState(false);
   const [scoreForm,setScoreForm]=useState({date:"",score:"",label:"",grade:""});
@@ -487,31 +487,38 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
           const tHw=aHw.length,dHw=aHw.filter(h=>(h.completion_pct||0)>=100).length;
           const pHw=aHw.filter(h=>{const p=h.completion_pct||0;return p>0&&p<100;}).length;
           const nHw=aHw.filter(h=>(h.completion_pct||0)===0).length;
+          const hwAvg=tHw?Math.round(aHw.reduce((a,h)=>a+(h.completion_pct||0),0)/tHw):0;
+          const toggleHwF=(key)=>{setHwFilter(prev=>{const next=new Set(prev);if(key===null)return new Set();if(next.has(key))next.delete(key);else next.add(key);return next;});};
+          const hwAll=hwFilter.size===0;
+          const matchHw=(h)=>{const p=h.completion_pct||0;if(hwFilter.has("done")&&p>=100)return true;if(hwFilter.has("progress")&&p>0&&p<100)return true;if(hwFilter.has("notStarted")&&p===0)return true;return false;};
           return(<div>
-            <h3 style={{fontSize:16,fontWeight:700,color:C.tp,marginBottom:16}}>숙제 현황</h3>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+              <h3 style={{fontSize:16,fontWeight:700,color:C.tp,margin:0}}>숙제 현황</h3>
+              <span style={{fontSize:13,color:C.ac,fontWeight:600}}>완료율 {hwAvg}%</span>
+            </div>
             {/* Summary stats */}
             <div className="hw-stats" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:20}}>
-              <div onClick={()=>setHwFilter(null)} style={{background:hwFilter===null?C.sfh:C.sf,border:hwFilter===null?"2px solid "+C.tp:"1px solid "+C.bd,borderRadius:12,padding:"14px 16px",textAlign:"center",cursor:"pointer",opacity:hwFilter===null?1:.5,transition:"all .15s"}}>
+              <div onClick={()=>toggleHwF(null)} style={{background:hwAll?C.sfh:C.sf,border:hwAll?"2px solid "+C.tp:"1px solid "+C.bd,borderRadius:12,padding:"14px 16px",textAlign:"center",cursor:"pointer",opacity:hwAll?1:.7,transition:"all .15s"}}>
                 <div style={{fontSize:22,fontWeight:700,color:C.tp}}>{tHw}</div>
                 <div style={{fontSize:11,color:C.tt,marginTop:2}}>전체</div>
               </div>
-              <div onClick={()=>setHwFilter(hwFilter==="done"?null:"done")} style={{background:C.sb,border:hwFilter==="done"?"2px solid "+C.su:"1px solid #BBF7D0",borderRadius:12,padding:"14px 16px",textAlign:"center",cursor:"pointer",opacity:hwFilter&&hwFilter!=="done"?.5:1,transition:"all .15s"}}>
+              <div onClick={()=>toggleHwF("done")} style={{background:C.sb,border:(hwAll||hwFilter.has("done"))?"2px solid "+C.su:"1px solid #BBF7D0",borderRadius:12,padding:"14px 16px",textAlign:"center",cursor:"pointer",opacity:hwAll||hwFilter.has("done")?1:.5,transition:"all .15s"}}>
                 <div style={{fontSize:22,fontWeight:700,color:C.su}}>{dHw}</div>
                 <div style={{fontSize:11,color:C.su,marginTop:2}}>완료</div>
               </div>
-              <div onClick={()=>setHwFilter(hwFilter==="progress"?null:"progress")} style={{background:C.wb,border:hwFilter==="progress"?"2px solid "+C.wn:"1px solid #FDE68A",borderRadius:12,padding:"14px 16px",textAlign:"center",cursor:"pointer",opacity:hwFilter&&hwFilter!=="progress"?.5:1,transition:"all .15s"}}>
+              <div onClick={()=>toggleHwF("progress")} style={{background:C.wb,border:(hwAll||hwFilter.has("progress"))?"2px solid "+C.wn:"1px solid #FDE68A",borderRadius:12,padding:"14px 16px",textAlign:"center",cursor:"pointer",opacity:hwAll||hwFilter.has("progress")?1:.5,transition:"all .15s"}}>
                 <div style={{fontSize:22,fontWeight:700,color:C.wn}}>{pHw}</div>
                 <div style={{fontSize:11,color:C.wn,marginTop:2}}>진행중</div>
               </div>
-              <div onClick={()=>setHwFilter(hwFilter==="notStarted"?null:"notStarted")} style={{background:C.db,border:hwFilter==="notStarted"?"2px solid "+C.dn:"1px solid #FECACA",borderRadius:12,padding:"14px 16px",textAlign:"center",cursor:"pointer",opacity:hwFilter&&hwFilter!=="notStarted"?.5:1,transition:"all .15s"}}>
+              <div onClick={()=>toggleHwF("notStarted")} style={{background:C.db,border:(hwAll||hwFilter.has("notStarted"))?"2px solid "+C.dn:"1px solid #FECACA",borderRadius:12,padding:"14px 16px",textAlign:"center",cursor:"pointer",opacity:hwAll||hwFilter.has("notStarted")?1:.5,transition:"all .15s"}}>
                 <div style={{fontSize:22,fontWeight:700,color:C.dn}}>{nHw}</div>
                 <div style={{fontSize:11,color:C.dn,marginTop:2}}>미시작</div>
               </div>
             </div>
             {/* Grouped by lesson */}
             {lessons.filter(l=>(l.homework||[]).length>0).length===0?(<div style={{textAlign:"center",padding:40,color:C.tt,background:C.sf,border:"1px solid "+C.bd,borderRadius:14}}><div style={{fontSize:14}}>숙제가 없습니다</div></div>):(
-              lessons.filter(l=>{const hw=l.homework||[];if(hw.length===0)return false;if(!hwFilter)return true;return hw.some(h=>{const p=h.completion_pct||0;if(hwFilter==="done")return p>=100;if(hwFilter==="progress")return p>0&&p<100;return p===0;});}).map(l=>{
-                const lhwAll=l.homework||[],lhw=hwFilter?lhwAll.filter(h=>{const p=h.completion_pct||0;if(hwFilter==="done")return p>=100;if(hwFilter==="progress")return p>0&&p<100;return p===0;}):lhwAll,lDone=lhwAll.filter(h=>(h.completion_pct||0)>=100).length;
+              lessons.filter(l=>{const hw=l.homework||[];if(hw.length===0)return false;if(hwAll)return true;return hw.some(h=>matchHw(h));}).map(l=>{
+                const lhwAll=l.homework||[],lhw=hwAll?lhwAll:lhwAll.filter(h=>matchHw(h)),lDone=lhwAll.filter(h=>(h.completion_pct||0)>=100).length;
                 return(<div key={l.id} style={{marginBottom:20}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
                     <div style={{display:"flex",alignItems:"center",gap:8}}>
