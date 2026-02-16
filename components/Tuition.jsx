@@ -181,26 +181,40 @@ export default function Tuition({menuBtn}){
     const tFee=parseInt(f.tuitionFee)||0;
     const e1=parseInt(f.etcAmt1)||0;
     const e2=parseInt(f.etcAmt2)||0;
-    const cs='border:1px solid #000;padding:8px;font-size:13px;';
-    const makeR=(title)=>`<div style="flex:1;max-width:380px;">
-<div style="border:3px double #000;padding:10px 12px;text-align:center;font-size:20px;font-weight:bold;letter-spacing:4px;margin-bottom:16px;">${title}</div>
+    const cs='border:1px solid #000;padding:6px 8px;font-size:11px;';
+    const makeR=(title)=>`<div style="flex:1;width:0;display:flex;flex-direction:column;justify-content:space-between;height:100%;">
+<div>
+<div style="border:3px double #000;padding:8px 10px;text-align:center;font-size:16px;font-weight:bold;letter-spacing:4px;margin-bottom:12px;">${title}</div>
 <table style="width:100%;border-collapse:collapse;" cellpadding="0">
 <tr><td style="${cs}" colspan="2">일련번호 : ${f.serialNo||''}</td><td style="${cs}" colspan="2">연월(분기) : ${f.period||''}</td></tr>
-<tr><td style="${cs}text-align:center;font-weight:bold;width:50px;" rowspan="2">납부자</td><td style="${cs}">등록번호 : ${f.regNo||''}</td><td style="${cs}" colspan="2">성명 : ${f.name||''}</td></tr>
+<tr><td style="${cs}text-align:center;font-weight:bold;width:36px;" rowspan="2">납부자</td><td style="${cs}">등록번호 : ${f.regNo||''}</td><td style="${cs}" colspan="2">성명 : ${f.name||''}</td></tr>
 <tr><td style="${cs}">생년월일 : ${f.birthDate||''}</td><td style="${cs}" colspan="2">교습과목 : ${f.subject||''}</td></tr>
-<tr><td style="${cs}text-align:center;font-weight:bold;width:50px;" rowspan="3">납부<br>명세</td><td style="${cs}text-align:center;vertical-align:middle;width:110px;" rowspan="3">교습비<br><br><b style="font-size:15px;">${tFee>0?tFee.toLocaleString()+'원':''}</b></td><td style="${cs}text-align:center;font-weight:bold;" colspan="2">기타경비</td></tr>
-<tr><td style="${cs}min-width:55px;">${f.etcLabel1||''}</td><td style="${cs}min-width:55px;">${e1>0?e1.toLocaleString()+'원':''}</td></tr>
+<tr><td style="${cs}text-align:center;font-weight:bold;width:36px;" rowspan="3">납부<br>명세</td><td style="${cs}text-align:center;vertical-align:middle;width:80px;" rowspan="3">교습비<br><br><b style="font-size:13px;">${tFee>0?tFee.toLocaleString()+'원':''}</b></td><td style="${cs}text-align:center;font-weight:bold;" colspan="2">기타경비</td></tr>
+<tr><td style="${cs}">${f.etcLabel1||''}</td><td style="${cs}">${e1>0?e1.toLocaleString()+'원':''}</td></tr>
 <tr><td style="${cs}">${f.etcLabel2||''}</td><td style="${cs}">${e2>0?e2.toLocaleString()+'원':''}</td></tr>
 </table>
-<p style="text-align:center;margin:24px 0 8px;font-size:14px;font-weight:bold;">위와 같이 영수하였음을 증명합니다.</p>
-<p style="font-size:10px;color:#555;margin:4px 0 24px;">※ 본 서식 외 교육감이 지정한 영수증을 사용할 수 있습니다.</p>
-<p style="text-align:right;margin:28px 8px 0;font-size:14px;">${f.issueYear||''}년 &nbsp;&nbsp; ${f.issueMonth||''}월 &nbsp;&nbsp; ${f.issueDay||''}일</p>
-<div style="margin-top:32px;display:flex;justify-content:space-between;align-items:flex-end;font-size:13px;">
+<p style="text-align:center;margin:20px 0 6px;font-size:12px;font-weight:bold;">위와 같이 영수하였음을 증명합니다.</p>
+<p style="font-size:9px;color:#555;margin:4px 0 16px;">※ 본 서식 외 교육감이 지정한 영수증을 사용할 수 있습니다.</p>
+<p style="text-align:right;margin:20px 6px 0;font-size:12px;">${f.issueYear||''}년 &nbsp;&nbsp; ${f.issueMonth||''}월 &nbsp;&nbsp; ${f.issueDay||''}일</p>
+<div style="margin-top:24px;display:flex;justify-content:space-between;align-items:flex-end;font-size:11px;">
 <span>학원설립·운영자 또는 교습자</span>
 <span>${f.tutorName||''} &nbsp;&nbsp;&nbsp;(서명 또는 인)</span>
-</div></div>`;
-    const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>교습비등 영수증</title><style>@page{size:A4 landscape;margin:12mm;}body{margin:0;padding:24px;font-family:'Batang','NanumMyeongjo',serif;font-size:13px;color:#000;}@media print{body{padding:0;}}</style></head><body><div style="display:flex;gap:28px;justify-content:center;align-items:flex-start;">${makeR('교습비등 영수증 원부')}${makeR('교습비등 영수증')}</div><script>window.onload=function(){setTimeout(function(){window.print();},400);}<\/script></body></html>`;
-    const w=window.open('','_blank','width=960,height=700');
+</div>
+</div>
+<div style="text-align:right;font-size:8px;color:#999;margin-top:12px;">210mm×297mm[일반용지 70g/㎡(재활용품)]</div>
+</div>`;
+    const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>교습비등 영수증</title>
+<style>
+@page{size:210mm 297mm;margin:15mm 12mm;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',serif;font-size:11px;color:#000;width:210mm;height:297mm;}
+.rcpt-wrap{display:flex;gap:16px;width:100%;height:100%;padding:15mm 12mm;box-sizing:border-box;}
+@media print{body{padding:0;width:auto;height:auto;}.rcpt-wrap{padding:0;height:267mm;}}
+</style></head><body>
+<div class="rcpt-wrap">${makeR('교습비등 영수증 원부')}${makeR('교습비등 영수증')}</div>
+<script>window.onload=function(){setTimeout(function(){window.print();},400);}<\/script>
+</body></html>`;
+    const w=window.open('','_blank','width=794,height=1123');
     if(w){w.document.write(html);w.document.close();}
   };
 
