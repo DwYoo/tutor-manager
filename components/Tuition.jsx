@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
@@ -28,6 +28,10 @@ export default function Tuition({menuBtn}){
   const[rcptFiles,setRcptFiles]=useState([]);
   const[rcptUploading,setRcptUploading]=useState(false);
   const[rcptDragOver,setRcptDragOver]=useState(false);
+  const[sealImg,setSealImg]=useState(()=>{try{return localStorage.getItem('rcpt-seal')||'';}catch{return '';}});
+  const[showSignPad,setShowSignPad]=useState(false);
+  const signCanvasRef=useRef(null);
+  const signDrawing=useRef(false);
   const[hiddenStudents,setHiddenStudents]=useState(()=>{try{return JSON.parse(localStorage.getItem('tuition-hidden')||'{}');}catch{return{};}});
   const[showHidden,setShowHidden]=useState(false);
 
@@ -272,7 +276,7 @@ export default function Tuition({menuBtn}){
 <p style="text-align:right;margin:20px 6px 0;font-size:12px;">${f.issueYear||''}년 &nbsp;&nbsp; ${f.issueMonth||''}월 &nbsp;&nbsp; ${f.issueDay||''}일</p>
 <div style="margin-top:24px;display:flex;justify-content:space-between;align-items:flex-end;font-size:11px;">
 <span>학원설립·운영자 또는 교습자</span>
-<span>${f.tutorName||''} &nbsp;&nbsp;&nbsp;(서명 또는 인)</span>
+<span style="display:inline-flex;align-items:center;gap:6px;">${f.tutorName||''}${sealImg?`<img src="${sealImg}" style="height:40px;width:40px;object-fit:contain;vertical-align:middle;"/>`:' &nbsp;&nbsp;&nbsp;(서명 또는 인)'}</span>
 </div>
 </div>
 <div style="text-align:right;font-size:8px;color:#999;margin-top:12px;">210mm×297mm[일반용지 70g/㎡(재활용품)]</div>
@@ -372,7 +376,7 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
           {hiddenCount>0&&<div style={{padding:"8px 14px",display:"flex",alignItems:"center",gap:8,borderBottom:"1px solid "+C.bl,background:C.sfh}}><span style={{fontSize:11,color:C.tt}}>{hiddenCount}명 숨김</span><button onClick={()=>setShowHidden(!showHidden)} style={{fontSize:10,color:C.ac,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",textDecoration:"underline",padding:0}}>{showHidden?"숨김 적용":"모두 표시"}</button></div>}
           <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
             <thead><tr style={{borderBottom:"1px solid "+C.bd}}>
-              {["학생","회당단가","횟수","수업료","이월","청구액","납부","상태","입금일","현금영수증","메모",""].map((h,i)=>(<th key={i} style={{padding:"12px",textAlign:h==="현금영수증"?"center":"left",fontSize:11,fontWeight:600,color:C.tt,background:C.sfh,whiteSpace:"nowrap"}}>{h}</th>))}
+              {["학생","회당단가","횟수","수업료","이월","청구액","납부","상태","입금일","현금영수증","메모",""].map((h,i)=>(<th key={i} style={{padding:"12px",paddingLeft:i===0?"30px":"12px",textAlign:h==="현금영수증"?"center":"left",fontSize:11,fontWeight:600,color:C.tt,background:C.sfh,whiteSpace:"nowrap"}}>{h}</th>))}
             </tr></thead>
             <tbody>
               {visibleRecs.map((r,idx)=>{
@@ -381,7 +385,7 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
                 const isEditing=editId===(rec.id||s.id);
                 return(
                   <tr key={s.id} className="tr" style={{borderBottom:"1px solid "+C.bl,opacity:curHidden.includes(s.id)?0.45:1}}>
-                    <td style={{padding:"10px 12px",fontWeight:600,color:C.tp}}><div style={{display:"flex",alignItems:"center",gap:4}}>{!isEditing&&<button onClick={()=>toggleHideStudent(s.id)} style={{fontSize:14,color:curHidden.includes(s.id)?C.ac:C.tt,background:"none",border:"none",cursor:"pointer",padding:"0 2px",fontFamily:"monospace",lineHeight:1}} title={curHidden.includes(s.id)?"다시 표시":"숨기기"}>{curHidden.includes(s.id)?"+":"−"}</button>}<span style={{color:r.isArchived?C.ts:C.tp}}>{s.name}</span>{r.isArchived&&<span style={{fontSize:8,color:C.tt,background:C.sfh,padding:"1px 4px",borderRadius:3}}>보관</span>}</div></td>
+                    <td style={{padding:"10px 12px",fontWeight:600,color:C.tp}}><div style={{display:"flex",alignItems:"center",gap:4}}>{!isEditing&&<button onClick={()=>toggleHideStudent(s.id)} style={{width:16,height:16,fontSize:11,lineHeight:"14px",textAlign:"center",color:curHidden.includes(s.id)?C.ac:C.tt,background:"none",border:"1.5px solid "+(curHidden.includes(s.id)?C.ac:C.bd),borderRadius:"50%",cursor:"pointer",padding:0,fontFamily:"monospace",flexShrink:0,display:"inline-flex",alignItems:"center",justifyContent:"center"}} title={curHidden.includes(s.id)?"다시 표시":"숨기기"}>{curHidden.includes(s.id)?"+":"−"}</button>}<span style={{color:r.isArchived?C.ts:C.tp}}>{s.name}</span>{r.isArchived&&<span style={{fontSize:8,color:C.tt,background:C.sfh,padding:"1px 4px",borderRadius:3}}>보관</span>}</div></td>
                     <td style={{padding:"10px 12px",color:C.ts}}>
                       {isEditing?<input type="number" value={editForm.fee_per_class} onChange={e=>{const fpc=e.target.value;const cls=editForm.classesOverride!==""?parseInt(editForm.classesOverride)||0:r.autoLessonCnt;const newFee=(parseInt(fpc)||0)*cls;const carry=parseInt(editForm.carryover)||0;const newTotal=newFee+carry;const a=parseInt(editForm.amount)||0;setEditForm(p=>({...p,fee_per_class:fpc,tuitionFee:newFee,totalDue:newTotal,status:autoStatus(a,newTotal)}));}} style={{...eis,width:80}}/>:
                       <>₩{(s.fee_per_class||0).toLocaleString()}</>}
@@ -576,9 +580,38 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
               <div><label style={rls}>월</label><input value={rcptForm.issueMonth||''} onChange={e=>setRcptForm(p=>({...p,issueMonth:e.target.value}))} style={ris}/></div>
               <div><label style={rls}>일</label><input value={rcptForm.issueDay||''} onChange={e=>setRcptForm(p=>({...p,issueDay:e.target.value}))} style={ris}/></div>
             </div>
-            <div style={{marginBottom:24}}>
+            <div style={{marginBottom:16}}>
               <label style={rls}>교습자 / 학원명</label>
               <input value={rcptForm.tutorName||''} onChange={e=>setRcptForm(p=>({...p,tutorName:e.target.value}))} style={ris} placeholder="이름 또는 학원명 (자동 저장)"/>
+            </div>
+            <div style={{marginBottom:24}}>
+              <label style={rls}>인감 / 서명</label>
+              {sealImg?<div style={{display:"flex",alignItems:"center",gap:10}}>
+                <img src={sealImg} style={{width:48,height:48,objectFit:"contain",border:"1px solid "+C.bd,borderRadius:6,padding:2,background:"#fff"}} alt="인감"/>
+                <button onClick={()=>{setSealImg('');try{localStorage.removeItem('rcpt-seal');}catch{}}} style={{background:"none",border:"1px solid "+C.bd,borderRadius:6,padding:"4px 10px",fontSize:11,cursor:"pointer",color:C.ts,fontFamily:"inherit"}}>삭제</button>
+                <span style={{fontSize:10,color:C.tt}}>자동 적용 중</span>
+              </div>:showSignPad?<div>
+                <canvas ref={el=>{signCanvasRef.current=el;if(el&&!el._init){el._init=true;const ctx=el.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,el.width,el.height);ctx.strokeStyle='#000';ctx.lineWidth=2;ctx.lineCap='round';ctx.lineJoin='round';
+                  const getPos=(e)=>{const r=el.getBoundingClientRect();const t=e.touches?e.touches[0]:e;return{x:t.clientX-r.left,y:t.clientY-r.top};};
+                  const onDown=(e)=>{e.preventDefault();signDrawing.current=true;const p=getPos(e);ctx.beginPath();ctx.moveTo(p.x,p.y);};
+                  const onMove=(e)=>{if(!signDrawing.current)return;e.preventDefault();const p=getPos(e);ctx.lineTo(p.x,p.y);ctx.stroke();};
+                  const onUp=()=>{signDrawing.current=false;};
+                  el.addEventListener('mousedown',onDown);el.addEventListener('mousemove',onMove);el.addEventListener('mouseup',onUp);el.addEventListener('mouseleave',onUp);
+                  el.addEventListener('touchstart',onDown,{passive:false});el.addEventListener('touchmove',onMove,{passive:false});el.addEventListener('touchend',onUp);}}}
+                  width={240} height={100} style={{border:"1px solid "+C.bd,borderRadius:8,cursor:"crosshair",background:"#fff",display:"block",touchAction:"none"}}/>
+                <div style={{display:"flex",gap:8,marginTop:8}}>
+                  <button onClick={()=>{const el=signCanvasRef.current;if(!el)return;const ctx=el.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,el.width,el.height);}} style={{background:C.sfh,border:"1px solid "+C.bd,borderRadius:6,padding:"4px 10px",fontSize:11,cursor:"pointer",color:C.ts,fontFamily:"inherit"}}>지우기</button>
+                  <button onClick={()=>{const el=signCanvasRef.current;if(!el)return;const d=el.toDataURL('image/png');setSealImg(d);try{localStorage.setItem('rcpt-seal',d);}catch{}setShowSignPad(false);}} style={{background:C.pr,color:"#fff",border:"none",borderRadius:6,padding:"4px 12px",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>저장</button>
+                  <button onClick={()=>setShowSignPad(false)} style={{background:"none",border:"1px solid "+C.bd,borderRadius:6,padding:"4px 10px",fontSize:11,cursor:"pointer",color:C.ts,fontFamily:"inherit"}}>취소</button>
+                </div>
+              </div>:<div style={{display:"flex",alignItems:"center",gap:8}}>
+                <button onClick={()=>setShowSignPad(true)} style={{background:C.sfh,border:"1px solid "+C.bd,borderRadius:6,padding:"6px 12px",fontSize:11,cursor:"pointer",color:C.tp,fontFamily:"inherit"}}>서명 그리기</button>
+                <label style={{background:C.sfh,border:"1px solid "+C.bd,borderRadius:6,padding:"6px 12px",fontSize:11,cursor:"pointer",color:C.tp,fontFamily:"inherit"}}>
+                  이미지 등록
+                  <input type="file" accept="image/*" style={{display:"none"}} onChange={e=>{const file=e.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>{const d=ev.target?.result;if(d){setSealImg(d);try{localStorage.setItem('rcpt-seal',d);}catch{}}};reader.readAsDataURL(file);e.target.value='';}}/>
+                </label>
+                <span style={{fontSize:10,color:C.tt}}>한 번 등록하면 자동 적용</span>
+              </div>}
             </div>
             <div style={{display:"flex",justifyContent:"flex-end",gap:10}}>
               <button onClick={()=>setReceiptData(null)} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:8,padding:"10px 20px",fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>닫기</button>
