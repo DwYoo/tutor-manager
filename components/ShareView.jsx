@@ -446,7 +446,7 @@ export default function ShareView({ token }) {
           {/* Homework section */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
             <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp, margin: 0 }}>숙제 현황</h3>
-            {allHw.length > 0 && <span style={{ fontSize: 13, fontWeight: 700, color: hwAvg >= 100 ? C.su : hwAvg > 30 ? C.wn : hwAvg > 0 ? "#EA580C" : C.ts, background: hwAvg >= 100 ? C.sb : hwAvg > 30 ? C.wb : hwAvg > 0 ? "#FFF7ED" : C.sfh, padding: "4px 12px", borderRadius: 8 }}>평균 완료율 {hwAvg}%</span>}
+            {allHw.length > 0 && <span style={{ fontSize: 13, fontWeight: 700, color: hwAvg >= 100 ? C.su : hwAvg > 30 ? C.wn : hwAvg > 0 ? "#EA580C" : C.ts, background: hwAvg >= 100 ? C.sb : hwAvg > 30 ? C.wb : hwAvg > 0 ? "#FFF7ED" : C.sfh, padding: "4px 12px", borderRadius: 8 }}>완료율 {hwAvg}%</span>}
           </div>
           {allHw.length === 0 ? <Empty text="숙제 기록이 없습니다" /> : (() => {
             const toggleHwFilter = (key) => {
