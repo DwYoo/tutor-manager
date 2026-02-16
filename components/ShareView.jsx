@@ -16,6 +16,7 @@ export default function ShareView({ token }) {
   const [planComments, setPlanComments] = useState([]);
   const [studyPlans, setStudyPlans] = useState([]);
   const [standaloneFiles, setStandaloneFiles] = useState([]);
+  const [textbooks, setTextbooks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [tab, setTab] = useState("lessons");
@@ -40,15 +41,16 @@ export default function ShareView({ token }) {
       }
       if (!stu) { setError('not_found'); setLoading(false); return; }
       setS(stu);
-      let a, b, c, d, f, g;
+      let a, b, c, d, f, g, tb;
       try {
-        [a, b, c, d, f, g] = await Promise.all([
+        [a, b, c, d, f, g, tb] = await Promise.all([
           supabase.from('lessons').select('*, homework(*)').eq('student_id', stu.id).order('date', { ascending: false }),
           supabase.from('scores').select('*').eq('student_id', stu.id).order('created_at'),
           supabase.from('wrong_answers').select('*').eq('student_id', stu.id).order('created_at', { ascending: false }),
           supabase.from('reports').select('*').eq('student_id', stu.id).order('date', { ascending: false }),
           supabase.from('files').select('*').eq('student_id', stu.id).is('lesson_id', null).order('created_at', { ascending: false }),
           supabase.from('study_plans').select('*').eq('student_id', stu.id).order('date', { ascending: false }),
+          supabase.from('textbooks').select('*').eq('student_id', stu.id).order('created_at', { ascending: false }).then(r => r, () => ({ data: [], error: null })),
         ]);
       } catch { setError('fetch_error'); setLoading(false); return; }
       if (a.error || b.error || c.error || d.error || f.error || g.error) { setError('fetch_error'); setLoading(false); return; }
@@ -60,6 +62,7 @@ export default function ShareView({ token }) {
       setPlanComments(allReps.filter(r => r.type === 'plan'));
       setStudyPlans(g.data || []);
       setStandaloneFiles(f.data || []);
+      setTextbooks(tb.data || []);
       setLoading(false);
     })();
   }, [token]);
@@ -564,6 +567,26 @@ export default function ShareView({ token }) {
                 })}
               </div>
             )}
+          </>)}
+
+          {/* Textbooks section */}
+          {textbooks.length > 0 && (<>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp, margin: 0, marginBottom: 12 }}>사용 교재</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 28 }}>
+              {textbooks.map(tb => {
+                const wCnt = wrongs.filter(w => w.book === tb.title).length;
+                return (
+                  <div key={tb.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", background: C.sf, border: "1px solid " + C.bd, borderRadius: 10 }}>
+                    <span style={{ fontSize: 18 }}>📚</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: C.tp }}>{tb.title}</div>
+                      {tb.publisher && <div style={{ fontSize: 12, color: C.ts }}>{tb.publisher}</div>}
+                    </div>
+                    {wCnt > 0 && <span style={{ fontSize: 10, background: C.db, color: C.dn, padding: "2px 8px", borderRadius: 5, fontWeight: 600 }}>오답 {wCnt}</span>}
+                  </div>
+                );
+              })}
+            </div>
           </>)}
         </div>)}
 

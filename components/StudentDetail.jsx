@@ -81,11 +81,15 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
   const [standaloneFiles,setStandaloneFiles]=useState([]);
   const [shareToken,setShareToken]=useState(s.share_token||null);
   const [shareCopied,setShareCopied]=useState(false);
+  const [textbooks,setTextbooks]=useState([]);
+  const [tbForm,setTbForm]=useState({title:"",publisher:""});
+  const [editTb,setEditTb]=useState(null);
+  const [editTbForm,setEditTbForm]=useState({title:"",publisher:""});
 
   // Tabs: 리포트를 수업 안 "기록" 서브탭으로, 계획 제거, 분석에서 리포트 제거
   const mainTabs=[
     {id:"class",l:"수업",subs:[{id:"timeline",l:"타임라인"},{id:"calendar",l:"수업 일정"}]},
-    {id:"study",l:"학습 관리",subs:[{id:"homework",l:"숙제"},{id:"wrong",l:"오답 관리"}]},
+    {id:"study",l:"학습 관리",subs:[{id:"homework",l:"숙제"},{id:"wrong",l:"오답 관리"},{id:"textbook",l:"교재"}]},
     {id:"analysis",l:"학습 분석",subs:[{id:"plan",l:"오버뷰"},{id:"scores",l:"성적"}]},
     {id:"archive",l:"자료실",subs:[{id:"files",l:"자료"}]}
   ];
@@ -96,15 +100,16 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
   const fetchAll=useCallback(async()=>{
     if(!s.id)return;setLoading(true);setFetchError(false);
     try{
-    const [a,b,c,d,e]=await Promise.all([
+    const [a,b,c,d,e,tb]=await Promise.all([
       supabase.from('lessons').select('*, homework(*), files(*)').eq('student_id',s.id).order('date',{ascending:false}),
       supabase.from('scores').select('*').eq('student_id',s.id).order('created_at'),
       supabase.from('wrong_answers').select('*').eq('student_id',s.id).order('created_at',{ascending:false}),
       supabase.from('reports').select('*').eq('student_id',s.id).order('date',{ascending:false}),
       supabase.from('study_plans').select('*').eq('student_id',s.id).order('date',{ascending:false}),
+      supabase.from('textbooks').select('*').eq('student_id',s.id).order('created_at',{ascending:false}).then(r=>r,()=>({data:[],error:null})),
     ]);
     if(a.error||b.error||c.error||d.error||e.error){toast?.('데이터를 불러오지 못했습니다','error');setFetchError(true);}
-    setLessons(a.data||[]);setScores(b.data||[]);setWrongs(c.data||[]);
+    setLessons(a.data||[]);setScores(b.data||[]);setWrongs(c.data||[]);setTextbooks(tb.data||[]);
     const allReps=d.data||[];
     setReports(allReps.filter(r=>r.type!=='plan'));
     setPlanComments(allReps.filter(r=>r.type==='plan'));
@@ -232,6 +237,9 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
     const url=window.location.origin+"/share/"+tk;
     try{await navigator.clipboard.writeText(url);setShareCopied(true);setTimeout(()=>setShareCopied(false),2000);}catch{prompt("링크를 복사하세요:",url);}
   };
+  const addTextbook=async()=>{if(!tbForm.title.trim())return;const{data,error}=await supabase.from('textbooks').insert({student_id:s.id,title:tbForm.title.trim(),publisher:tbForm.publisher.trim(),user_id:user.id}).select().single();if(error){toast?.('교재 추가에 실패했습니다','error');return;}if(data){setTextbooks(p=>[data,...p]);setTbForm({title:"",publisher:""});toast?.('교재가 등록되었습니다');}};
+  const delTextbook=async(id)=>{const{error}=await supabase.from('textbooks').delete().eq('id',id);if(error){toast?.('교재 삭제에 실패했습니다','error');return;}setTextbooks(p=>p.filter(t=>t.id!==id));toast?.('교재가 삭제되었습니다');};
+  const saveEditTb=async()=>{if(!editTb||!editTbForm.title.trim())return;const{error}=await supabase.from('textbooks').update({title:editTbForm.title.trim(),publisher:editTbForm.publisher.trim()}).eq('id',editTb.id);if(error){toast?.('교재 수정에 실패했습니다','error');return;}setTextbooks(p=>p.map(t=>t.id===editTb.id?{...t,title:editTbForm.title.trim(),publisher:editTbForm.publisher.trim()}:t));setEditTb(null);toast?.('교재가 수정되었습니다');};
   const updLesDetail=async(id,data)=>{
     const u={};if(data.top!==undefined)u.topic=data.top;if(data.content!==undefined)u.content=data.content;if(data.feedback!==undefined)u.feedback=data.feedback;if(data.tMemo!==undefined)u.private_memo=data.tMemo;if(data.planShared!==undefined)u.plan_shared=data.planShared;if(data.planPrivate!==undefined)u.plan_private=data.planPrivate;
     if(Object.keys(u).length){const{error}=await supabase.from('lessons').update(u).eq('id',id);if(error){toast?.('수업 정보 저장에 실패했습니다','error');return;}}
@@ -274,7 +282,6 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
         </div>
         <div className="share-btns" style={{display:"flex",alignItems:"center",gap:10}}>
           <button onClick={copyShareLink} style={{background:shareCopied?C.sb:C.as,color:shareCopied?C.su:C.ac,border:"1px solid "+(shareCopied?"#BBF7D0":C.al),borderRadius:8,padding:"6px 12px",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",transition:"all .2s"}}>{shareCopied?"링크 복사됨":"공유 링크"}</button>
-          <label style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:C.ts,cursor:"pointer",whiteSpace:"nowrap"}}><input type="checkbox" checked={isParent} onChange={e=>setIsParent(e.target.checked)}/>학부모 뷰</label>
         </div>
       </div>
 
@@ -591,7 +598,7 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
           {/* Add wrong */}
           {!isParent&&(<div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:16,marginBottom:16}}>
             <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"flex-end"}}>
-              <div style={{flex:"1 1 100px"}}><label style={ls}>교재</label><input value={wForm.book} onChange={e=>setWForm(p=>({...p,book:e.target.value}))} style={{...is,fontSize:12,padding:"6px 10px"}} placeholder="교재명"/></div>
+              <div style={{flex:"1 1 100px"}}><label style={ls}>교재</label><input list="tb-list" value={wForm.book} onChange={e=>setWForm(p=>({...p,book:e.target.value}))} style={{...is,fontSize:12,padding:"6px 10px"}} placeholder="교재 선택 또는 입력"/><datalist id="tb-list">{textbooks.map(t=>(<option key={t.id} value={t.title}/>))}</datalist></div>
               <div style={{flex:"1 1 80px"}}><label style={ls}>단원</label><input value={wForm.chapter} onChange={e=>setWForm(p=>({...p,chapter:e.target.value}))} style={{...is,fontSize:12,padding:"6px 10px"}} placeholder="단원"/></div>
               <div style={{flex:"1 1 60px",minWidth:60}}><label style={ls}>번호</label><input value={wForm.problem_num} onChange={e=>setWForm(p=>({...p,problem_num:e.target.value}))} style={{...is,fontSize:12,padding:"6px 10px"}} placeholder="#"/></div>
               <div style={{flex:"1 1 100px"}}><label style={ls}>오답 사유</label><input value={wForm.reason} onChange={e=>setWForm(p=>({...p,reason:e.target.value}))} style={{...is,fontSize:12,padding:"6px 10px"}} placeholder="오답 사유"/></div>
@@ -667,6 +674,58 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
                 </tr>);})}
                 </Fragment>);})}</tbody>
               </table>;})()}
+            </div>
+          )}
+        </div>)}
+
+        {/* TEXTBOOK */}
+        {subTab==="textbook"&&(<div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+            <h3 style={{fontSize:16,fontWeight:700,color:C.tp}}>교재 관리</h3>
+            <span style={{fontSize:12,color:C.tt}}>{textbooks.length}개 등록됨</span>
+          </div>
+
+          {/* Add textbook form */}
+          {!isParent&&(<div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:16,marginBottom:16}}>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"flex-end"}}>
+              <div style={{flex:"1 1 180px"}}><label style={ls}>교재명 *</label><input value={tbForm.title} onChange={e=>setTbForm(p=>({...p,title:e.target.value}))} onKeyDown={e=>{if(e.key==="Enter")addTextbook();}} style={{...is,fontSize:12,padding:"6px 10px"}} placeholder="예: 쎈 수학 (상)"/></div>
+              <div style={{flex:"1 1 140px"}}><label style={ls}>출판사</label><input value={tbForm.publisher} onChange={e=>setTbForm(p=>({...p,publisher:e.target.value}))} onKeyDown={e=>{if(e.key==="Enter")addTextbook();}} style={{...is,fontSize:12,padding:"6px 10px"}} placeholder="예: 좋은책신사고"/></div>
+              <button onClick={addTextbook} style={{background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"6px 16px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",flexShrink:0,alignSelf:"flex-end"}}>추가</button>
+            </div>
+          </div>)}
+
+          {/* Textbook list */}
+          {textbooks.length===0?(<div style={{textAlign:"center",padding:40,color:C.tt,background:C.sf,border:"1px solid "+C.bd,borderRadius:14}}><div style={{fontSize:14}}>등록된 교재가 없습니다</div><div style={{fontSize:12,marginTop:4,color:C.tt}}>교재를 등록하면 오답 관리, 수업 내용 등에서 활용할 수 있습니다</div></div>):(
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              {textbooks.map(tb=>{
+                const wCnt=wrongs.filter(w=>w.book===tb.title).length;
+                const isEditing=editTb?.id===tb.id;
+                return(<div key={tb.id} style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:12,padding:"14px 18px"}}>
+                  {isEditing?(<div>
+                    <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"flex-end",marginBottom:10}}>
+                      <div style={{flex:"1 1 180px"}}><label style={ls}>교재명</label><input value={editTbForm.title} onChange={e=>setEditTbForm(p=>({...p,title:e.target.value}))} style={{...is,fontSize:12,padding:"6px 10px"}}/></div>
+                      <div style={{flex:"1 1 140px"}}><label style={ls}>출판사</label><input value={editTbForm.publisher} onChange={e=>setEditTbForm(p=>({...p,publisher:e.target.value}))} style={{...is,fontSize:12,padding:"6px 10px"}}/></div>
+                    </div>
+                    <div style={{display:"flex",gap:6,justifyContent:"flex-end"}}>
+                      <button onClick={()=>setEditTb(null)} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:6,padding:"4px 12px",fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>취소</button>
+                      <button onClick={saveEditTb} style={{background:C.pr,color:"#fff",border:"none",borderRadius:6,padding:"4px 12px",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>저장</button>
+                    </div>
+                  </div>):(<div style={{display:"flex",alignItems:"center",gap:12}}>
+                    <div style={{width:40,height:40,borderRadius:10,background:C.as,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>📚</div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:14,fontWeight:600,color:C.tp}}>{tb.title}</div>
+                      {tb.publisher&&<div style={{fontSize:12,color:C.ts}}>{tb.publisher}</div>}
+                    </div>
+                    <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+                      {wCnt>0&&<span style={{fontSize:10,background:C.db,color:C.dn,padding:"2px 8px",borderRadius:5,fontWeight:600}}>오답 {wCnt}</span>}
+                      {!isParent&&<>
+                        <button onClick={()=>{setEditTb(tb);setEditTbForm({title:tb.title,publisher:tb.publisher||""});}} style={{background:"none",border:"none",color:C.ac,cursor:"pointer",fontSize:11,fontFamily:"inherit"}}>수정</button>
+                        <button onClick={()=>delTextbook(tb.id)} style={{background:"none",border:"none",color:C.tt,cursor:"pointer",fontSize:11,fontFamily:"inherit"}}>삭제</button>
+                      </>}
+                    </div>
+                  </div>)}
+                </div>);
+              })}
             </div>
           )}
         </div>)}
@@ -1047,7 +1106,7 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
         </div>)}
 
       </div>
-      {lesDetailData&&<LessonDetailModal les={lesDetailData} student={s} onUpdate={updLesDetail} onClose={()=>setLesDetailData(null)}/>}
+      {lesDetailData&&<LessonDetailModal les={lesDetailData} student={s} textbooks={textbooks} onUpdate={updLesDetail} onClose={()=>setLesDetailData(null)}/>}
     </div>
   );
 }
