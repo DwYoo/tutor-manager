@@ -62,6 +62,7 @@ export default function Schedule({menuBtn}){
   const[viewMode,setVM]=useState(()=>{try{const v=localStorage.getItem('sch_viewMode');return v||'week';}catch{return 'week';}});
   const[lessons,setLessons]=useState([]);
   const[students,setStudents]=useState([]);
+  const[textbooks,setTextbooks]=useState([]);
   const[loading,setLoading]=useState(true);
   const[mOpen,setMO]=useState(false);const[eLes,setEL]=useState(null);const[dLes,setDL]=useState(null);
   const[stH,setStH]=useState(()=>{try{const v=localStorage.getItem('sch_stH');return v?+v:9;}catch{return 9;}});
@@ -74,6 +75,7 @@ export default function Schedule({menuBtn}){
   const[durPresets,setDP]=useState(()=>{try{const v=localStorage.getItem('sch_durPresets');return v?JSON.parse(v):[120,150,180];}catch{return [120,150,180];}});
   const[dpEdit,setDPE]=useState(false);const[compact,setCompact]=useState(false);
   const[isMobile,setIsMobile]=useState(false);
+  const undoStack=useRef([]);const[undoToast,setUndoToast]=useState(null);const undoToastTimer=useRef(null);
   const[mobileDay,setMobileDay]=useState(()=>{const d=new Date().getDay();return d===0?6:d-1;});
   const[mTimeSet,setMTS]=useState(false);
   const gridRef=useRef(null);const dragRef=useRef(null);const movedRef=useRef(false);const swipeRef=useRef(null);
@@ -87,18 +89,32 @@ export default function Schedule({menuBtn}){
   const fetchData=useCallback(async()=>{
     setLoading(true);setFetchError(false);
     try{
-      const[sRes,lRes]=await Promise.all([
+      const[sRes,lRes,tbRes]=await Promise.all([
         supabase.from('students').select('*').order('created_at'),
         supabase.from('lessons').select('*, homework(*), files(*)').order('date'),
+        supabase.from('textbooks').select('*').order('created_at',{ascending:false}).then(r=>r,()=>({data:[],error:null})),
       ]);
       if(sRes.error||lRes.error){setFetchError(true);setLoading(false);return;}
       setStudents(sRes.data||[]);
       setLessons(lRes.data||[]);
+      setTextbooks(tbRes.data||[]);
     }catch{setFetchError(true);}
     setLoading(false);
   },[]);
   useEffect(()=>{fetchData();},[fetchData]);
   useEffect(()=>{const mq=window.matchMedia('(max-width:768px)');const handler=e=>{setIsMobile(e.matches);if(e.matches)setCompact(true);};handler(mq);mq.addEventListener('change',handler);return()=>mq.removeEventListener('change',handler);},[]);
+
+  const pushUndo=(action,label)=>{undoStack.current=[...undoStack.current.slice(-19),{action,label}];};
+  const showUndoToast=(msg)=>{clearTimeout(undoToastTimer.current);setUndoToast(msg);undoToastTimer.current=setTimeout(()=>setUndoToast(null),3000);};
+  const doUndo=useCallback(async()=>{
+    if(!undoStack.current.length)return;
+    const{action,label}=undoStack.current.pop();
+    try{await action();showUndoToast(`되돌림: ${label}`);}catch{showUndoToast('되돌리기 실패');}
+  },[]);
+  useEffect(()=>{
+    const h=e=>{if((e.ctrlKey||e.metaKey)&&e.key==='z'&&!e.shiftKey){const tag=document.activeElement?.tagName;if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT')return;e.preventDefault();doUndo();}};
+    window.addEventListener('keydown',h);return()=>window.removeEventListener('keydown',h);
+  },[doUndo]);
 
   const nW=d=>{setSlide(d>0?'r':'l');setAnim(k=>k+1);if(viewMode==='month'){const t=new Date(cur);t.setMonth(t.getMonth()+d);setCur(t);}else{const t=new Date(cur);t.setDate(t.getDate()+d*7);setCur(t);}};
   const gL=date=>lessons.filter(l=>lessonOnDate(l,date));
@@ -134,8 +150,11 @@ export default function Schedule({menuBtn}){
       if(!mat)return;
       targetId=mat.id;
     }
+    const oldStatus=lessons.find(x=>x.id===targetId)?.status||'scheduled';
+    const st=getStu(l.student_id);
     await supabase.from('lessons').update({status}).eq('id',targetId);
     setLessons(p=>p.map(x=>x.id===targetId?{...x,status}:x));
+    pushUndo(async()=>{await supabase.from('lessons').update({status:oldStatus}).eq('id',targetId);setLessons(p=>p.map(x=>x.id===targetId?{...x,status:oldStatus}:x));},`${st?.name||''} 상태 변경`);
     setCtx(null);
   };
 
@@ -151,26 +170,37 @@ export default function Schedule({menuBtn}){
   const save=async(f)=>{
     const cf=checkConflict(f.date,f.start_hour,f.start_min,f.duration,eLes?.id);
     if(cf){const sn=getStu(cf.student_id);if(!confirm((sn?.name||'다른 수업')+'과 시간이 겹칩니다. 계속하시겠습니까?'))return;}
+    const st=getStu(f.student_id);
     if(eLes?.id){
       // Update
+      const old=lessons.find(l=>l.id===eLes.id);
+      const oldData=old?{student_id:old.student_id,date:old.date,start_hour:old.start_hour,start_min:old.start_min,duration:old.duration,subject:old.subject,topic:old.topic,is_recurring:old.is_recurring,recurring_day:old.recurring_day}:{};
       const{error}=await supabase.from('lessons').update({student_id:f.student_id,date:f.date,start_hour:f.start_hour,start_min:f.start_min,duration:f.duration,subject:f.subject,topic:f.topic,is_recurring:f.is_recurring,recurring_day:f.recurring_day}).eq('id',eLes.id);
-      if(!error)setLessons(p=>p.map(l=>l.id===eLes.id?{...l,...f}:l));
+      if(!error){setLessons(p=>p.map(l=>l.id===eLes.id?{...l,...f}:l));const eid=eLes.id;pushUndo(async()=>{await supabase.from('lessons').update(oldData).eq('id',eid);setLessons(p=>p.map(l=>l.id===eid?{...l,...oldData}:l));},`${st?.name||''} 수업 수정`);}
     }else{
       // Insert
       const{data,error}=await supabase.from('lessons').insert({student_id:f.student_id,date:f.date,start_hour:f.start_hour,start_min:f.start_min,duration:f.duration,subject:f.subject,topic:f.topic,is_recurring:f.is_recurring,recurring_day:f.recurring_day,status:eLes?._status||'scheduled',user_id:user.id}).select('*, homework(*), files(*)').single();
-      if(!error&&data)setLessons(p=>[...p,data]);
+      if(!error&&data){setLessons(p=>[...p,data]);const nid=data.id;pushUndo(async()=>{await supabase.from('lessons').delete().eq('id',nid);setLessons(p=>p.filter(l=>l.id!==nid));},`${st?.name||''} 수업 추가`);}
     }
     setMO(false);setEL(null);
   };
   const del=async(id)=>{
+    const old=lessons.find(l=>l.id===id);const st=old?getStu(old.student_id):null;
     await supabase.from('lessons').delete().eq('id',id);
     setLessons(p=>p.filter(l=>l.id!==id));
+    if(old){pushUndo(async()=>{const{student_id,date,start_hour,start_min,duration,subject,topic,is_recurring,recurring_day,status:os,content,feedback,private_memo,plan_shared,plan_private}=old;const{data}=await supabase.from('lessons').insert({student_id,date,start_hour,start_min,duration,subject,topic,is_recurring,recurring_day,status:os||'scheduled',content,feedback,private_memo,plan_shared,plan_private,user_id:user.id}).select('*, homework(*), files(*)').single();if(data)setLessons(p=>[...p,data]);},`${st?.name||''} 수업 삭제`);}
     setMO(false);setEL(null);setCtx(null);
   };
   const delFuture=async(id,viewDate)=>{
-    const les=lessons.find(l=>l.id===id);
-    if(!les||les.date===viewDate){setLessons(p=>p.filter(l=>l.id!==id));setMO(false);setEL(null);setCtx(null);await supabase.from('lessons').delete().eq('id',id);}
-    else{setLessons(p=>p.map(l=>l.id===id?{...l,recurring_end_date:viewDate}:l));setMO(false);setEL(null);setCtx(null);await supabase.from('lessons').update({recurring_end_date:viewDate}).eq('id',id);}
+    const les=lessons.find(l=>l.id===id);const st=les?getStu(les.student_id):null;
+    if(!les||les.date===viewDate){
+      setLessons(p=>p.filter(l=>l.id!==id));setMO(false);setEL(null);setCtx(null);await supabase.from('lessons').delete().eq('id',id);
+      if(les){pushUndo(async()=>{const{student_id,date,start_hour,start_min,duration,subject,topic,is_recurring,recurring_day,status:os,recurring_end_date}=les;const{data}=await supabase.from('lessons').insert({student_id,date,start_hour,start_min,duration,subject,topic,is_recurring,recurring_day,recurring_end_date,status:os||'scheduled',user_id:user.id}).select('*, homework(*), files(*)').single();if(data)setLessons(p=>[...p,data]);},`${st?.name||''} 반복수업 삭제`);}
+    }else{
+      const oldEnd=les.recurring_end_date;
+      setLessons(p=>p.map(l=>l.id===id?{...l,recurring_end_date:viewDate}:l));setMO(false);setEL(null);setCtx(null);await supabase.from('lessons').update({recurring_end_date:viewDate}).eq('id',id);
+      pushUndo(async()=>{await supabase.from('lessons').update({recurring_end_date:oldEnd||null}).eq('id',id);setLessons(p=>p.map(l=>l.id===id?{...l,recurring_end_date:oldEnd||null}:l));},`${st?.name||''} 이후 반복 삭제`);
+    }
   };
   const updDetail=async(id,data)=>{
     const u={};
@@ -230,13 +260,15 @@ export default function Schedule({menuBtn}){
         const cf=checkConflict(lastPos.date,lastPos.start_hour,lastPos.start_min,l.duration,l.id);
         if(cf){setLessons(p=>p.map(x=>x.id===l.id?{...x,...origPos}:x));return;}
         await supabase.from('lessons').update(lastPos).eq('id',l.id);
+        const lid=l.id,op={...origPos};const st=getStu(l.student_id);
+        pushUndo(async()=>{await supabase.from('lessons').update(op).eq('id',lid);setLessons(p=>p.map(x=>x.id===lid?{...x,...op}:x));},`${st?.name||''} 수업 이동`);
       }
     };
     window.addEventListener("mousemove",mv);window.addEventListener("mouseup",up);
   };
 
   const onRC=(e,l,vd)=>{e.preventDefault();e.stopPropagation();setCtx({x:e.clientX,y:e.clientY,l,vd});};
-  const delSingle=async(id,viewDate)=>{const les=lessons.find(l=>l.id===id);if(!les){setMO(false);setEL(null);setCtx(null);return;}const prev=Array.isArray(les.recurring_exceptions)?les.recurring_exceptions:[];const exc=[...prev,viewDate];setLessons(p=>p.map(l=>l.id===id?{...l,recurring_exceptions:exc}:l));setMO(false);setEL(null);setCtx(null);await supabase.from('lessons').update({recurring_exceptions:exc}).eq('id',id);};
+  const delSingle=async(id,viewDate)=>{const les=lessons.find(l=>l.id===id);if(!les){setMO(false);setEL(null);setCtx(null);return;}const st=getStu(les.student_id);const prev=Array.isArray(les.recurring_exceptions)?les.recurring_exceptions:[];const exc=[...prev,viewDate];setLessons(p=>p.map(l=>l.id===id?{...l,recurring_exceptions:exc}:l));setMO(false);setEL(null);setCtx(null);await supabase.from('lessons').update({recurring_exceptions:exc}).eq('id',id);pushUndo(async()=>{await supabase.from('lessons').update({recurring_exceptions:prev}).eq('id',id);setLessons(p=>p.map(l=>l.id===id?{...l,recurring_exceptions:prev}:l));},`${st?.name||''} 이 수업 삭제`);};
 
   const onGD=(e,di)=>{
     if(dragRef.current)return;const g=gridRef.current;if(!g)return;const r=g.getBoundingClientRect(),hOff=e.currentTarget.getBoundingClientRect().top-r.top+g.scrollTop,y=e.clientY-r.top+g.scrollTop-hOff;
@@ -501,7 +533,11 @@ export default function Schedule({menuBtn}){
       </>);})()}
 
       {mOpen&&<SchModal les={eLes} students={students} onSave={save} onClose={()=>{setMO(false);setEL(null);}} checkConflict={checkConflict} durPresets={durPresets}/>}
-      {dLes&&<LessonDetailModal les={dLes} student={getStu(dLes.student_id)} onUpdate={updDetail} onClose={()=>setDL(null)}/>}
+      {dLes&&<LessonDetailModal les={dLes} student={getStu(dLes.student_id)} textbooks={textbooks.filter(t=>t.student_id===dLes.student_id)} onUpdate={updDetail} onClose={()=>setDL(null)}/>}
+      {undoToast&&<div style={{position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",zIndex:200,background:C.pr,color:"#fff",padding:"10px 20px",borderRadius:10,fontSize:13,fontWeight:500,boxShadow:"0 4px 16px rgba(0,0,0,.2)",display:"flex",alignItems:"center",gap:10,fontFamily:"inherit",animation:"slideUp .2s ease-out"}}>
+        <span>{undoToast}</span>
+        {undoStack.current.length>0&&<button onClick={doUndo} style={{background:"rgba(255,255,255,.2)",border:"none",color:"#fff",padding:"4px 10px",borderRadius:6,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>다시 되돌리기</button>}
+      </div>}
     </div>
   );
 }
