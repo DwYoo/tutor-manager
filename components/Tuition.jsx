@@ -169,7 +169,7 @@ export default function Tuition({menuBtn}){
     setRcptForm({
       serialNo:'',period:`${year}년 ${month}월`,regNo:'',
       name:r.student.name||'',birthDate:'',subject:r.student.subject||'',
-      tuitionFee:String(r.autoFee||0),
+      tuitionFee:String(r.paidAmount||0),
       etcLabel1:'',etcAmt1:'',etcLabel2:'',etcAmt2:'',
       tutorName:(()=>{try{return localStorage.getItem('rcpt-tutor')||'';}catch{return '';}})(),
       issueYear:String(d.getFullYear()),issueMonth:String(d.getMonth()+1),issueDay:String(d.getDate()),
@@ -181,6 +181,7 @@ export default function Tuition({menuBtn}){
     const tFee=parseInt(f.tuitionFee)||0;
     const e1=parseInt(f.etcAmt1)||0;
     const e2=parseInt(f.etcAmt2)||0;
+    const total=tFee+e1+e2;
     const cs='border:1px solid #000;padding:6px 8px;font-size:11px;';
     const makeR=(title)=>`<div style="flex:1;width:0;display:flex;flex-direction:column;justify-content:space-between;height:100%;">
 <div>
@@ -189,9 +190,11 @@ export default function Tuition({menuBtn}){
 <tr><td style="${cs}" colspan="2">일련번호 : ${f.serialNo||''}</td><td style="${cs}" colspan="2">연월(분기) : ${f.period||''}</td></tr>
 <tr><td style="${cs}text-align:center;font-weight:bold;width:36px;" rowspan="2">납부자</td><td style="${cs}">등록번호 : ${f.regNo||''}</td><td style="${cs}" colspan="2">성명 : ${f.name||''}</td></tr>
 <tr><td style="${cs}">생년월일 : ${f.birthDate||''}</td><td style="${cs}" colspan="2">교습과목 : ${f.subject||''}</td></tr>
-<tr><td style="${cs}text-align:center;font-weight:bold;width:36px;" rowspan="3">납부<br>명세</td><td style="${cs}text-align:center;vertical-align:middle;width:80px;" rowspan="3">교습비<br><br><b style="font-size:13px;">${tFee>0?tFee.toLocaleString()+'원':''}</b></td><td style="${cs}text-align:center;font-weight:bold;" colspan="2">기타경비</td></tr>
+<tr><td style="${cs}text-align:center;font-weight:bold;width:36px;" rowspan="4">납부<br>명세</td><td style="${cs}text-align:center;vertical-align:middle;width:80px;" rowspan="4">교습비<br><br><b style="font-size:13px;">${tFee>0?tFee.toLocaleString()+'원':''}</b></td><td style="${cs}text-align:center;font-weight:bold;" colspan="2">기타경비</td></tr>
+<tr><td style="${cs}text-align:center;font-weight:bold;">항목</td><td style="${cs}text-align:center;font-weight:bold;">금액</td></tr>
 <tr><td style="${cs}">${f.etcLabel1||''}</td><td style="${cs}">${e1>0?e1.toLocaleString()+'원':''}</td></tr>
 <tr><td style="${cs}">${f.etcLabel2||''}</td><td style="${cs}">${e2>0?e2.toLocaleString()+'원':''}</td></tr>
+<tr><td style="${cs}text-align:center;font-weight:bold;">합계</td><td style="${cs}text-align:center;font-weight:bold;" colspan="3">${total>0?total.toLocaleString()+'원':''}</td></tr>
 </table>
 <p style="text-align:center;margin:20px 0 6px;font-size:12px;font-weight:bold;">위와 같이 영수하였음을 증명합니다.</p>
 <p style="font-size:9px;color:#555;margin:4px 0 16px;">※ 본 서식 외 교육감이 지정한 영수증을 사용할 수 있습니다.</p>
