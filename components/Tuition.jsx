@@ -163,11 +163,12 @@ export default function Tuition({menuBtn}){
   };
 
   /* Receipt */
-  const openReceipt=(r)=>{
+  const openReceipt=(r,idx)=>{
     const d=new Date();
     setReceiptData(r);
     setRcptForm({
-      serialNo:'',period:`${year}년 ${month}월`,regNo:'',
+      serialNo:`${year}.${p2(month)}-${p2((idx??0)+1)}`,period:`${year}년 ${month}월`,
+      regNo:(()=>{try{return localStorage.getItem('rcpt-regNo')||'';}catch{return '';}})(),
       name:r.student.name||'',birthDate:'',subject:r.student.subject||'',
       tuitionFee:String(r.paidAmount||0),
       etcLabel1:'',etcAmt1:'',etcLabel2:'',etcAmt2:'',
@@ -177,7 +178,7 @@ export default function Tuition({menuBtn}){
   };
   const printReceipt=()=>{
     const f=rcptForm;
-    try{if(f.tutorName)localStorage.setItem('rcpt-tutor',f.tutorName);}catch{}
+    try{if(f.tutorName)localStorage.setItem('rcpt-tutor',f.tutorName);if(f.regNo)localStorage.setItem('rcpt-regNo',f.regNo);}catch{}
     const tFee=parseInt(f.tuitionFee)||0;
     const e1=parseInt(f.etcAmt1)||0;
     const e2=parseInt(f.etcAmt2)||0;
@@ -259,7 +260,7 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
               {["학생","회당단가","횟수","수업료","이월","청구액","납부","상태","메모",""].map((h,i)=>(<th key={i} style={{padding:"12px",textAlign:"left",fontSize:11,fontWeight:600,color:C.tt,background:C.sfh,whiteSpace:"nowrap"}}>{h}</th>))}
             </tr></thead>
             <tbody>
-              {monthRecs.map(r=>{
+              {monthRecs.map((r,idx)=>{
                 const{student:s,record:rec}=r;
                 const st=STATUS.find(x=>x.id===r.status)||STATUS[2];
                 const isEditing=editId===(rec.id||s.id);
@@ -307,7 +308,7 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
                           <button disabled={saving} onClick={()=>saveEdit(s.id,r.lessonCnt)} style={{background:saving?"#999":C.pr,color:"#fff",border:"none",borderRadius:6,padding:"4px 10px",fontSize:10,fontWeight:600,cursor:saving?"not-allowed":"pointer",fontFamily:"inherit"}}>{saving?"저장 중...":"저장"}</button>
                           <button onClick={cancelEdit} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:6,padding:"4px 8px",fontSize:10,cursor:"pointer",fontFamily:"inherit"}}>취소</button>
                         </div>
-                      ):(<div style={{display:"flex",gap:10,alignItems:"center"}}><button onClick={()=>startEdit(r)} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,fontSize:11,fontFamily:"inherit"}}>수정</button><button onClick={()=>openReceipt(r)} style={{background:C.as,border:"1px solid "+C.ac,borderRadius:5,cursor:"pointer",color:C.ac,fontSize:10,fontWeight:600,padding:"3px 8px",fontFamily:"inherit"}}>영수증</button></div>)}
+                      ):(<div style={{display:"flex",gap:10,alignItems:"center"}}><button onClick={()=>startEdit(r)} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,fontSize:11,fontFamily:"inherit"}}>수정</button><button onClick={()=>openReceipt(r,idx)} style={{background:C.as,border:"1px solid "+C.ac,borderRadius:5,cursor:"pointer",color:C.ac,fontSize:10,fontWeight:600,padding:"3px 8px",fontFamily:"inherit"}}>영수증</button></div>)}
                     </td>
                   </tr>
                 );
@@ -367,7 +368,7 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
               <div><label style={rls}>성명</label><input value={rcptForm.name||''} onChange={e=>setRcptForm(p=>({...p,name:e.target.value}))} style={ris}/></div>
               <div><label style={rls}>교습과목</label><input value={rcptForm.subject||''} onChange={e=>setRcptForm(p=>({...p,subject:e.target.value}))} style={ris}/></div>
-              <div><label style={rls}>등록번호</label><input value={rcptForm.regNo||''} onChange={e=>setRcptForm(p=>({...p,regNo:e.target.value}))} style={ris} placeholder="선택사항"/></div>
+              <div><label style={rls}>등록번호</label><input value={rcptForm.regNo||''} onChange={e=>setRcptForm(p=>({...p,regNo:e.target.value}))} style={ris} placeholder="교습자 등록번호 (자동 저장)"/></div>
               <div><label style={rls}>생년월일</label><input value={rcptForm.birthDate||''} onChange={e=>setRcptForm(p=>({...p,birthDate:e.target.value}))} style={ris} placeholder="선택사항"/></div>
             </div>
             <div style={{fontSize:12,fontWeight:600,color:C.tt,marginBottom:8,borderBottom:"1px solid "+C.bd,paddingBottom:4}}>납부 명세</div>
