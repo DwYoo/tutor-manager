@@ -98,8 +98,8 @@ export default function Tuition({menuBtn}){
   },[]);
 
   const year=+curMonth.split("-")[0],month=+curMonth.split("-")[1];
-  const prevM=()=>{const m=month===1?12:month-1;const y=month===1?year-1:year;setCurMonth(y+"-"+p2(m));setEditId(null);setEditForm({});};
-  const nextM=()=>{const m=month===12?1:month+1;const y=month===12?year+1:year;setCurMonth(y+"-"+p2(m));setEditId(null);setEditForm({});};
+  const prevM=()=>{const m=month===1?12:month-1;const y=month===1?year-1:year;setCurMonth(y+"-"+p2(m));setEditId(null);setEditForm({});setShowHidden(false);};
+  const nextM=()=>{const m=month===12?1:month+1;const y=month===12?year+1:year;setCurMonth(y+"-"+p2(m));setEditId(null);setEditForm({});setShowHidden(false);};
 
   const[fetchError,setFetchError]=useState(false);
   const[saving,setSaving]=useState(false);
@@ -438,7 +438,7 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
       </div>
 
       {/* Cash receipt alert */}
-      {(()=>{const missed=monthRecs.filter(r=>{const rec=r.record;return !rec.cash_receipt_issued&&(r.paidAmount>0||rec.paid_date);});return missed.length>0?(
+      {(()=>{const missed=monthRecs.filter(r=>{const rec=r.record;return !rec.cash_receipt_issued&&(r.paidAmount>0||rec.paid_date||r.status==='partial'||r.status==='paid');});return missed.length>0?(
         <div style={{background:"#FEF3C7",border:"1px solid #F59E0B",borderRadius:12,padding:"14px 18px",marginBottom:20,display:"flex",alignItems:"flex-start",gap:10}}>
           <span style={{fontSize:18,lineHeight:1,flexShrink:0}}>&#9888;&#65039;</span>
           <div style={{flex:1}}>
