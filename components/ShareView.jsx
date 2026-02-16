@@ -266,15 +266,19 @@ export default function ShareView({ token }) {
                         </div>}
                         {hw.length > 0 && <div style={{ marginTop: 12 }}>
                           <div style={{ fontSize: 11, fontWeight: 600, color: C.tt, marginBottom: 6 }}>숙제</div>
-                          {hw.map(h => (
+                          {hw.map(h => {
+                            const hpct = h.completion_pct || 0;
+                            const hpc = hpct >= 100 ? C.su : hpct > 30 ? C.wn : hpct > 0 ? "#EA580C" : C.dn;
+                            return (
                             <div key={h.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0" }}>
                               <div style={{ width: 60, height: 6, borderRadius: 3, background: C.bl, overflow: "hidden", flexShrink: 0 }}>
-                                <div style={{ width: (h.completion_pct || 0) + "%", height: "100%", borderRadius: 3, background: (h.completion_pct || 0) >= 100 ? C.su : C.ac }} />
+                                <div style={{ width: hpct + "%", height: "100%", borderRadius: 3, background: hpc }} />
                               </div>
                               <span style={{ fontSize: 12, color: C.tp, flex: 1 }}>{h.title}</span>
-                              <span style={{ fontSize: 11, color: (h.completion_pct || 0) >= 100 ? C.su : C.ts, fontWeight: 600 }}>{h.completion_pct || 0}%</span>
+                              <span style={{ fontSize: 11, color: hpc, fontWeight: 600 }}>{hpct}%</span>
                             </div>
-                          ))}
+                            );
+                          })}
                         </div>}
                         {(!l.content && !l.feedback && !l.private_memo && hw.length === 0) && (
                           <div style={{ padding: "12px 0", fontSize: 13, color: C.tt }}>상세 기록이 없습니다</div>
@@ -440,7 +444,10 @@ export default function ShareView({ token }) {
         {/* === 학습 관리 === */}
         {tab === "study" && (<div>
           {/* Homework section */}
-          <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp, margin: 0, marginBottom: 12 }}>숙제 현황</h3>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp, margin: 0 }}>숙제 현황</h3>
+            {allHw.length > 0 && <span style={{ fontSize: 13, fontWeight: 700, color: hwAvg >= 100 ? C.su : hwAvg > 30 ? C.wn : hwAvg > 0 ? "#EA580C" : C.ts, background: hwAvg >= 100 ? C.sb : hwAvg > 30 ? C.wb : hwAvg > 0 ? "#FFF7ED" : C.sfh, padding: "4px 12px", borderRadius: 8 }}>평균 완료율 {hwAvg}%</span>}
+          </div>
           {allHw.length === 0 ? <Empty text="숙제 기록이 없습니다" /> : (() => {
             const toggleHwFilter = (key) => {
               setHwFilters(prev => {
@@ -463,28 +470,37 @@ export default function ShareView({ token }) {
             });
             return (<>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(120px,1fr))", gap: 10, marginBottom: 16 }}>
-                <FilterCard label="전체" value={allHw.length + "건"} color={C.ac} active={isAllSelected} onClick={() => toggleHwFilter("all")} />
-                <FilterCard label="완료" value={hwDone + "건"} color={C.su} active={hwFilters.has("done")} onClick={() => toggleHwFilter("done")} />
-                <FilterCard label="진행중" value={hwInProg + "건"} color={C.wn} active={hwFilters.has("prog")} onClick={() => toggleHwFilter("prog")} />
-                <FilterCard label="미시작" value={hwNotStarted + "건"} color={C.tt} active={hwFilters.has("none")} onClick={() => toggleHwFilter("none")} />
+                <FilterCard label="전체" value={allHw.length + "건"} color={C.tp} bg={C.sfh} active={isAllSelected} onClick={() => toggleHwFilter("all")} />
+                <FilterCard label="완료" value={hwDone + "건"} color={C.su} bg={C.sb} active={hwFilters.has("done")} onClick={() => toggleHwFilter("done")} />
+                <FilterCard label="진행중" value={hwInProg + "건"} color={C.wn} bg={C.wb} active={hwFilters.has("prog")} onClick={() => toggleHwFilter("prog")} />
+                <FilterCard label="미시작" value={hwNotStarted + "건"} color={C.dn} bg={C.db} active={hwFilters.has("none")} onClick={() => toggleHwFilter("none")} />
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 28 }}>
                 {filteredHw.length === 0 ? (
                   <div style={{ textAlign: "center", padding: 20, color: C.tt, fontSize: 13 }}>해당하는 숙제가 없습니다</div>
-                ) : filteredHw.map(h => (
-                  <div key={h.id} style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 10, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: 500, color: C.tp }}>{h.title}</div>
-                      <div style={{ fontSize: 11, color: C.tt }}>{h.lesDate} · {h.lesSub}</div>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                      <div style={{ width: 60, height: 6, borderRadius: 3, background: C.bl, overflow: "hidden" }}>
-                        <div style={{ width: (h.completion_pct || 0) + "%", height: "100%", borderRadius: 3, background: (h.completion_pct || 0) >= 100 ? C.su : C.ac }} />
+                ) : filteredHw.map(h => {
+                  const pct = h.completion_pct || 0;
+                  const pc = pct >= 100 ? C.su : pct > 30 ? C.wn : pct > 0 ? "#EA580C" : C.dn;
+                  const pb = pct >= 100 ? C.sb : pct > 30 ? C.wb : pct > 0 ? "#FFF7ED" : C.db;
+                  const sl = pct >= 100 ? "완료" : pct > 0 ? "진행중" : "미시작";
+                  return (
+                  <div key={h.id} style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 12, padding: "14px 18px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: C.tp }}>{h.title}</div>
+                        <div style={{ fontSize: 11, color: C.tt, marginTop: 2 }}>{h.lesDate} · {h.lesSub}</div>
                       </div>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: (h.completion_pct || 0) >= 100 ? C.su : C.ts, width: 32, textAlign: "right" }}>{h.completion_pct || 0}%</span>
+                      <span style={{ fontSize: 10, background: pb, color: pc, padding: "2px 8px", borderRadius: 5, fontWeight: 600, flexShrink: 0 }}>{sl}</span>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={{ flex: 1, height: 8, background: C.bl, borderRadius: 4, overflow: "hidden" }}>
+                        <div style={{ width: pct + "%", minWidth: pct > 0 ? 8 : 0, height: "100%", borderRadius: 4, background: pc, transition: "width .15s" }} />
+                      </div>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: pc, minWidth: 36, textAlign: "right" }}>{pct}%</span>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </>);
           })()}
@@ -745,9 +761,9 @@ function StatCard({ label, value, color }) {
   );
 }
 
-function FilterCard({ label, value, color, active, onClick }) {
+function FilterCard({ label, value, color, bg, active, onClick }) {
   return (
-    <div onClick={onClick} style={{ background: active ? color + "12" : "#FFFFFF", border: "2px solid " + (active ? color : "#E7E5E4"), borderRadius: 12, padding: "14px 16px", textAlign: "center", cursor: "pointer", transition: "all .15s" }}>
+    <div onClick={onClick} style={{ background: active ? (bg || color + "12") : "#FFFFFF", border: "2px solid " + (active ? color : "#E7E5E4"), borderRadius: 12, padding: "14px 16px", textAlign: "center", cursor: "pointer", transition: "all .15s" }}>
       <div style={{ fontSize: 11, color: active ? color : "#A8A29E", marginBottom: 4, fontWeight: active ? 600 : 400 }}>{label}</div>
       <div style={{ fontSize: 18, fontWeight: 700, color }}>{value}</div>
     </div>

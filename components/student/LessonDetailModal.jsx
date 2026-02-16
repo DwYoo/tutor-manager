@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { C, SC } from '@/components/Colors';
-import { p2, m2s, bk } from '@/lib/utils';
+import { p2, m2s, bk, insertViaExec } from '@/lib/utils';
 const ls={display:"block",fontSize:12,fontWeight:500,color:C.tt,marginBottom:6};
 const is={width:"100%",padding:"9px 12px",borderRadius:8,border:`1px solid ${C.bd}`,fontSize:14,color:C.tp,background:C.sf,outline:"none",fontFamily:"inherit"};
 
@@ -81,7 +81,7 @@ export default function LessonDetailModal({ les, student, textbooks = [], onUpda
               {textbooks.length>0&&(<div style={{marginBottom:12}}>
                 <label style={ls}>교재</label>
                 <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                  {textbooks.map(tb=>(<button key={tb.id} onClick={()=>{const ta=contentRef.current;if(!ta)return;const pos=ta.selectionStart||content.length;const txt=`[${tb.title}] `;const nv=content.slice(0,pos)+txt+content.slice(pos);setContent(nv);markDirty();setTimeout(()=>{ta.focus();ta.selectionStart=ta.selectionEnd=pos+txt.length;},0);}} style={{padding:"4px 10px",borderRadius:6,border:"1px solid "+C.bd,background:C.sf,color:C.ts,fontSize:11,fontWeight:500,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:4}}>📚 {tb.title}</button>))}
+                  {textbooks.map(tb=>(<button key={tb.id} onClick={()=>{const ta=contentRef.current;if(!ta)return;const pos=ta.selectionStart||content.length;const txt=`[${tb.title}] `;insertViaExec(ta,txt,pos,pos);setContent(ta.value);markDirty();}} style={{padding:"4px 10px",borderRadius:6,border:"1px solid "+C.bd,background:C.sf,color:C.ts,fontSize:11,fontWeight:500,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:4}}>📚 {tb.title}</button>))}
                 </div>
               </div>)}
               <label style={ls}>수업 내용</label>
@@ -107,6 +107,22 @@ export default function LessonDetailModal({ les, student, textbooks = [], onUpda
 
           {tab === "hw" && (
             <div>
+              {hw.length > 0 && (() => {
+                const avgPct = Math.round(hw.reduce((s, h) => s + (h.completion_pct || 0), 0) / hw.length);
+                const apc = avgPct >= 100 ? C.su : avgPct > 30 ? C.wn : avgPct > 0 ? "#EA580C" : C.dn;
+                const apb = avgPct >= 100 ? C.sb : avgPct > 30 ? C.wb : avgPct > 0 ? "#FFF7ED" : C.db;
+                return (
+                  <div style={{ background: apb, border: "1px solid " + apc + "30", borderRadius: 10, padding: "10px 14px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: apc }}>평균 완료율</span>
+                      <div style={{ width: 80, height: 6, borderRadius: 3, background: "rgba(0,0,0,.06)", overflow: "hidden" }}>
+                        <div style={{ width: avgPct + "%", height: "100%", borderRadius: 3, background: apc, transition: "width .15s" }} />
+                      </div>
+                    </div>
+                    <span style={{ fontSize: 16, fontWeight: 700, color: apc }}>{avgPct}%</span>
+                  </div>
+                );
+              })()}
               {textbooks.length>0&&(<div style={{display:"flex",gap:4,marginBottom:10,flexWrap:"wrap"}}>
                 <span style={{fontSize:11,color:C.tt,alignSelf:"center",marginRight:4}}>교재:</span>
                 {textbooks.map(tb=>(<button key={tb.id} onClick={()=>setNewHw(p=>(p?p+" ":"")+tb.title+" ")} style={{padding:"3px 8px",borderRadius:5,border:"1px solid "+C.bd,background:C.sf,fontSize:10,color:C.ts,cursor:"pointer",fontFamily:"inherit"}}>📚 {tb.title}</button>))}
