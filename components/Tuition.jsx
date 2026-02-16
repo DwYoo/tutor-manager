@@ -98,8 +98,8 @@ export default function Tuition({menuBtn}){
   },[]);
 
   const year=+curMonth.split("-")[0],month=+curMonth.split("-")[1];
-  const prevM=()=>{const m=month===1?12:month-1;const y=month===1?year-1:year;setCurMonth(y+"-"+p2(m));setEditId(null);setEditForm({});};
-  const nextM=()=>{const m=month===12?1:month+1;const y=month===12?year+1:year;setCurMonth(y+"-"+p2(m));setEditId(null);setEditForm({});};
+  const prevM=()=>{const m=month===1?12:month-1;const y=month===1?year-1:year;setCurMonth(y+"-"+p2(m));setEditId(null);setEditForm({});setShowHidden(false);};
+  const nextM=()=>{const m=month===12?1:month+1;const y=month===12?year+1:year;setCurMonth(y+"-"+p2(m));setEditId(null);setEditForm({});setShowHidden(false);};
 
   const[fetchError,setFetchError]=useState(false);
   const[saving,setSaving]=useState(false);
