@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import LessonDetailModal from './student/LessonDetailModal'
 import { C, SC } from '@/components/Colors'
-import { p2, fd, DK, DKS, gwd, lessonOnDate, buildLessonCountMap } from '@/lib/utils'
+import { p2, fd, DK, DKS, gwd, lessonOnDate } from '@/lib/utils'
 const BN={prep:"다음 수업 준비",upcoming:"다가오는 수업",unrecorded:"기록 미완료",alerts:"주의 학생",weekChart:"주간 수업",studentList:"학생 근황",tuition:"수업료 요약"};
 const DFL={left:["prep","upcoming"],right:["unrecorded","alerts","weekChart","tuition"],bottom:["studentList"],hidden:[]};
 
@@ -71,68 +71,40 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
     fetchData();
   };
 
-  /* ── Derived data (memoized) ── */
-  const activeStudents=useMemo(()=>students.filter(s=>!s.archived),[students]);
+  /* ── Derived data ── */
+  const activeStudents=students.filter(s=>!s.archived);
   const today=new Date();
   const wkBase=new Date(today);wkBase.setDate(today.getDate()+weekOff*7);
   const wk=gwd(wkBase);
   const curMonth=`${today.getFullYear()}-${p2(today.getMonth()+1)}`;
   const year=today.getFullYear(),month=today.getMonth()+1;
 
-  const{todayClasses,upcomingDays,weekData,todayIdx}=useMemo(()=>{
-    const now=new Date(),nowMin=now.getHours()*60+now.getMinutes();
-    const tc=lessons.filter(l=>lessonOnDate(l,now)).sort((a,b)=>(a.start_hour*60+a.start_min)-(b.start_hour*60+b.start_min));
-    const ud=[];
-    for(let i=0;i<=3;i++){const d=new Date(now);d.setDate(now.getDate()+i);let cls=lessons.filter(l=>lessonOnDate(l,d)).sort((a,b)=>(a.start_hour*60+a.start_min)-(b.start_hour*60+b.start_min));if(i===0)cls=cls.filter(l=>(l.start_hour*60+l.start_min)>nowMin);if(cls.length>0)ud.push({date:d,dayLabel:i===0?`오늘 (${p2(d.getMonth()+1)}/${p2(d.getDate())})`:`${DK[d.getDay()]}요일 (${p2(d.getMonth()+1)}/${p2(d.getDate())})`,classes:cls});}
-    const wb=new Date(now);wb.setDate(now.getDate()+weekOff*7);const wkd=gwd(wb);
-    const wd=wkd.map((d,i)=>{const cnt=lessons.filter(l=>lessonOnDate(l,d)).length;return{day:DKS[i],c:cnt};});
-    const ti=weekOff===0?(now.getDay()===0?6:now.getDay()-1):-1;
-    return{todayClasses:tc,upcomingDays:ud,weekData:wd,todayIdx:ti};
-  },[lessons,weekOff]);
 
+  const todayClasses=lessons.filter(l=>lessonOnDate(l,today)).sort((a,b)=>(a.start_hour*60+a.start_min)-(b.start_hour*60+b.start_min));
+  const upcomingDays=[];
+  const nowMin=today.getHours()*60+today.getMinutes();
+  for(let i=0;i<=3;i++){const d=new Date(today);d.setDate(today.getDate()+i);let cls=lessons.filter(l=>lessonOnDate(l,d)).sort((a,b)=>(a.start_hour*60+a.start_min)-(b.start_hour*60+b.start_min));if(i===0)cls=cls.filter(l=>(l.start_hour*60+l.start_min)>nowMin);if(cls.length>0)upcomingDays.push({date:d,dayLabel:i===0?`오늘 (${p2(d.getMonth()+1)}/${p2(d.getDate())})`:`${DK[d.getDay()]}요일 (${p2(d.getMonth()+1)}/${p2(d.getDate())})`,classes:cls});}
+  const weekData=wk.map((d,i)=>{const cnt=lessons.filter(l=>lessonOnDate(l,d)).length;return{day:DKS[i],c:cnt};});
+  const todayIdx=weekOff===0?(today.getDay()===0?6:today.getDay()-1):-1;
+
+  const countMonthLessons=(sid)=>{const dim=new Date(year,month,0).getDate();let cnt=0;for(let d=1;d<=dim;d++){const dt=new Date(year,month-1,d);cnt+=lessons.filter(l=>l.student_id===sid&&lessonOnDate(l,dt)).length;}return cnt;};
   const autoStatus=(amt,due)=>amt>=due?"paid":amt>0?"partial":"unpaid";
-  const{monthRecs,totalFee,unpaidAmount}=useMemo(()=>{
-    const lcMap=buildLessonCountMap(lessons,year,month);
-    const recs=activeStudents.map(s=>{const rec=tuitions.find(t=>t.student_id===s.id&&t.month===curMonth);const lessonCnt=lcMap[s.id]||0;const autoFee=(s.fee_per_class||0)*lessonCnt;const carryover=rec?.carryover||0;const autoTotalDue=autoFee+carryover;const totalDue=(rec&&rec.fee_override!=null)?rec.fee_override:autoTotalDue;const paidAmount=rec?.amount||0;const status=autoStatus(paidAmount,totalDue);return{student:s,totalDue,paidAmount,status};});
-    const tf=recs.reduce((a,r)=>a+r.totalDue,0);
-    const ua=recs.reduce((a,r)=>r.status!=="paid"?a+Math.max(0,r.totalDue-r.paidAmount):a,0);
-    return{monthRecs:recs,totalFee:tf,unpaidAmount:ua};
-  },[activeStudents,lessons,tuitions,year,month,curMonth]);
+  const monthRecs=activeStudents.map(s=>{const rec=tuitions.find(t=>t.student_id===s.id&&t.month===curMonth);const lessonCnt=countMonthLessons(s.id);const autoFee=(s.fee_per_class||0)*lessonCnt;const carryover=rec?.carryover||0;const autoTotalDue=autoFee+carryover;const totalDue=(rec&&rec.fee_override!=null)?rec.fee_override:autoTotalDue;const paidAmount=rec?.amount||0;const status=autoStatus(paidAmount,totalDue);return{student:s,totalDue,paidAmount,status};});
+  const totalFee=monthRecs.reduce((a,r)=>a+r.totalDue,0);
+  const unpaidAmount=monthRecs.reduce((a,r)=>r.status!=="paid"?a+Math.max(0,r.totalDue-r.paidAmount):a,0);
 
   const getStu=sid=>students.find(x=>x.id===sid);
   const getCol=sid=>{const s=getStu(sid);return SC[(s?.color_index||0)%8];};
 
-  // Pre-build student→lessons map for efficient lookups
-  const lessonsByStudent=useMemo(()=>{const m={};for(const l of lessons){if(!m[l.student_id])m[l.student_id]=[];m[l.student_id].push(l);}return m;},[lessons]);
+  const getNextClass=(sid)=>{for(let offset=0;offset<90;offset++){const d=new Date(today);d.setDate(today.getDate()+offset);const sLessons=lessons.filter(l=>l.student_id===sid&&lessonOnDate(l,d));for(const l of sLessons){const lesMin=l.start_hour*60+l.start_min;if(offset===0&&lesMin<=today.getHours()*60+today.getMinutes())continue;return`${DK[d.getDay()]} ${p2(l.start_hour)}:${p2(l.start_min)}`;}}return"-";};
 
-  const stuStat=useMemo(()=>{
-    const now=new Date(),nowMin=now.getHours()*60+now.getMinutes(),todayStr=fd(now);
-    return activeStudents.map(s=>{
-      const sLessons=lessonsByStudent[s.id]||[];
-      const allHw=sLessons.flatMap(l=>l.homework||[]);
-      const hwInc=allHw.filter(h=>(h.completion_pct||0)<100).length;
-      const recent=sLessons.filter(l=>(l.date||"")<=todayStr).sort((a,b)=>(b.date||"").localeCompare(a.date||""))[0];
-      let nc="-";
-      for(let offset=0;offset<90;offset++){const d=new Date(now);d.setDate(now.getDate()+offset);const dayLes=sLessons.filter(l=>lessonOnDate(l,d));for(const l of dayLes){const lesMin=l.start_hour*60+l.start_min;if(offset===0&&lesMin<=nowMin)continue;nc=`${DK[d.getDay()]} ${p2(l.start_hour)}:${p2(l.start_min)}`;offset=90;break;}}
-      return{s,hwInc,recent,nc};
-    });
-  },[activeStudents,lessonsByStudent]);
+  const getNextLessonPrep=()=>{for(let offset=0;offset<7;offset++){const d=new Date(today);d.setDate(today.getDate()+offset);const dayLessons=lessons.filter(l=>lessonOnDate(l,d)).sort((a,b)=>(a.start_hour*60+a.start_min)-(b.start_hour*60+b.start_min));for(const l of dayLessons){const lesMin=l.start_hour*60+l.start_min;if(offset===0&&lesMin<=today.getHours()*60+today.getMinutes())continue;const stu=getStu(l.student_id);if(!stu||stu.archived)continue;const pastLessons=lessons.filter(pl=>pl.student_id===l.student_id&&pl.id!==l.id&&(pl.date||"")<fd(d)).sort((a,b)=>(b.date||"").localeCompare(a.date||""));const last=pastLessons[0]||null;const lastHw=last?.homework||[];const hwTotal=lastHw.length;const hwDone=lastHw.filter(h=>(h.completion_pct||0)>=100).length;const stuScores=scores.filter(sc=>sc.student_id===l.student_id).sort((a,b)=>(a.date||"").localeCompare(b.date||""));let scoreTrend=null,lastScore=null;if(stuScores.length>=2){const cur=stuScores[stuScores.length-1].score,prev=stuScores[stuScores.length-2].score;scoreTrend=cur>prev?"up":cur<prev?"down":"same";}if(stuScores.length>0)lastScore=stuScores[stuScores.length-1];const dayLabel=offset===0?"오늘":offset===1?"내일":`${DK[d.getDay()]}요일`;return{lesson:l,student:stu,dayLabel,dateStr:`${p2(d.getMonth()+1)}/${p2(d.getDate())}`,last,hwTotal,hwDone,scoreTrend,lastScore};}}return null;};
+  const nextPrep=getNextLessonPrep();
 
-  const nextPrep=useMemo(()=>{
-    const now=new Date(),nowMin=now.getHours()*60+now.getMinutes();
-    for(let offset=0;offset<7;offset++){const d=new Date(now);d.setDate(now.getDate()+offset);const dayLessons=lessons.filter(l=>lessonOnDate(l,d)).sort((a,b)=>(a.start_hour*60+a.start_min)-(b.start_hour*60+b.start_min));for(const l of dayLessons){const lesMin=l.start_hour*60+l.start_min;if(offset===0&&lesMin<=nowMin)continue;const stu=students.find(x=>x.id===l.student_id);if(!stu||stu.archived)continue;const pastLessons=lessons.filter(pl=>pl.student_id===l.student_id&&pl.id!==l.id&&(pl.date||"")<fd(d)).sort((a,b)=>(b.date||"").localeCompare(a.date||""));const last=pastLessons[0]||null;const lastHw=last?.homework||[];const hwTotal=lastHw.length;const hwDone=lastHw.filter(h=>(h.completion_pct||0)>=100).length;const stuScores=scores.filter(sc=>sc.student_id===l.student_id).sort((a,b)=>(a.date||"").localeCompare(b.date||""));let scoreTrend=null,lastScore=null;if(stuScores.length>=2){const cur=stuScores[stuScores.length-1].score,prev=stuScores[stuScores.length-2].score;scoreTrend=cur>prev?"up":cur<prev?"down":"same";}if(stuScores.length>0)lastScore=stuScores[stuScores.length-1];const dayLabel=offset===0?"오늘":offset===1?"내일":`${DK[d.getDay()]}요일`;return{lesson:l,student:stu,dayLabel,dateStr:`${p2(d.getMonth()+1)}/${p2(d.getDate())}`,last,hwTotal,hwDone,scoreTrend,lastScore};}}return null;
-  },[lessons,students,scores]);
+  const unrecorded=lessons.filter(l=>{if(l.is_recurring)return false;const ld=new Date((l.date||"").slice(0,10));const diff=(today-ld)/(1000*60*60*24);if(diff<0||diff>14)return false;if(diff<1){const em=l.start_hour*60+l.start_min+l.duration;if(em>today.getHours()*60+today.getMinutes())return false;}return(!l.content||l.content.trim()==="");}).sort((a,b)=>(b.date||"").localeCompare(a.date||""));
 
-  const unrecorded=useMemo(()=>{
-    const now=new Date(),nowMin=now.getHours()*60+now.getMinutes();
-    return lessons.filter(l=>{if(l.is_recurring)return false;const ld=new Date((l.date||"").slice(0,10));const diff=(now-ld)/(1000*60*60*24);if(diff<0||diff>14)return false;if(diff<1){const em=l.start_hour*60+l.start_min+l.duration;if(em>nowMin)return false;}return(!l.content||l.content.trim()==="");}).sort((a,b)=>(b.date||"").localeCompare(a.date||""));
-  },[lessons]);
-
-  const studentAlerts=useMemo(()=>{
-    const result=[];
-    activeStudents.forEach(s=>{const al=[];const stuHw=(lessonsByStudent[s.id]||[]).flatMap(l=>l.homework||[]);const recentHw=stuHw.slice(-10);if(recentHw.length>=2){const inc=recentHw.filter(h=>(h.completion_pct||0)<100).length;const rate=Math.round((1-inc/recentHw.length)*100);if(rate<50)al.push({type:"hw",label:`숙제 완료율 ${rate}%`,color:C.dn,bg:C.db});}const stuScores=scores.filter(sc=>sc.student_id===s.id).sort((a,b)=>(a.date||"").localeCompare(b.date||""));if(stuScores.length>=2){const cur=stuScores[stuScores.length-1].score,prev=stuScores[stuScores.length-2].score;if(cur<prev)al.push({type:"score",label:`성적 하락 ${prev}→${cur}`,color:C.wn,bg:C.wb});}if(al.length>0)result.push({student:s,alerts:al});});
-    return result;
-  },[activeStudents,lessonsByStudent,scores]);
+  const studentAlerts=[];
+  activeStudents.forEach(s=>{const al=[];const stuHw=lessons.filter(l=>l.student_id===s.id).flatMap(l=>l.homework||[]);const recentHw=stuHw.slice(-10);if(recentHw.length>=2){const inc=recentHw.filter(h=>(h.completion_pct||0)<100).length;const rate=Math.round((1-inc/recentHw.length)*100);if(rate<50)al.push({type:"hw",label:`숙제 완료율 ${rate}%`,color:C.dn,bg:C.db});}const stuScores=scores.filter(sc=>sc.student_id===s.id).sort((a,b)=>(a.date||"").localeCompare(b.date||""));if(stuScores.length>=2){const cur=stuScores[stuScores.length-1].score,prev=stuScores[stuScores.length-2].score;if(cur<prev)al.push({type:"score",label:`성적 하락 ${prev}→${cur}`,color:C.wn,bg:C.wb});}if(al.length>0)studentAlerts.push({student:s,alerts:al});});
 
   const todayLabel=`${today.getFullYear()}년 ${today.getMonth()+1}월 ${today.getDate()}일 ${DK[today.getDay()]}요일`;
 
@@ -253,6 +225,14 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
         </div>
       </div>);
     case 'studentList': {
+      const stuStat=activeStudents.map(s=>{
+        const allHw=lessons.filter(l=>l.student_id===s.id).flatMap(l=>l.homework||[]);
+        const hwInc=allHw.filter(h=>(h.completion_pct||0)<100).length;
+        const todayStr=fd(today);
+        const recent=lessons.filter(l=>l.student_id===s.id&&(l.date||"")<=todayStr).sort((a,b)=>(b.date||"").localeCompare(a.date||""))[0];
+        const nc=getNextClass(s.id);
+        return{s,hwInc,recent,nc};
+      });
       return(
       <div style={{background:C.sf,border:`1px solid ${C.bd}`,borderRadius:14,padding:20}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>

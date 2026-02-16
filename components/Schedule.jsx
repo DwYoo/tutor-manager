@@ -17,43 +17,38 @@ const IcX=()=><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke
 const IcT=()=><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e25555" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>;
 
 /* ── Add/Edit Modal ── */
-function SchModal({les,students,onSave,onSavePE,onClose,checkConflict,durPresets}){
+function SchModal({les,students,onSave,onClose,checkConflict,durPresets}){
   const ed=!!les?.id;
   const isCopy=les?._status==='makeup';
   const[f,sF]=useState({student_id:les?.student_id||students[0]?.id||"",date:les?.date||fd(new Date()),start_hour:les?.start_hour??14,start_min:les?.start_min??0,duration:les?.duration||90,subject:les?.subject||students[0]?.subject||"수학",topic:les?.topic||"",is_recurring:les?.is_recurring||false});
   const u=(k,v)=>sF(p=>({...p,[k]:v}));
-  const isPE=f.student_id==='__personal__';
-  const go=()=>{
-    if(isPE){onSavePE({title:f.subject,date:f.date,start_hour:f.start_hour,start_min:f.start_min,duration:f.duration,memo:f.topic});return;}
-    const dw=new Date(f.date).getDay();onSave({...f,recurring_day:f.is_recurring?(dw===0?7:dw):null,id:les?.id||undefined});
-  };
+  const go=()=>{const dw=new Date(f.date).getDay();onSave({...f,recurring_day:f.is_recurring?(dw===0?7:dw):null,id:les?.id||undefined});};
   useEffect(()=>{const h=e=>{if(e.key==="Escape")onClose();};window.addEventListener("keydown",h);return()=>window.removeEventListener("keydown",h);},[onClose]);
-  const conflict=!isPE&&checkConflict?.(f.date,f.start_hour,f.start_min,f.duration,les?.id);
+  const conflict=checkConflict?.(f.date,f.start_hour,f.start_min,f.duration,les?.id);
   const conflictStu=conflict?students.find(s=>s.id===conflict.student_id):null;
   return(<div style={{position:"fixed",inset:0,zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,.35)"}} onClick={onClose}>
     <div onClick={e=>e.stopPropagation()} className="detail-modal" style={{background:C.sf,borderRadius:16,width:"100%",maxWidth:480,padding:28,boxShadow:"0 20px 60px rgba(0,0,0,.15)"}}>
-      <div style={{display:"flex",justifyContent:"space-between",marginBottom:20}}><h2 style={{fontSize:18,fontWeight:700,color:C.tp}}>{isPE?"개인일정 추가":ed?"수업 수정":isCopy?"보강 추가":"수업 추가"}</h2><button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,display:"flex",minHeight:44,minWidth:44,alignItems:"center",justifyContent:"center"}}><IcX/></button></div>
+      <div style={{display:"flex",justifyContent:"space-between",marginBottom:20}}><h2 style={{fontSize:18,fontWeight:700,color:C.tp}}>{ed?"수업 수정":isCopy?"보강 추가":"수업 추가"}</h2><button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,display:"flex",minHeight:44,minWidth:44,alignItems:"center",justifyContent:"center"}}><IcX/></button></div>
       <div style={{display:"flex",flexDirection:"column",gap:12}}>
-        {!ed&&<div><label style={ls}>학생</label><select value={f.student_id} onChange={e=>{const v=e.target.value;const st=students.find(x=>x.id===v);u("student_id",v);if(st)u("subject",st.subject);if(v==='__personal__'){u("subject","");u("topic","");u("is_recurring",false);}}} style={is}><option value="__personal__">개인일정</option>{students.map(st=>(<option key={st.id} value={st.id}>{st.name} ({st.subject})</option>))}</select></div>}
-        {ed&&<div><label style={ls}>학생</label><select value={f.student_id} onChange={e=>{const st=students.find(x=>x.id===e.target.value);u("student_id",e.target.value);if(st)u("subject",st.subject);}} style={is}>{students.map(st=>(<option key={st.id} value={st.id}>{st.name} ({st.subject})</option>))}</select></div>}
+        <div><label style={ls}>학생</label><select value={f.student_id} onChange={e=>{const st=students.find(x=>x.id===e.target.value);u("student_id",e.target.value);if(st)u("subject",st.subject);}} style={is}>{students.map(st=>(<option key={st.id} value={st.id}>{st.name} ({st.subject})</option>))}</select></div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
           <div><label style={ls}>날짜</label><input type="date" value={f.date} onChange={e=>u("date",e.target.value)} style={is}/></div>
-          <div><label style={ls}>{isPE?"제목":"과목"}</label><input value={f.subject} onChange={e=>u("subject",e.target.value)} style={is} placeholder={isPE?"일정 제목...":""}/></div>
+          <div><label style={ls}>과목</label><input value={f.subject} onChange={e=>u("subject",e.target.value)} style={is}/></div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
           <div><label style={ls}>시작(시)</label><select value={f.start_hour} onChange={e=>u("start_hour",+e.target.value)} style={is}>{Array.from({length:24},(_,i)=>i).map(h=>(<option key={h} value={h}>{p2(h)}</option>))}</select></div>
           <div><label style={ls}>시작(분)</label><select value={f.start_min} onChange={e=>u("start_min",+e.target.value)} style={is}>{[0,5,10,15,20,25,30,35,40,45,50,55].map(m=>(<option key={m} value={m}>{p2(m)}</option>))}</select></div>
-          <div><label style={ls}>{isPE?"시간(분)":"수업시간(분)"}</label><input type="number" value={f.duration} onChange={e=>u("duration",+e.target.value)} style={is} step={isPE?"15":"5"}/>{!isPE&&<div style={{display:"flex",gap:4,marginTop:4}}>{durPresets.map(v=><button key={v} type="button" onClick={()=>u("duration",v)} style={{flex:1,padding:"4px 0",borderRadius:6,border:`1px solid ${f.duration===v?C.ac:C.bd}`,background:f.duration===v?C.al:"transparent",color:f.duration===v?C.ac:C.ts,fontSize:11,fontWeight:f.duration===v?700:500,cursor:"pointer",fontFamily:"inherit",minHeight:44}}>{v}분</button>)}</div>}</div>
+          <div><label style={ls}>수업시간(분)</label><input type="number" value={f.duration} onChange={e=>u("duration",+e.target.value)} style={is} step="5"/><div style={{display:"flex",gap:4,marginTop:4}}>{durPresets.map(v=><button key={v} type="button" onClick={()=>u("duration",v)} style={{flex:1,padding:"4px 0",borderRadius:6,border:`1px solid ${f.duration===v?C.ac:C.bd}`,background:f.duration===v?C.al:"transparent",color:f.duration===v?C.ac:C.ts,fontSize:11,fontWeight:f.duration===v?700:500,cursor:"pointer",fontFamily:"inherit",minHeight:44}}>{v}분</button>)}</div></div>
         </div>
-        <div><label style={ls}>{isPE?"메모":"수업 주제"}</label><input value={f.topic} onChange={e=>u("topic",e.target.value)} style={is} placeholder={isPE?"메모...":"수업 주제..."}/></div>
-        {!isPE&&<label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,color:C.ts,cursor:"pointer"}}><input type="checkbox" checked={f.is_recurring} onChange={e=>u("is_recurring",e.target.checked)}/>매주 반복</label>}
+        <div><label style={ls}>수업 주제</label><input value={f.topic} onChange={e=>u("topic",e.target.value)} style={is} placeholder="수업 주제..."/></div>
+        <label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,color:C.ts,cursor:"pointer"}}><input type="checkbox" checked={f.is_recurring} onChange={e=>u("is_recurring",e.target.checked)}/>매주 반복</label>
         {conflict&&<div style={{background:C.db,border:"1px solid #FECACA",borderRadius:8,padding:"8px 12px",fontSize:12,color:C.dn,fontWeight:500,display:"flex",alignItems:"center",gap:6}}>
           <span style={{fontSize:14}}>&#9888;</span>
           <span>{conflictStu?.name||"다른 수업"}과 시간이 겹칩니다 ({p2(conflict.start_hour)}:{p2(conflict.start_min)}~{m2s(conflict.start_hour*60+conflict.start_min+conflict.duration)})</span>
         </div>}
       </div>
       <div style={{display:"flex",gap:10,marginTop:20,justifyContent:"flex-end"}}>
-        <button onClick={onClose} style={{background:C.sfh,color:C.ts,border:`1px solid ${C.bd}`,borderRadius:8,padding:"10px 20px",fontSize:13,cursor:"pointer",fontFamily:"inherit",minHeight:44}}>취소</button><button onClick={go} style={{background:conflict?C.wn:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"10px 24px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",minHeight:44}}>{isPE?"추가":ed?"저장":isCopy?"보강 추가":"추가"}</button>
+        <button onClick={onClose} style={{background:C.sfh,color:C.ts,border:`1px solid ${C.bd}`,borderRadius:8,padding:"10px 20px",fontSize:13,cursor:"pointer",fontFamily:"inherit",minHeight:44}}>취소</button><button onClick={go} style={{background:conflict?C.wn:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"10px 24px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",minHeight:44}}>{ed?"저장":isCopy?"보강 추가":"추가"}</button>
       </div>
     </div>
   </div>);
@@ -634,7 +629,7 @@ export default function Schedule({menuBtn}){
         </div>
       </>);})()}
 
-      {mOpen&&<SchModal les={eLes} students={students} onSave={save} onSavePE={async(f)=>{await savePE(f);setMO(false);setEL(null);}} onClose={()=>{setMO(false);setEL(null);}} checkConflict={checkConflict} durPresets={durPresets}/>}
+      {mOpen&&<SchModal les={eLes} students={students} onSave={save} onClose={()=>{setMO(false);setEL(null);}} checkConflict={checkConflict} durPresets={durPresets}/>}
       {peOpen&&<PersonalEventModal pe={editPE} onSave={savePE} onClose={()=>{setPEOpen(false);setEditPE(null);}}/>}
       {dLes&&<LessonDetailModal les={dLes} student={getStu(dLes.student_id)} textbooks={textbooks.filter(t=>t.student_id===dLes.student_id)} onUpdate={updDetail} onClose={()=>setDL(null)}/>}
       {undoToast&&<div style={{position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",zIndex:200,background:C.pr,color:"#fff",padding:"10px 20px",borderRadius:10,fontSize:13,fontWeight:500,boxShadow:"0 4px 16px rgba(0,0,0,.2)",display:"flex",alignItems:"center",gap:10,fontFamily:"inherit",animation:"slideUp .2s ease-out"}}>
