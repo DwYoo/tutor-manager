@@ -5,7 +5,7 @@ import { useAuth } from '@/components/AuthProvider';
 import LessonDetailModal from './student/LessonDetailModal';
 import { C, SC } from '@/components/Colors';
 import { p2, fd, m2s, DKS as DK, gwd, s5, sdy, lessonOnDate } from '@/lib/utils';
-const LSTATUS={scheduled:{l:"예정",c:"#78716C",bg:"#F5F5F4"},completed:{l:"완료",c:"#16A34A",bg:"#F0FDF4"},cancelled:{l:"취소",c:"#DC2626",bg:"#FEF2F2"},makeup:{l:"보강",c:"#2563EB",bg:"#DBEAFE"}};
+const LSTATUS={scheduled:{l:"예정",c:"#78716C",bg:"#F5F5F4"},in_progress:{l:"진행중",c:"#EA580C",bg:"#FFF7ED"},completed:{l:"완료",c:"#16A34A",bg:"#F0FDF4"},cancelled:{l:"취소",c:"#DC2626",bg:"#FEF2F2"},makeup:{l:"보강",c:"#2563EB",bg:"#DBEAFE"}};
 const ls={display:"block",fontSize:12,fontWeight:500,color:C.tt,marginBottom:6};
 const is={width:"100%",padding:"9px 12px",borderRadius:8,border:`1px solid ${C.bd}`,fontSize:14,color:C.tp,background:C.sf,outline:"none",fontFamily:"inherit"};
 const SHT=20,SMN=15;
@@ -123,7 +123,9 @@ export default function Schedule({menuBtn}){
   const getStu=sid=>students.find(x=>x.id===sid);
   const toggleStu=sid=>setActive(p=>p===sid?null:sid);
   const todayStr=fd(today);
-  const effSt=(l,vd)=>{const s=l.status||'scheduled';if(s!=='scheduled')return s;return(vd||l.date)<todayStr?'completed':'scheduled';};
+  const[tick,setTick]=useState(0);
+  useEffect(()=>{const iv=setInterval(()=>setTick(t=>t+1),60000);return()=>clearInterval(iv);},[]);
+  const effSt=(l,vd)=>{const s=l.status||'scheduled';if(s!=='scheduled')return s;const d=vd||l.date;const now=new Date();const nowStr=fd(now);if(d===nowStr){const sm=l.start_hour*60+l.start_min,em=sm+l.duration,cm=now.getHours()*60+now.getMinutes();if(cm>=sm&&cm<em)return'in_progress';if(cm>=em)return'completed';}return d<todayStr?'completed':'scheduled';};
   const gMonthDays=()=>{const y=cur.getFullYear(),m=cur.getMonth();const first=new Date(y,m,1);const startDow=first.getDay()===0?6:first.getDay()-1;const dim=new Date(y,m+1,0).getDate();const days=[];for(let i=-startDow;i<42;i++){const d=new Date(y,m,1+i);days.push(d);if(i>=dim-1+startDow&&days.length%7===0)break;}return days;};
 
   /* Conflict detection */
@@ -286,6 +288,9 @@ export default function Schedule({menuBtn}){
   const wheelAcc=useRef(0);const wheelTimer=useRef(null);
   const onWh=e=>{if(Math.abs(e.deltaX)<Math.abs(e.deltaY))return;e.preventDefault();wheelAcc.current+=e.deltaX;clearTimeout(wheelTimer.current);wheelTimer.current=setTimeout(()=>{if(Math.abs(wheelAcc.current)>30)nW(wheelAcc.current>0?1:-1);wheelAcc.current=0;},50);};
   useEffect(()=>{const g=gridRef.current;if(!g)return;g.addEventListener('wheel',onWh,{passive:false});return()=>{g.removeEventListener('wheel',onWh);clearTimeout(wheelTimer.current);clearTimeout(lpRef.current);};},[cur]);
+  // Auto-scroll to current time on mount
+  const scrolledRef=useRef(false);
+  useEffect(()=>{if(scrolledRef.current||!gridRef.current||loading)return;scrolledRef.current=true;const nowM=new Date().getHours()*60+new Date().getMinutes();const stM=stH*60;if(nowM>stM){const tp=((nowM-stM)/SMN)*SHT;gridRef.current.scrollTop=Math.max(0,tp-100);};},[loading]);
 
   if(loading)return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:C.tt,fontSize:14}}>불러오는 중...</div></div>);
   if(fetchError)return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:12}}><div style={{fontSize:14,color:C.dn}}>데이터를 불러오지 못했습니다</div><button onClick={fetchData} style={{padding:"8px 20px",borderRadius:8,border:`1px solid ${C.bd}`,background:C.sf,color:C.tp,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>다시 시도</button></div>);
@@ -365,9 +370,10 @@ export default function Schedule({menuBtn}){
             </div>);})}
 
           {/* Time column */}
-          <div style={{borderRight:`1px solid ${C.bl}`}}>
+          <div style={{borderRight:`1px solid ${C.bl}`,position:"relative"}}>
             {hrs.map(h=>(<div key={h} style={{height:SHT*4,display:"flex",alignItems:"flex-start",justifyContent:"flex-end",padding:"2px 8px 0 0",fontSize:11,color:C.tt,fontWeight:500,borderBottom:`1px solid ${C.bl}`}}>{p2(h)}:00</div>))}
             <div style={{display:"flex",alignItems:"flex-start",justifyContent:"flex-end",padding:"2px 8px 0 0",fontSize:11,color:C.tt,fontWeight:500}}>{p2(enH)}:00</div>
+            {(()=>{const nowM=new Date().getHours()*60+new Date().getMinutes();const stM=stH*60,enM=enH*60;if(nowM>=stM&&nowM<=enM){const tp=((nowM-stM)/SMN)*SHT;return(<div style={{position:"absolute",top:tp,right:4,transform:"translateY(-50%)",fontSize:9,fontWeight:700,color:C.ac,opacity:.7,pointerEvents:"none"}}>{p2(Math.floor(nowM/60))}:{p2(nowM%60)}</div>);}return null;})()}
           </div>
 
           {/* Day columns */}
@@ -394,6 +400,8 @@ export default function Schedule({menuBtn}){
                     </div>
                   );
                 })}
+                {/* Current time indicator */}
+                {it&&(()=>{const nowM=new Date().getHours()*60+new Date().getMinutes();const stM=stH*60,enM=enH*60;if(nowM>=stM&&nowM<=enM){const tp=((nowM-stM)/SMN)*SHT;return(<div style={{position:"absolute",top:tp-0.5,left:0,right:0,zIndex:10,pointerEvents:"none",height:1,background:C.ac,opacity:.45}}/>);}return null;})()}
               </div>
             );
           })}
@@ -464,6 +472,8 @@ export default function Schedule({menuBtn}){
                     </div>
                   );
                 })}
+                {/* Current time indicator (mobile) */}
+                {selIt&&(()=>{const nowM=new Date().getHours()*60+new Date().getMinutes();const stM=stH*60,enM=enH*60;if(nowM>=stM&&nowM<=enM){const tp=((nowM-stM)/SMN)*SHT;return(<div style={{position:"absolute",top:tp-0.5,left:0,right:0,zIndex:10,pointerEvents:"none",height:1,background:C.ac,opacity:.45}}/>);}return null;})()}
               </div>
             </div>
           </div>
