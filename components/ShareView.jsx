@@ -579,7 +579,10 @@ export default function ShareView({ token }) {
                   <div key={tb.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", background: C.sf, border: "1px solid " + C.bd, borderRadius: 10 }}>
                     <span style={{ fontSize: 18 }}>📚</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: C.tp }}>{tb.title}</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: C.tp }}>{tb.title}</span>
+                        {tb.subject && <span style={{ fontSize: 10, background: "#EFF6FF", color: C.ac, padding: "2px 8px", borderRadius: 5, fontWeight: 600 }}>{tb.subject}</span>}
+                      </div>
                       {tb.publisher && <div style={{ fontSize: 12, color: C.ts }}>{tb.publisher}</div>}
                     </div>
                     {wCnt > 0 && <span style={{ fontSize: 10, background: C.db, color: C.dn, padding: "2px 8px", borderRadius: 5, fontWeight: 600 }}>오답 {wCnt}</span>}

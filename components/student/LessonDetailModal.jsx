@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { C, SC } from '@/components/Colors';
 import { p2, m2s, bk } from '@/lib/utils';
 const ls={display:"block",fontSize:12,fontWeight:500,color:C.tt,marginBottom:6};
@@ -13,7 +13,8 @@ export default function LessonDetailModal({ les, student, textbooks = [], onUpda
   const sh = les.sh ?? les.start_hour ?? 0, sm = les.sm ?? les.start_min ?? 0, dur = les.dur ?? les.duration ?? 0;
   const sub = les.sub ?? les.subject ?? "", rep = les.rep ?? les.is_recurring ?? false;
   const em = sh * 60 + sm + dur;
-  const [tab, setTab] = useState("content");
+  const [tab, setTab] = useState("plan");
+  const contentRef = useRef(null);
   const [topic, setTopic] = useState(les.top ?? les.topic ?? "");
   const [content, setContent] = useState(les.content || "");
   const [feedback, setFeedback] = useState(les.feedback || "");
@@ -38,7 +39,7 @@ export default function LessonDetailModal({ les, student, textbooks = [], onUpda
   const delFile = id => { setFiles(p => p.filter(f => f.id !== id)); markDirty(); };
   const doSave = async () => { if (saving) return; setSaving(true); try { await onUpdate(les.id, { top: topic, content, feedback, tMemo, hw, planPrivate, planShared, files }); setDirty(false); onClose(); } catch(e) { /* error handled by parent toast */ } finally { setSaving(false); } };
 
-  const tabs = [{ id: "content", l: "수업 내용" }, { id: "feedback", l: "피드백" }, { id: "hw", l: "숙제" }, { id: "files", l: "자료" }, { id: "plan", l: "계획" }];
+  const tabs = [{ id: "plan", l: "계획" }, { id: "content", l: "수업 내용" }, { id: "feedback", l: "피드백" }, { id: "hw", l: "숙제" }, { id: "files", l: "자료" }];
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,.35)" }} onClick={onClose}>
@@ -77,23 +78,21 @@ export default function LessonDetailModal({ les, student, textbooks = [], onUpda
         <div style={{ flex: 1, overflow: "auto", padding: 24 }}>
           {tab === "content" && (
             <div>
-              {textbooks.length>0&&(<div style={{marginBottom:16}}>
-                <label style={ls}>교재 범위</label>
+              {textbooks.length>0&&(<div style={{marginBottom:12}}>
+                <label style={ls}>교재</label>
                 <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                  {textbooks.map(tb=>(<button key={tb.id} onClick={()=>{const ref=`[${tb.title}] `;const cur=content;if(!cur.includes(`[${tb.title}]`)){setContent(ref+cur);markDirty();}}} style={{padding:"4px 10px",borderRadius:6,border:"1px solid "+C.bd,background:content.includes(`[${tb.title}]`)?C.as:C.sf,color:content.includes(`[${tb.title}]`)?C.ac:C.ts,fontSize:11,fontWeight:500,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:4}}>📚 {tb.title}</button>))}
+                  {textbooks.map(tb=>(<button key={tb.id} onClick={()=>{const ta=contentRef.current;if(!ta)return;const pos=ta.selectionStart||content.length;const txt=`[${tb.title}] `;const nv=content.slice(0,pos)+txt+content.slice(pos);setContent(nv);markDirty();setTimeout(()=>{ta.focus();ta.selectionStart=ta.selectionEnd=pos+txt.length;},0);}} style={{padding:"4px 10px",borderRadius:6,border:"1px solid "+C.bd,background:C.sf,color:C.ts,fontSize:11,fontWeight:500,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:4}}>📚 {tb.title}</button>))}
                 </div>
-                <div style={{fontSize:10,color:C.tt,marginTop:4}}>교재를 클릭하면 수업 내용에 교재명이 추가됩니다</div>
               </div>)}
               <label style={ls}>수업 내용</label>
-              <textarea className="ldm-textarea" value={content} onChange={e => { setContent(e.target.value); markDirty(); }} onKeyDown={e => bk(e, content, setContent, markDirty)} style={{ ...is, minHeight: 200, resize: "vertical", lineHeight: 1.6 }} placeholder="오늘 수업에서 다룬 내용..." />
+              <textarea ref={contentRef} className="ldm-textarea" value={content} onChange={e => { setContent(e.target.value); markDirty(); }} onKeyDown={e => bk(e, content, setContent, markDirty)} style={{ ...is, minHeight: 200, resize: "vertical", lineHeight: 1.6 }} placeholder="오늘 수업에서 다룬 내용..." />
             </div>
           )}
 
           {tab === "feedback" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               <div>
-                <label style={ls}>학생 피드백 <span style={{ color: C.ac, fontWeight: 400 }}>(공개 — 학생/학부모 열람 가능)</span></label>
-                <div style={{ background: C.as, border: "1px solid " + C.al, borderRadius: 8, padding: "6px 12px", fontSize: 11, color: C.ac, marginBottom: 8 }}>이 내용은 학생과 학부모에게 공유됩니다.</div>
+                <label style={ls}>피드백 <span style={{ color: C.ac, fontWeight: 600 }}>(공유용)</span></label>
                 <textarea className="ldm-textarea" value={feedback} onChange={e => { setFeedback(e.target.value); markDirty(); }} onKeyDown={e => bk(e, feedback, setFeedback, markDirty)} style={{ ...is, minHeight: 120, resize: "vertical", lineHeight: 1.6 }} placeholder="학생 이해도, 태도, 개선점..." />
               </div>
               <div>
@@ -101,7 +100,6 @@ export default function LessonDetailModal({ les, student, textbooks = [], onUpda
                   <IcLock />
                   <label style={{ ...ls, marginBottom: 0 }}>선생님 메모 <span style={{ color: C.dn, fontWeight: 600 }}>(비공개)</span></label>
                 </div>
-                <div style={{ background: C.wb, border: "1px solid #FDE68A", borderRadius: 8, padding: "6px 12px", fontSize: 11, color: "#92400E", marginBottom: 8 }}>선생님만 볼 수 있습니다.</div>
                 <textarea className="ldm-textarea" value={tMemo} onChange={e => { setTMemo(e.target.value); markDirty(); }} onKeyDown={e => bk(e, tMemo, setTMemo, markDirty)} style={{ ...is, minHeight: 100, resize: "vertical", lineHeight: 1.6 }} placeholder="다음 수업 준비, 학생 특이사항..." />
               </div>
             </div>
@@ -191,9 +189,8 @@ export default function LessonDetailModal({ les, student, textbooks = [], onUpda
           {tab === "plan" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               <div>
-                <label style={{ ...ls, color: C.ac, fontWeight: 600 }}>공유용 수업 계획</label>
-                <div style={{ background: C.as, border: "1px solid " + C.al, borderRadius: 8, padding: "6px 12px", fontSize: 11, color: C.ac, marginBottom: 8 }}>학생/학부모 공유</div>
-                <textarea className="ldm-textarea" value={planShared} onChange={e => { setPlanShared(e.target.value); markDirty(); }} onKeyDown={e => bk(e, planShared, setPlanShared, markDirty)} style={{ ...is, minHeight: 100, resize: "vertical", lineHeight: 1.6 }} placeholder="다음 수업 예고, 준비물..." />
+                <label style={{ ...ls, color: C.ac, fontWeight: 600 }}>수업 계획 <span style={{ fontWeight: 400 }}>(공유용)</span></label>
+                <textarea className="ldm-textarea" value={planShared} onChange={e => { setPlanShared(e.target.value); markDirty(); }} onKeyDown={e => bk(e, planShared, setPlanShared, markDirty)} style={{ ...is, minHeight: 100, resize: "vertical", lineHeight: 1.6 }} placeholder="수업 목표, 진도, 준비물..." />
               </div>
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
