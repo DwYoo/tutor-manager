@@ -8,7 +8,7 @@ const is={width:"100%",padding:"9px 12px",borderRadius:8,border:`1px solid ${C.b
 const IcX=()=><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
 const IcLock=()=><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>;
 
-export default function LessonDetailModal({ les, student, onUpdate, onClose }) {
+export default function LessonDetailModal({ les, student, textbooks = [], onUpdate, onClose }) {
   const col = SC[(student?.color_index ?? 0) % 8];
   const sh = les.sh ?? les.start_hour ?? 0, sm = les.sm ?? les.start_min ?? 0, dur = les.dur ?? les.duration ?? 0;
   const sub = les.sub ?? les.subject ?? "", rep = les.rep ?? les.is_recurring ?? false;
@@ -77,6 +77,13 @@ export default function LessonDetailModal({ les, student, onUpdate, onClose }) {
         <div style={{ flex: 1, overflow: "auto", padding: 24 }}>
           {tab === "content" && (
             <div>
+              {textbooks.length>0&&(<div style={{marginBottom:16}}>
+                <label style={ls}>교재 범위</label>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                  {textbooks.map(tb=>(<button key={tb.id} onClick={()=>{const ref=`[${tb.title}] `;const cur=content;if(!cur.includes(`[${tb.title}]`)){setContent(ref+cur);markDirty();}}} style={{padding:"4px 10px",borderRadius:6,border:"1px solid "+C.bd,background:content.includes(`[${tb.title}]`)?C.as:C.sf,color:content.includes(`[${tb.title}]`)?C.ac:C.ts,fontSize:11,fontWeight:500,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:4}}>📚 {tb.title}</button>))}
+                </div>
+                <div style={{fontSize:10,color:C.tt,marginTop:4}}>교재를 클릭하면 수업 내용에 교재명이 추가됩니다</div>
+              </div>)}
               <label style={ls}>수업 내용</label>
               <textarea className="ldm-textarea" value={content} onChange={e => { setContent(e.target.value); markDirty(); }} onKeyDown={e => bk(e, content, setContent, markDirty)} style={{ ...is, minHeight: 200, resize: "vertical", lineHeight: 1.6 }} placeholder="오늘 수업에서 다룬 내용..." />
             </div>
@@ -102,6 +109,10 @@ export default function LessonDetailModal({ les, student, onUpdate, onClose }) {
 
           {tab === "hw" && (
             <div>
+              {textbooks.length>0&&(<div style={{display:"flex",gap:4,marginBottom:10,flexWrap:"wrap"}}>
+                <span style={{fontSize:11,color:C.tt,alignSelf:"center",marginRight:4}}>교재:</span>
+                {textbooks.map(tb=>(<button key={tb.id} onClick={()=>setNewHw(p=>(p?p+" ":"")+tb.title+" ")} style={{padding:"3px 8px",borderRadius:5,border:"1px solid "+C.bd,background:C.sf,fontSize:10,color:C.ts,cursor:"pointer",fontFamily:"inherit"}}>📚 {tb.title}</button>))}
+              </div>)}
               <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
                 <input value={newHw} onChange={e => setNewHw(e.target.value)} onKeyDown={e => { if (e.key === "Enter") addHw(); }} style={{ ...is, flex: 1 }} placeholder="숙제 제목 입력 후 Enter..." />
                 <button onClick={addHw} style={{ background: C.pr, color: "#fff", border: "none", borderRadius: 8, padding: "9px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>추가</button>
