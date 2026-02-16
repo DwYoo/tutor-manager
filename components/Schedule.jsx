@@ -19,7 +19,6 @@ const IcT=()=><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke
 /* ── Add/Edit Modal ── */
 function SchModal({les,students,onSave,onClose,checkConflict,durPresets}){
   const ed=!!les?.id;
-  const isCopy=les?._status==='makeup';
   const[f,sF]=useState({student_id:les?.student_id||students[0]?.id||"",date:les?.date||fd(new Date()),start_hour:les?.start_hour??14,start_min:les?.start_min??0,duration:les?.duration||90,subject:les?.subject||students[0]?.subject||"수학",topic:les?.topic||"",is_recurring:les?.is_recurring||false});
   const u=(k,v)=>sF(p=>({...p,[k]:v}));
   const go=()=>{const dw=new Date(f.date).getDay();onSave({...f,recurring_day:f.is_recurring?(dw===0?7:dw):null,id:les?.id||undefined});};
@@ -28,7 +27,7 @@ function SchModal({les,students,onSave,onClose,checkConflict,durPresets}){
   const conflictStu=conflict?students.find(s=>s.id===conflict.student_id):null;
   return(<div style={{position:"fixed",inset:0,zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,.35)"}} onClick={onClose}>
     <div onClick={e=>e.stopPropagation()} className="detail-modal" style={{background:C.sf,borderRadius:16,width:"100%",maxWidth:480,padding:28,boxShadow:"0 20px 60px rgba(0,0,0,.15)"}}>
-      <div style={{display:"flex",justifyContent:"space-between",marginBottom:20}}><h2 style={{fontSize:18,fontWeight:700,color:C.tp}}>{ed?"수업 수정":isCopy?"보강 추가":"수업 추가"}</h2><button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,display:"flex",minHeight:44,minWidth:44,alignItems:"center",justifyContent:"center"}}><IcX/></button></div>
+      <div style={{display:"flex",justifyContent:"space-between",marginBottom:20}}><h2 style={{fontSize:18,fontWeight:700,color:C.tp}}>{ed?"수업 수정":"수업 추가"}</h2><button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,display:"flex",minHeight:44,minWidth:44,alignItems:"center",justifyContent:"center"}}><IcX/></button></div>
       <div style={{display:"flex",flexDirection:"column",gap:12}}>
         <div><label style={ls}>학생</label><select value={f.student_id} onChange={e=>{const st=students.find(x=>x.id===e.target.value);u("student_id",e.target.value);if(st)u("subject",st.subject);}} style={is}>{students.map(st=>(<option key={st.id} value={st.id}>{st.name} ({st.subject})</option>))}</select></div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
@@ -48,7 +47,7 @@ function SchModal({les,students,onSave,onClose,checkConflict,durPresets}){
         </div>}
       </div>
       <div style={{display:"flex",gap:10,marginTop:20,justifyContent:"flex-end"}}>
-        <button onClick={onClose} style={{background:C.sfh,color:C.ts,border:`1px solid ${C.bd}`,borderRadius:8,padding:"10px 20px",fontSize:13,cursor:"pointer",fontFamily:"inherit",minHeight:44}}>취소</button><button onClick={go} style={{background:conflict?C.wn:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"10px 24px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",minHeight:44}}>{ed?"저장":isCopy?"보강 추가":"추가"}</button>
+        <button onClick={onClose} style={{background:C.sfh,color:C.ts,border:`1px solid ${C.bd}`,borderRadius:8,padding:"10px 20px",fontSize:13,cursor:"pointer",fontFamily:"inherit",minHeight:44}}>취소</button><button onClick={go} style={{background:conflict?C.wn:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"10px 24px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",minHeight:44}}>{ed?"저장":"추가"}</button>
       </div>
     </div>
   </div>);
@@ -160,11 +159,11 @@ export default function Schedule({menuBtn}){
     setCtx(null);
   };
 
-  /* Copy lesson (makeup) */
+  /* Copy lesson */
   const copyLesson=()=>{
     if(!ctxMenu)return;
     const l=ctxMenu.l;
-    setEL({student_id:l.student_id,date:fd(new Date()),start_hour:l.start_hour,start_min:l.start_min,duration:l.duration,subject:l.subject,topic:"",is_recurring:false,_status:'makeup'});
+    setEL({student_id:l.student_id,date:fd(new Date()),start_hour:l.start_hour,start_min:l.start_min,duration:l.duration,subject:l.subject,topic:"",is_recurring:false});
     setMO(true);setCtx(null);
   };
 
