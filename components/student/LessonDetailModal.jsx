@@ -114,7 +114,7 @@ export default function LessonDetailModal({ les, student, textbooks = [], onUpda
                 return (
                   <div style={{ background: apb, border: "1px solid " + apc + "30", borderRadius: 10, padding: "10px 14px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: apc }}>평균 완료율</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: apc }}>완료율</span>
                       <div style={{ width: 80, height: 6, borderRadius: 3, background: "rgba(0,0,0,.06)", overflow: "hidden" }}>
                         <div style={{ width: avgPct + "%", height: "100%", borderRadius: 3, background: apc, transition: "width .15s" }} />
                       </div>

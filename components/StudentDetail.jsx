@@ -85,7 +85,7 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
   const [tbForm,setTbForm]=useState({title:"",publisher:"",subject:""});
   const [editTb,setEditTb]=useState(null);
   const [editTbForm,setEditTbForm]=useState({title:"",publisher:"",subject:""});
-  const [newChapter,setNewChapter]=useState("");
+  const [newChapterMap,setNewChapterMap]=useState({});
   const [editNewChapter,setEditNewChapter]=useState("");
 
   // Tabs: 리포트를 수업 안 "기록" 서브탭으로, 계획 제거, 분석에서 리포트 제거
@@ -494,7 +494,7 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
           return(<div>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
               <h3 style={{fontSize:16,fontWeight:700,color:C.tp,margin:0}}>숙제 현황</h3>
-              <span style={{fontSize:13,color:C.ac,fontWeight:600}}>완료율 {hwAvg}%</span>
+              <span style={{fontSize:13,fontWeight:700,color:hwAvg>=100?C.su:hwAvg>30?C.wn:hwAvg>0?"#EA580C":C.ts,background:hwAvg>=100?C.sb:hwAvg>30?C.wb:hwAvg>0?"#FFF7ED":C.sfh,padding:"4px 12px",borderRadius:8}}>완료율 {hwAvg}%</span>
             </div>
             {/* Summary stats */}
             <div className="hw-stats" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:20}}>
@@ -749,8 +749,8 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
                         {chs.map((ch,ci)=>(<span key={ci} style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:11,background:C.sfh,color:C.ts,padding:"3px 8px",borderRadius:6}}>{ch}{!isParent&&<button onClick={()=>delChapter(tb.id,ci)} style={{background:"none",border:"none",color:C.tt,cursor:"pointer",fontSize:10,padding:0,lineHeight:1}}>✕</button>}</span>))}
                       </div>}
                       {!isParent&&<div style={{display:"flex",gap:6,alignItems:"center"}}>
-                        <input value={editTb?.id===tb.id?editNewChapter:newChapter} onChange={e=>{if(editTb?.id===tb.id)setEditNewChapter(e.target.value);else setNewChapter(e.target.value);}} onKeyDown={e=>{if(e.key==="Enter"){const v=editTb?.id===tb.id?editNewChapter:newChapter;addChapter(tb.id,v);if(editTb?.id===tb.id)setEditNewChapter("");else setNewChapter("");}}} style={{...is,fontSize:11,padding:"4px 8px",width:140}} placeholder="단원명 입력..."/>
-                        <button onClick={()=>{const v=editTb?.id===tb.id?editNewChapter:newChapter;addChapter(tb.id,v);if(editTb?.id===tb.id)setEditNewChapter("");else setNewChapter("");}} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:6,padding:"4px 10px",fontSize:10,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>추가</button>
+                        <input value={editTb?.id===tb.id?editNewChapter:(newChapterMap[tb.id]||"")} onChange={e=>{if(editTb?.id===tb.id)setEditNewChapter(e.target.value);else setNewChapterMap(p=>({...p,[tb.id]:e.target.value}));}} onKeyDown={e=>{if(e.key==="Enter"){const v=editTb?.id===tb.id?editNewChapter:(newChapterMap[tb.id]||"");addChapter(tb.id,v);if(editTb?.id===tb.id)setEditNewChapter("");else setNewChapterMap(p=>({...p,[tb.id]:""}));}}} style={{...is,fontSize:11,padding:"4px 8px",width:140}} placeholder="단원명 입력..."/>
+                        <button onClick={()=>{const v=editTb?.id===tb.id?editNewChapter:(newChapterMap[tb.id]||"");addChapter(tb.id,v);if(editTb?.id===tb.id)setEditNewChapter("");else setNewChapterMap(p=>({...p,[tb.id]:""}));}} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:6,padding:"4px 10px",fontSize:10,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>추가</button>
                       </div>}
                     </div>
                   </div>)}

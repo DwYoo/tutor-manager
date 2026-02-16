@@ -34,7 +34,7 @@ export default function Students({onDetail,menuBtn}){
   const[fetchError,setFetchError]=useState(false);
   useEffect(()=>{fetchStudents();},[]);
   const fetchStudents=async()=>{setFetchError(false);try{const[sRes,lRes]=await Promise.all([supabase.from('students').select('*').order('created_at'),supabase.from('lessons').select('*').order('date')]);if(sRes.error||lRes.error){toast?.('데이터를 불러오지 못했습니다','error');setFetchError(true);}setStudents(sRes.data||[]);setLessons(lRes.data||[]);}catch{toast?.('데이터를 불러오지 못했습니다','error');setFetchError(true);}setLoading(false);};
-  const getNextClass=(sid)=>{const now=new Date();for(let offset=0;offset<90;offset++){const d=new Date(now);d.setDate(now.getDate()+offset);const sLessons=lessons.filter(l=>l.student_id===sid&&lessonOnDate(l,d));for(const l of sLessons){const lm=l.start_hour*60+l.start_min;if(offset===0&&lm<=now.getHours()*60+now.getMinutes())continue;return `${d.getMonth()+1}/${d.getDate()}(${DK[d.getDay()]}) ${p2(l.start_hour)}:${p2(l.start_min)}`;}}return null;};
+  const getNextClass=(sid)=>{const now=new Date();for(let offset=0;offset<90;offset++){const d=new Date(now);d.setDate(now.getDate()+offset);const sLessons=lessons.filter(l=>l.student_id===sid&&lessonOnDate(l,d));for(const l of sLessons){const lm=l.start_hour*60+l.start_min;if(offset===0&&lm<=now.getHours()*60+now.getMinutes())continue;return {time:`${d.getMonth()+1}/${d.getDate()}(${DK[d.getDay()]}) ${p2(l.start_hour)}:${p2(l.start_min)}`,topic:l.topic||""};}}return null;};
 
   const openAdd=()=>{setEditStu(null);setForm({name:'',grade:'',subject:'',school:'',phone:'',parent_phone:'',fee:'',fee_per_class:''});setShowAdd(true);};
   const openEdit=(s,e)=>{e.stopPropagation();setEditStu(s);setForm({name:s.name||'',grade:s.grade||'',subject:s.subject||'',school:s.school||'',phone:s.phone||'',parent_phone:s.parent_phone||'',fee:String(s.fee||''),fee_per_class:String(s.fee_per_class||'')});setShowAdd(true);};
@@ -119,12 +119,8 @@ export default function Students({onDetail,menuBtn}){
                 </div>
               </div>
               <div style={{fontSize:12,color:C.ts}}>
-                {(()=>{const nc=getNextClass(s.id);return nc?<span>다음: {nc}</span>:<span style={{color:C.tt}}>예정된 수업 없음</span>;})()}
+                {(()=>{const nc=getNextClass(s.id);return nc?<div><div>다음: {nc.time}</div>{nc.topic&&<div style={{fontSize:11,color:C.tp,fontWeight:500,marginTop:2}}>{nc.topic}</div>}</div>:<span style={{color:C.tt}}>예정된 수업 없음</span>;})()}
               </div>
-              {(s.fee_per_class||s.fee)?(<div style={{marginTop:10,paddingTop:10,borderTop:`1px solid ${C.bl}`,fontSize:11,color:C.ts,display:"flex",flexDirection:"column",gap:3}}>
-                {s.fee_per_class>0&&<div><span style={{color:C.tt}}>회당 단가:</span> <span style={{fontWeight:600,color:C.tp}}>{s.fee_per_class.toLocaleString()}원</span></div>}
-                {s.fee>0&&<div><span style={{color:C.tt}}>월 수업료:</span> <span style={{fontWeight:600,color:C.tp}}>{s.fee.toLocaleString()}원</span></div>}
-              </div>):null}
               <div style={{flex:1,marginTop:8,paddingTop:8,borderTop:`1px solid ${C.bl}`,fontSize:12}}>
                 {s.school&&<span style={{color:C.ts}}>{s.school}</span>}
               </div>
