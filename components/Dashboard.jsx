@@ -184,13 +184,12 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
             <div key={di}>
               <div style={{fontSize:12,fontWeight:600,color:C.ts,marginBottom:8}}>{day.dayLabel}</div>
               <div style={{display:"flex",flexDirection:"column",gap:6,overflowX:"auto",flexWrap:"nowrap",WebkitOverflowScrolling:"touch"}}>
-                {day.classes.map(l=>{const stu=getStu(l.student_id);const co=getCol(l.student_id);const now=new Date(),nowMin=now.getHours()*60+now.getMinutes(),sm=l.start_hour*60+l.start_min,em=sm+l.duration,isIP=fd(now)===l.date&&nowMin>=sm&&nowMin<em;return(
-                  <div key={l.id} onClick={()=>stu&&onDetail(stu)} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderRadius:8,border:`1px solid ${isIP?"#FDBA74":C.bl}`,borderLeft:`3px solid ${isIP?"#EA580C":co.b}`,cursor:"pointer",flexShrink:0,background:isIP?"#FFF7ED":"transparent"}} className="hcard">
+                {day.classes.map(l=>{const stu=getStu(l.student_id);const co=getCol(l.student_id);return(
+                  <div key={l.id} onClick={()=>stu&&onDetail(stu)} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderRadius:8,border:`1px solid ${C.bl}`,borderLeft:`3px solid ${co.b}`,cursor:"pointer",flexShrink:0}} className="hcard">
                     <div style={{fontSize:12,color:C.tt,fontWeight:500,minWidth:44}}>{p2(l.start_hour)}:{p2(l.start_min)}</div>
                     <div style={{width:24,height:24,borderRadius:6,background:co.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:co.t}}>{(stu?.name||"?")[0]}</div>
                     <div style={{fontSize:13,fontWeight:500,color:C.tp}}>{stu?.name||"-"}</div>
                     <div style={{fontSize:11,color:C.ts}}>{l.subject}</div>
-                    {isIP&&<span style={{fontSize:9,fontWeight:700,color:"#EA580C",background:"#FFF7ED",border:"1px solid #FDBA74",borderRadius:4,padding:"2px 6px",marginLeft:"auto",flexShrink:0}}>진행중</span>}
                   </div>);})}
               </div>
             </div>))}
