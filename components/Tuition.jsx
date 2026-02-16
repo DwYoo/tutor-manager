@@ -32,8 +32,44 @@ export default function Tuition({menuBtn}){
   const[showSignPad,setShowSignPad]=useState(false);
   const signCanvasRef=useRef(null);
   const signDrawing=useRef(false);
+  const[sealLoading,setSealLoading]=useState(false);
   const[hiddenStudents,setHiddenStudents]=useState(()=>{try{return JSON.parse(localStorage.getItem('tuition-hidden')||'{}');}catch{return{};}});
   const[showHidden,setShowHidden]=useState(false);
+
+  // Sync seal image from Supabase Storage (cross-device)
+  const uploadSealToStorage=async(dataUrl)=>{
+    if(!user?.id||!dataUrl)return;
+    try{
+      const res=await fetch(dataUrl);
+      const blob=await res.blob();
+      const path=`${user.id}/seal/current.png`;
+      await supabase.storage.from('receipts').remove([path]);
+      await supabase.storage.from('receipts').upload(path,blob,{contentType:'image/png'});
+    }catch(e){console.error('Seal upload error:',e);}
+  };
+  useEffect(()=>{
+    if(!user?.id)return;
+    let cancelled=false;
+    (async()=>{
+      setSealLoading(true);
+      try{
+        const path=`${user.id}/seal/current.png`;
+        const{data,error}=await supabase.storage.from('receipts').download(path);
+        if(cancelled)return;
+        if(error){setSealLoading(false);return;}
+        const reader=new FileReader();
+        reader.onload=(ev)=>{
+          if(cancelled)return;
+          const dataUrl=ev.target?.result;
+          if(dataUrl){setSealImg(dataUrl);try{localStorage.setItem('rcpt-seal',dataUrl);}catch{}}
+          setSealLoading(false);
+        };
+        reader.onerror=()=>{if(!cancelled)setSealLoading(false);};
+        reader.readAsDataURL(data);
+      }catch{if(!cancelled)setSealLoading(false);}
+    })();
+    return()=>{cancelled=true;};
+  },[user?.id]);
 
   const year=+curMonth.split("-")[0],month=+curMonth.split("-")[1];
   const prevM=()=>{const m=month===1?12:month-1;const y=month===1?year-1:year;setCurMonth(y+"-"+p2(m));setEditId(null);setEditForm({});};
@@ -238,7 +274,8 @@ export default function Tuition({menuBtn}){
 
   /* Receipt */
   const openReceipt=(r,idx)=>{
-    const d=new Date();
+    const pd=r.record.paid_date;
+    const d=pd?new Date(pd+'T00:00:00'):new Date();
     setReceiptData(r);
     setRcptForm({
       serialNo:`${String(year).slice(-2)}${p2(month)}-${p2(stuNumMap[r.student.id]||((idx??0)+1))}`,period:`${year}년 ${month}월`,
@@ -385,7 +422,7 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
                 const isEditing=editId===(rec.id||s.id);
                 return(
                   <tr key={s.id} className="tr" style={{borderBottom:"1px solid "+C.bl,opacity:curHidden.includes(s.id)?0.45:1}}>
-                    <td style={{padding:"10px 12px",fontWeight:600,color:C.tp}}><div style={{display:"flex",alignItems:"center",gap:4}}>{!isEditing&&<button onClick={()=>toggleHideStudent(s.id)} style={{width:16,height:16,fontSize:11,lineHeight:"14px",textAlign:"center",color:curHidden.includes(s.id)?C.ac:C.tt,background:"none",border:"1.5px solid "+(curHidden.includes(s.id)?C.ac:C.bd),borderRadius:"50%",cursor:"pointer",padding:0,fontFamily:"monospace",flexShrink:0,display:"inline-flex",alignItems:"center",justifyContent:"center"}} title={curHidden.includes(s.id)?"다시 표시":"숨기기"}>{curHidden.includes(s.id)?"+":"−"}</button>}<span style={{color:r.isArchived?C.ts:C.tp}}>{s.name}</span>{r.isArchived&&<span style={{fontSize:8,color:C.tt,background:C.sfh,padding:"1px 4px",borderRadius:3}}>보관</span>}</div></td>
+                    <td style={{padding:"10px 12px",fontWeight:600,color:C.tp}}><div style={{display:"flex",alignItems:"center",gap:4}}>{!isEditing&&<button onClick={()=>toggleHideStudent(s.id)} style={{width:18,height:18,background:"none",border:"none",cursor:"pointer",padding:0,flexShrink:0,display:"inline-flex",alignItems:"center",justifyContent:"center",color:curHidden.includes(s.id)?C.ac:C.tt,borderRadius:4,transition:"color .15s"}} title={curHidden.includes(s.id)?"다시 표시":"숨기기"}>{curHidden.includes(s.id)?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>}</button>}<span style={{color:r.isArchived?C.ts:C.tp}}>{s.name}</span>{r.isArchived&&<span style={{fontSize:8,color:C.tt,background:C.sfh,padding:"1px 4px",borderRadius:3}}>보관</span>}</div></td>
                     <td style={{padding:"10px 12px",color:C.ts}}>
                       {isEditing?<input type="number" value={editForm.fee_per_class} onChange={e=>{const fpc=e.target.value;const cls=editForm.classesOverride!==""?parseInt(editForm.classesOverride)||0:r.autoLessonCnt;const newFee=(parseInt(fpc)||0)*cls;const carry=parseInt(editForm.carryover)||0;const newTotal=newFee+carry;const a=parseInt(editForm.amount)||0;setEditForm(p=>({...p,fee_per_class:fpc,tuitionFee:newFee,totalDue:newTotal,status:autoStatus(a,newTotal)}));}} style={{...eis,width:80}}/>:
                       <>₩{(s.fee_per_class||0).toLocaleString()}</>}
@@ -586,9 +623,9 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
             </div>
             <div style={{marginBottom:24}}>
               <label style={rls}>인감 / 서명</label>
-              {sealImg?<div style={{display:"flex",alignItems:"center",gap:10}}>
+              {sealLoading?<div style={{fontSize:11,color:C.tt}}>인감 불러오는 중...</div>:sealImg?<div style={{display:"flex",alignItems:"center",gap:10}}>
                 <img src={sealImg} style={{width:48,height:48,objectFit:"contain",border:"1px solid "+C.bd,borderRadius:6,padding:2,background:"#fff"}} alt="인감"/>
-                <button onClick={()=>{setSealImg('');try{localStorage.removeItem('rcpt-seal');}catch{}}} style={{background:"none",border:"1px solid "+C.bd,borderRadius:6,padding:"4px 10px",fontSize:11,cursor:"pointer",color:C.ts,fontFamily:"inherit"}}>삭제</button>
+                <button onClick={()=>{setSealImg('');try{localStorage.removeItem('rcpt-seal');}catch{}if(user?.id){supabase.storage.from('receipts').remove([`${user.id}/seal/current.png`]).catch(()=>{});}}} style={{background:"none",border:"1px solid "+C.bd,borderRadius:6,padding:"4px 10px",fontSize:11,cursor:"pointer",color:C.ts,fontFamily:"inherit"}}>삭제</button>
                 <span style={{fontSize:10,color:C.tt}}>자동 적용 중</span>
               </div>:showSignPad?<div>
                 <canvas ref={el=>{signCanvasRef.current=el;if(el&&!el._init){el._init=true;const ctx=el.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,el.width,el.height);ctx.strokeStyle='#000';ctx.lineWidth=2;ctx.lineCap='round';ctx.lineJoin='round';
@@ -601,14 +638,14 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
                   width={240} height={100} style={{border:"1px solid "+C.bd,borderRadius:8,cursor:"crosshair",background:"#fff",display:"block",touchAction:"none"}}/>
                 <div style={{display:"flex",gap:8,marginTop:8}}>
                   <button onClick={()=>{const el=signCanvasRef.current;if(!el)return;const ctx=el.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,el.width,el.height);}} style={{background:C.sfh,border:"1px solid "+C.bd,borderRadius:6,padding:"4px 10px",fontSize:11,cursor:"pointer",color:C.ts,fontFamily:"inherit"}}>지우기</button>
-                  <button onClick={()=>{const el=signCanvasRef.current;if(!el)return;const d=el.toDataURL('image/png');setSealImg(d);try{localStorage.setItem('rcpt-seal',d);}catch{}setShowSignPad(false);}} style={{background:C.pr,color:"#fff",border:"none",borderRadius:6,padding:"4px 12px",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>저장</button>
+                  <button onClick={()=>{const el=signCanvasRef.current;if(!el)return;const d=el.toDataURL('image/png');setSealImg(d);try{localStorage.setItem('rcpt-seal',d);}catch{}uploadSealToStorage(d);setShowSignPad(false);}} style={{background:C.pr,color:"#fff",border:"none",borderRadius:6,padding:"4px 12px",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>저장</button>
                   <button onClick={()=>setShowSignPad(false)} style={{background:"none",border:"1px solid "+C.bd,borderRadius:6,padding:"4px 10px",fontSize:11,cursor:"pointer",color:C.ts,fontFamily:"inherit"}}>취소</button>
                 </div>
               </div>:<div style={{display:"flex",alignItems:"center",gap:8}}>
                 <button onClick={()=>setShowSignPad(true)} style={{background:C.sfh,border:"1px solid "+C.bd,borderRadius:6,padding:"6px 12px",fontSize:11,cursor:"pointer",color:C.tp,fontFamily:"inherit"}}>서명 그리기</button>
                 <label style={{background:C.sfh,border:"1px solid "+C.bd,borderRadius:6,padding:"6px 12px",fontSize:11,cursor:"pointer",color:C.tp,fontFamily:"inherit"}}>
                   이미지 등록
-                  <input type="file" accept="image/*" style={{display:"none"}} onChange={e=>{const file=e.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>{const d=ev.target?.result;if(d){setSealImg(d);try{localStorage.setItem('rcpt-seal',d);}catch{}}};reader.readAsDataURL(file);e.target.value='';}}/>
+                  <input type="file" accept="image/*" style={{display:"none"}} onChange={e=>{const file=e.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>{const d=ev.target?.result;if(d){setSealImg(d);try{localStorage.setItem('rcpt-seal',d);}catch{}uploadSealToStorage(d);}};reader.readAsDataURL(file);e.target.value='';}}/>
                 </label>
                 <span style={{fontSize:10,color:C.tt}}>한 번 등록하면 자동 적용</span>
               </div>}
