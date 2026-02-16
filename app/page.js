@@ -14,7 +14,7 @@ const NAV = [
   { id: 'dashboard', l: '대시보드' },
   { id: 'schedule', l: '캘린더' },
   { id: 'students', l: '학생 관리' },
-  { id: 'tuition', l: '수업료' },
+  { id: 'tuition', l: '수업료 관리' },
 ]
 
 const NAV_ICONS = {
