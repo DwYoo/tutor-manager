@@ -97,6 +97,8 @@ export default function Tuition({menuBtn}){
     return false;
   }).sort((a,b)=>(a.sort_order??Infinity)-(b.sort_order??Infinity));
   const allStudents=[...activeStudents,...archivedWithActivity];
+  /* Student numbers: sort_order 기반 (보관=유지, 순서변경=반영, 삭제=당겨짐) */
+  const stuNumMap={};[...students].sort((a,b)=>{const sa=a.sort_order??Infinity,sb=b.sort_order??Infinity;if(sa!==sb)return sa-sb;if(!!a.archived!==!!b.archived)return a.archived?1:-1;const ca=new Date(a.created_at).getTime(),cb=new Date(b.created_at).getTime();return ca!==cb?ca-cb:(a.id<b.id?-1:1);}).forEach((s,i)=>{stuNumMap[s.id]=i+1;});
   const monthRecs=allStudents.map(s=>{
     const rec=tuitions.find(t=>t.student_id===s.id&&t.month===curMonth);
     const autoLessonCnt=countLessons(s.id,year,month);
@@ -234,8 +236,8 @@ export default function Tuition({menuBtn}){
     const d=new Date();
     setReceiptData(r);
     setRcptForm({
-      serialNo:`${String(year).slice(-2)}${p2(month)}-${p2((idx??0)+1)}`,period:`${year}년 ${month}월`,
-      regNo:p2((idx??0)+1),
+      serialNo:`${String(year).slice(-2)}${p2(month)}-${p2(stuNumMap[r.student.id]||((idx??0)+1))}`,period:`${year}년 ${month}월`,
+      regNo:p2(stuNumMap[r.student.id]||((idx??0)+1)),
       name:r.student.name||'',birthDate:r.student.birth_date||'',subject:r.student.subject||'',
       tuitionFee:String(r.paidAmount||0),
       etcLabel1:'',etcAmt1:'',etcLabel2:'',etcAmt2:'',
@@ -373,7 +375,7 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
                 const isEditing=editId===(rec.id||s.id);
                 return(
                   <tr key={s.id} className="tr" style={{borderBottom:"1px solid "+C.bl,opacity:curHidden.includes(s.id)?0.45:1}}>
-                    <td style={{padding:"10px 12px",fontWeight:600,color:C.tp}}><div style={{display:"flex",alignItems:"center",gap:4}}>{!isEditing&&<button onClick={()=>toggleHideStudent(s.id)} style={{fontSize:13,color:curHidden.includes(s.id)?C.ac:C.tt,background:"none",border:"none",cursor:"pointer",padding:"0 2px",fontFamily:"inherit",lineHeight:1,opacity:curHidden.includes(s.id)?1:0.4}} title={curHidden.includes(s.id)?"다시 표시":"숨기기"}>{curHidden.includes(s.id)?"+":"−"}</button>}<span style={{color:r.isArchived?C.ts:C.tp}}>{s.name}</span>{r.isArchived&&<span style={{fontSize:8,color:C.tt,background:C.sfh,padding:"1px 4px",borderRadius:3}}>보관</span>}</div></td>
+                    <td style={{padding:"10px 12px",fontWeight:600,color:C.tp}}><div style={{display:"flex",alignItems:"center",gap:4}}>{!isEditing&&<button onClick={()=>toggleHideStudent(s.id)} style={{fontSize:10,fontWeight:600,color:curHidden.includes(s.id)?C.ac:"#DC2626",background:curHidden.includes(s.id)?"#EFF6FF":"#FEF2F2",border:"1px solid "+(curHidden.includes(s.id)?"#BFDBFE":"#FECACA"),cursor:"pointer",padding:"2px 5px",borderRadius:4,fontFamily:"inherit",lineHeight:1}} title={curHidden.includes(s.id)?"다시 표시":"숨기기"}>{curHidden.includes(s.id)?"표시":"숨김"}</button>}<span style={{color:C.tt,fontSize:10,fontWeight:400}}>{stuNumMap[s.id]||""}</span><span style={{color:r.isArchived?C.ts:C.tp}}>{s.name}</span>{r.isArchived&&<span style={{fontSize:8,color:C.tt,background:C.sfh,padding:"1px 4px",borderRadius:3}}>보관</span>}</div></td>
                     <td style={{padding:"10px 12px",color:C.ts}}>
                       {isEditing?<input type="number" value={editForm.fee_per_class} onChange={e=>{const fpc=e.target.value;const cls=editForm.classesOverride!==""?parseInt(editForm.classesOverride)||0:r.autoLessonCnt;const newFee=(parseInt(fpc)||0)*cls;const carry=parseInt(editForm.carryover)||0;const newTotal=newFee+carry;const a=parseInt(editForm.amount)||0;setEditForm(p=>({...p,fee_per_class:fpc,tuitionFee:newFee,totalDue:newTotal,status:autoStatus(a,newTotal)}));}} style={{...eis,width:80}}/>:
                       <>₩{(s.fee_per_class||0).toLocaleString()}</>}
