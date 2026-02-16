@@ -5,7 +5,7 @@ import { useAuth } from '@/components/AuthProvider';
 import LessonDetailModal from './student/LessonDetailModal';
 import { C, SC } from '@/components/Colors';
 import { p2, fd, m2s, DKS as DK, gwd, s5, sdy, lessonOnDate } from '@/lib/utils';
-const LSTATUS={scheduled:{l:"예정",c:"#78716C",bg:"#F5F5F4"},completed:{l:"완료",c:"#16A34A",bg:"#F0FDF4"},cancelled:{l:"취소",c:"#DC2626",bg:"#FEF2F2"},makeup:{l:"보강",c:"#2563EB",bg:"#DBEAFE"}};
+const LSTATUS={scheduled:{l:"예정",c:"#78716C",bg:"#F5F5F4"},in_progress:{l:"진행중",c:"#EA580C",bg:"#FFF7ED"},completed:{l:"완료",c:"#16A34A",bg:"#F0FDF4"},cancelled:{l:"취소",c:"#DC2626",bg:"#FEF2F2"},makeup:{l:"보강",c:"#2563EB",bg:"#DBEAFE"}};
 const ls={display:"block",fontSize:12,fontWeight:500,color:C.tt,marginBottom:6};
 const is={width:"100%",padding:"9px 12px",borderRadius:8,border:`1px solid ${C.bd}`,fontSize:14,color:C.tp,background:C.sf,outline:"none",fontFamily:"inherit"};
 const SHT=20,SMN=15;
@@ -123,7 +123,9 @@ export default function Schedule({menuBtn}){
   const getStu=sid=>students.find(x=>x.id===sid);
   const toggleStu=sid=>setActive(p=>p===sid?null:sid);
   const todayStr=fd(today);
-  const effSt=(l,vd)=>{const s=l.status||'scheduled';if(s!=='scheduled')return s;return(vd||l.date)<todayStr?'completed':'scheduled';};
+  const[tick,setTick]=useState(0);
+  useEffect(()=>{const iv=setInterval(()=>setTick(t=>t+1),60000);return()=>clearInterval(iv);},[]);
+  const effSt=(l,vd)=>{const s=l.status||'scheduled';if(s!=='scheduled')return s;const d=vd||l.date;const now=new Date();const nowStr=fd(now);if(d===nowStr){const sm=l.start_hour*60+l.start_min,em=sm+l.duration,cm=now.getHours()*60+now.getMinutes();if(cm>=sm&&cm<em)return'in_progress';if(cm>=em)return'completed';}return d<todayStr?'completed':'scheduled';};
   const gMonthDays=()=>{const y=cur.getFullYear(),m=cur.getMonth();const first=new Date(y,m,1);const startDow=first.getDay()===0?6:first.getDay()-1;const dim=new Date(y,m+1,0).getDate();const days=[];for(let i=-startDow;i<42;i++){const d=new Date(y,m,1+i);days.push(d);if(i>=dim-1+startDow&&days.length%7===0)break;}return days;};
 
   /* Conflict detection */
