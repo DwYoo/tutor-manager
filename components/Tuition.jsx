@@ -25,6 +25,8 @@ export default function Tuition({menuBtn}){
   const[memoSaving,setMemoSaving]=useState(false);
   const[receiptData,setReceiptData]=useState(null);
   const[rcptForm,setRcptForm]=useState({});
+  const[rcptFiles,setRcptFiles]=useState([]);
+  const[rcptUploading,setRcptUploading]=useState(false);
 
   const year=+curMonth.split("-")[0],month=+curMonth.split("-")[1];
   const prevM=()=>{const m=month===1?12:month-1;const y=month===1?year-1:year;setCurMonth(y+"-"+p2(m));setEditId(null);setEditForm({});};
@@ -35,13 +37,14 @@ export default function Tuition({menuBtn}){
   const fetchData=useCallback(async()=>{
     setLoading(true);setFetchError(false);
     try{
-      const[sRes,tRes,lRes]=await Promise.all([
+      const[sRes,tRes,lRes,rfRes]=await Promise.all([
         supabase.from('students').select('*').order('created_at'),
         supabase.from('tuition').select('*'),
         supabase.from('lessons').select('*'),
+        supabase.from('receipt_files').select('*').order('created_at',{ascending:false}),
       ]);
       if(sRes.error||tRes.error||lRes.error){setFetchError(true);setLoading(false);return;}
-      setStudents(sRes.data||[]);setTuitions(tRes.data||[]);setLessons(lRes.data||[]);
+      setStudents(sRes.data||[]);setTuitions(tRes.data||[]);setLessons(lRes.data||[]);setRcptFiles(rfRes.data||[]);
     }catch{setFetchError(true);}
     setLoading(false);
   },[]);
@@ -76,7 +79,7 @@ export default function Tuition({menuBtn}){
   const autoStatus=(amt,due)=>amt>=due?"paid":amt>0?"partial":"unpaid";
 
   /* Build month records (archived 학생 제외) */
-  const activeStudents=students.filter(s=>!s.archived);
+  const activeStudents=students.filter(s=>!s.archived).sort((a,b)=>(a.sort_order??Infinity)-(b.sort_order??Infinity));
   const monthRecs=activeStudents.map(s=>{
     const rec=tuitions.find(t=>t.student_id===s.id&&t.month===curMonth);
     const lessonCnt=countLessons(s.id,year,month);
@@ -238,6 +241,34 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
     if(w){w.document.write(html);w.document.close();}
   };
 
+  /* Receipt file storage */
+  const uploadRcptFile=async(e)=>{
+    const files=e.target.files;if(!files?.length)return;
+    setRcptUploading(true);
+    try{
+      for(const file of files){
+        const ext=file.name.split('.').pop()||'pdf';
+        const path=`${user.id}/${curMonth}/${Date.now()}_${file.name}`;
+        const{error:upErr}=await supabase.storage.from('receipts').upload(path,file);
+        if(upErr){console.error(upErr);continue;}
+        const{data,error:dbErr}=await supabase.from('receipt_files').insert({user_id:user.id,month:curMonth,file_name:file.name,file_path:path,file_size:file.size,mime_type:file.type||'application/pdf'}).select().single();
+        if(!dbErr&&data)setRcptFiles(p=>[data,...p]);
+      }
+    }finally{setRcptUploading(false);e.target.value='';}
+  };
+  const deleteRcptFile=async(f)=>{
+    if(!confirm(`"${f.file_name}" 파일을 삭제하시겠습니까?`))return;
+    await supabase.storage.from('receipts').remove([f.file_path]);
+    await supabase.from('receipt_files').delete().eq('id',f.id);
+    setRcptFiles(p=>p.filter(x=>x.id!==f.id));
+  };
+  const downloadRcptFile=async(f)=>{
+    const{data}=await supabase.storage.from('receipts').createSignedUrl(f.file_path,60);
+    if(data?.signedUrl)window.open(data.signedUrl,'_blank');
+  };
+  const curMonthFiles=rcptFiles.filter(f=>f.month===curMonth);
+  const rcptMonths=[...new Set(rcptFiles.map(f=>f.month))].sort().reverse();
+
   if(loading)return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:C.tt,fontSize:14}}>불러오는 중...</div></div>);
   if(fetchError)return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:12}}><div style={{fontSize:14,color:C.dn}}>데이터를 불러오지 못했습니다</div><button onClick={fetchData} style={{padding:"8px 20px",borderRadius:8,border:`1px solid ${C.bd}`,background:C.sf,color:C.tp,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>다시 시도</button></div>);
 
@@ -370,6 +401,42 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
               </div>);
             })}
             {monthRecs.filter(r=>r.status!=="paid").length===0&&<div style={{textAlign:"center",padding:16,color:C.su,fontSize:12}}>전원 완납!</div>}
+          </div>
+
+          {/* Receipt file storage */}
+          <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:18}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+              <div style={{fontSize:13,fontWeight:600,color:C.tp}}>영수증 보관함</div>
+              <label style={{background:C.as,color:C.ac,border:"1px solid "+C.ac,borderRadius:6,padding:"4px 10px",fontSize:10,fontWeight:600,cursor:rcptUploading?"not-allowed":"pointer",fontFamily:"inherit",opacity:rcptUploading?.5:1}}>
+                {rcptUploading?"업로드 중...":"파일 추가"}
+                <input type="file" accept=".pdf,.jpg,.jpeg,.png" multiple onChange={uploadRcptFile} style={{display:"none"}} disabled={rcptUploading}/>
+              </label>
+            </div>
+            <div style={{fontSize:11,color:C.tt,marginBottom:8}}>{month}월 파일 ({curMonthFiles.length})</div>
+            {curMonthFiles.length===0?<div style={{textAlign:"center",padding:16,color:C.tt,fontSize:11}}>이번 달 영수증 파일이 없습니다</div>:
+            <div style={{display:"flex",flexDirection:"column",gap:6,maxHeight:200,overflow:"auto"}}>
+              {curMonthFiles.map(f=>(
+                <div key={f.id} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 8px",background:C.sfh,borderRadius:8,fontSize:11}}>
+                  <span style={{color:C.ac,fontSize:14,flexShrink:0}}>{f.mime_type?.includes('pdf')?'\uD83D\uDCC4':'\uD83D\uDDBC\uFE0F'}</span>
+                  <span onClick={()=>downloadRcptFile(f)} style={{flex:1,color:C.tp,cursor:"pointer",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={f.file_name}>{f.file_name}</span>
+                  <span style={{color:C.tt,fontSize:9,flexShrink:0}}>{f.file_size?Math.round(f.file_size/1024)+'KB':''}</span>
+                  <button onClick={()=>deleteRcptFile(f)} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,fontSize:12,padding:0,fontFamily:"inherit"}}>✕</button>
+                </div>
+              ))}
+            </div>}
+            {rcptMonths.length>1&&(<>
+              <div style={{fontSize:11,color:C.tt,marginTop:14,marginBottom:6,borderTop:"1px solid "+C.bd,paddingTop:10}}>지난달 영수증</div>
+              <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                {rcptMonths.filter(m=>m!==curMonth).slice(0,6).map(m=>{
+                  const cnt=rcptFiles.filter(f=>f.month===m).length;
+                  const[yy,mm]=m.split('-');
+                  return(<div key={m} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 0",fontSize:11}}>
+                    <span style={{color:C.tp,fontWeight:500}}>{yy}년 {+mm}월</span>
+                    <span style={{color:C.ts}}>{cnt}개 파일</span>
+                  </div>);
+                })}
+              </div>
+            </>)}
           </div>
         </div>
       </div>

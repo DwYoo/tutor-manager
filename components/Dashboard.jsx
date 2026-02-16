@@ -73,7 +73,7 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
   };
 
   /* ── Derived data ── */
-  const activeStudents=students.filter(s=>!s.archived);
+  const activeStudents=students.filter(s=>!s.archived).sort((a,b)=>(a.sort_order??Infinity)-(b.sort_order??Infinity));
   const today=new Date();
   const wkBase=new Date(today);wkBase.setDate(today.getDate()+weekOff*7);
   const wk=gwd(wkBase);
