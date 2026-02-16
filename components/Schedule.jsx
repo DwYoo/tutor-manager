@@ -370,9 +370,10 @@ export default function Schedule({menuBtn}){
             </div>);})}
 
           {/* Time column */}
-          <div style={{borderRight:`1px solid ${C.bl}`}}>
+          <div style={{borderRight:`1px solid ${C.bl}`,position:"relative"}}>
             {hrs.map(h=>(<div key={h} style={{height:SHT*4,display:"flex",alignItems:"flex-start",justifyContent:"flex-end",padding:"2px 8px 0 0",fontSize:11,color:C.tt,fontWeight:500,borderBottom:`1px solid ${C.bl}`}}>{p2(h)}:00</div>))}
             <div style={{display:"flex",alignItems:"flex-start",justifyContent:"flex-end",padding:"2px 8px 0 0",fontSize:11,color:C.tt,fontWeight:500}}>{p2(enH)}:00</div>
+            {(()=>{const nowM=new Date().getHours()*60+new Date().getMinutes();const stM=stH*60,enM=enH*60;if(nowM>=stM&&nowM<=enM){const tp=((nowM-stM)/SMN)*SHT;return(<div style={{position:"absolute",top:tp,right:4,transform:"translateY(-50%)",fontSize:9,fontWeight:700,color:C.ac,opacity:.7,pointerEvents:"none"}}>{p2(Math.floor(nowM/60))}:{p2(nowM%60)}</div>);}return null;})()}
           </div>
 
           {/* Day columns */}
@@ -400,7 +401,7 @@ export default function Schedule({menuBtn}){
                   );
                 })}
                 {/* Current time indicator */}
-                {it&&(()=>{const nowM=new Date().getHours()*60+new Date().getMinutes();const stM=stH*60,enM=enH*60;if(nowM>=stM&&nowM<=enM){const tp=((nowM-stM)/SMN)*SHT;return(<div style={{position:"absolute",top:tp,left:0,right:0,zIndex:10,pointerEvents:"none"}}><div style={{position:"relative",height:0}}><div style={{position:"absolute",left:-3,top:-4,width:8,height:8,borderRadius:"50%",background:"#DC2626"}}/><div style={{position:"absolute",left:4,right:0,top:-0.5,height:1.5,background:"#DC2626"}}/></div></div>);}return null;})()}
+                {it&&(()=>{const nowM=new Date().getHours()*60+new Date().getMinutes();const stM=stH*60,enM=enH*60;if(nowM>=stM&&nowM<=enM){const tp=((nowM-stM)/SMN)*SHT;return(<div style={{position:"absolute",top:tp-0.5,left:0,right:0,zIndex:10,pointerEvents:"none",height:1,background:C.ac,opacity:.45}}/>);}return null;})()}
               </div>
             );
           })}
@@ -472,7 +473,7 @@ export default function Schedule({menuBtn}){
                   );
                 })}
                 {/* Current time indicator (mobile) */}
-                {selIt&&(()=>{const nowM=new Date().getHours()*60+new Date().getMinutes();const stM=stH*60,enM=enH*60;if(nowM>=stM&&nowM<=enM){const tp=((nowM-stM)/SMN)*SHT;return(<div style={{position:"absolute",top:tp,left:0,right:0,zIndex:10,pointerEvents:"none"}}><div style={{position:"relative",height:0}}><div style={{position:"absolute",left:-3,top:-4,width:8,height:8,borderRadius:"50%",background:"#DC2626"}}/><div style={{position:"absolute",left:4,right:0,top:-0.5,height:1.5,background:"#DC2626"}}/></div></div>);}return null;})()}
+                {selIt&&(()=>{const nowM=new Date().getHours()*60+new Date().getMinutes();const stM=stH*60,enM=enH*60;if(nowM>=stM&&nowM<=enM){const tp=((nowM-stM)/SMN)*SHT;return(<div style={{position:"absolute",top:tp-0.5,left:0,right:0,zIndex:10,pointerEvents:"none",height:1,background:C.ac,opacity:.45}}/>);}return null;})()}
               </div>
             </div>
           </div>
