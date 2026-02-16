@@ -23,6 +23,7 @@ export default function ShareView({ token }) {
   const [subTab, setSubTab] = useState("history");
   const [expandedLesson, setExpandedLesson] = useState(null);
   const [showHwDetail, setShowHwDetail] = useState(false);
+  const [hwFilters, setHwFilters] = useState(new Set());
   const [showWrongList, setShowWrongList] = useState(false);
   const [chartMode, setChartMode] = useState("grade");
   const [wExpanded, setWExpanded] = useState({});
@@ -439,24 +440,38 @@ export default function ShareView({ token }) {
         {/* === 학습 관리 === */}
         {tab === "study" && (<div>
           {/* Homework section */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp, margin: 0 }}>숙제 현황</h3>
-            {allHw.length > 0 && (
-              <button onClick={() => setShowHwDetail(!showHwDetail)} style={{ padding: "4px 12px", border: "1px solid " + C.bd, borderRadius: 8, background: C.sf, fontSize: 11, color: C.ts, cursor: "pointer", fontFamily: "inherit" }}>
-                {showHwDetail ? "상세 숨김" : "상세 보기"}
-              </button>
-            )}
-          </div>
-          {allHw.length === 0 ? <Empty text="숙제 기록이 없습니다" /> : (<>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(120px,1fr))", gap: 10, marginBottom: showHwDetail ? 16 : 28 }}>
-              <StatCard label="완료율" value={hwAvg + "%"} color={C.ac} />
-              <StatCard label="완료" value={hwDone + "건"} color={C.su} />
-              <StatCard label="진행중" value={hwInProg + "건"} color={C.wn} />
-              <StatCard label="미시작" value={hwNotStarted + "건"} color={C.tt} />
-            </div>
-            {showHwDetail && (
+          <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp, margin: 0, marginBottom: 12 }}>숙제 현황</h3>
+          {allHw.length === 0 ? <Empty text="숙제 기록이 없습니다" /> : (() => {
+            const toggleHwFilter = (key) => {
+              setHwFilters(prev => {
+                const next = new Set(prev);
+                if (key === "all") {
+                  // 전체 클릭 시: 이미 전체면 해제, 아니면 모든 필터 해제(=전체)
+                  return new Set();
+                }
+                if (next.has(key)) next.delete(key); else next.add(key);
+                return next;
+              });
+            };
+            const isAllSelected = hwFilters.size === 0;
+            const filteredHw = isAllSelected ? allHw : allHw.filter(h => {
+              const pct = h.completion_pct || 0;
+              if (hwFilters.has("done") && pct >= 100) return true;
+              if (hwFilters.has("prog") && pct > 0 && pct < 100) return true;
+              if (hwFilters.has("none") && pct === 0) return true;
+              return false;
+            });
+            return (<>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(120px,1fr))", gap: 10, marginBottom: 16 }}>
+                <FilterCard label="전체" value={allHw.length + "건"} color={C.ac} active={isAllSelected} onClick={() => toggleHwFilter("all")} />
+                <FilterCard label="완료" value={hwDone + "건"} color={C.su} active={hwFilters.has("done")} onClick={() => toggleHwFilter("done")} />
+                <FilterCard label="진행중" value={hwInProg + "건"} color={C.wn} active={hwFilters.has("prog")} onClick={() => toggleHwFilter("prog")} />
+                <FilterCard label="미시작" value={hwNotStarted + "건"} color={C.tt} active={hwFilters.has("none")} onClick={() => toggleHwFilter("none")} />
+              </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 28 }}>
-                {allHw.map(h => (
+                {filteredHw.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: 20, color: C.tt, fontSize: 13 }}>해당하는 숙제가 없습니다</div>
+                ) : filteredHw.map(h => (
                   <div key={h.id} style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 10, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 13, fontWeight: 500, color: C.tp }}>{h.title}</div>
@@ -471,8 +486,8 @@ export default function ShareView({ token }) {
                   </div>
                 ))}
               </div>
-            )}
-          </>)}
+            </>);
+          })()}
 
           {/* Wrong answers section */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
@@ -579,7 +594,10 @@ export default function ShareView({ token }) {
                   <div key={tb.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", background: C.sf, border: "1px solid " + C.bd, borderRadius: 10 }}>
                     <span style={{ fontSize: 18 }}>📚</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: C.tp }}>{tb.title}</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: C.tp }}>{tb.title}</span>
+                        {tb.subject && <span style={{ fontSize: 10, background: "#EFF6FF", color: C.ac, padding: "2px 8px", borderRadius: 5, fontWeight: 600 }}>{tb.subject}</span>}
+                      </div>
                       {tb.publisher && <div style={{ fontSize: 12, color: C.ts }}>{tb.publisher}</div>}
                     </div>
                     {wCnt > 0 && <span style={{ fontSize: 10, background: C.db, color: C.dn, padding: "2px 8px", borderRadius: 5, fontWeight: 600 }}>오답 {wCnt}</span>}
@@ -722,6 +740,15 @@ function StatCard({ label, value, color }) {
   return (
     <div style={{ background: "#FFFFFF", border: "1px solid #E7E5E4", borderRadius: 12, padding: "14px 16px", textAlign: "center" }}>
       <div style={{ fontSize: 11, color: "#A8A29E", marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 18, fontWeight: 700, color }}>{value}</div>
+    </div>
+  );
+}
+
+function FilterCard({ label, value, color, active, onClick }) {
+  return (
+    <div onClick={onClick} style={{ background: active ? color + "12" : "#FFFFFF", border: "2px solid " + (active ? color : "#E7E5E4"), borderRadius: 12, padding: "14px 16px", textAlign: "center", cursor: "pointer", transition: "all .15s" }}>
+      <div style={{ fontSize: 11, color: active ? color : "#A8A29E", marginBottom: 4, fontWeight: active ? 600 : 400 }}>{label}</div>
       <div style={{ fontSize: 18, fontWeight: 700, color }}>{value}</div>
     </div>
   );

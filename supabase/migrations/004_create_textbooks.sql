@@ -5,6 +5,8 @@ CREATE TABLE IF NOT EXISTS textbooks (
   user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   title TEXT NOT NULL,
   publisher TEXT DEFAULT '',
+  subject TEXT DEFAULT '',
+  chapters JSONB DEFAULT '[]'::jsonb,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
