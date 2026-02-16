@@ -127,10 +127,8 @@ export default function Tuition({menuBtn}){
       const totalDueVal=parseInt(editForm.totalDue)||0;
       const carryoverVal=parseInt(editForm.carryover)||0;
       const editedFeePerClass=parseInt(editForm.fee_per_class)||0;
-      const editedAutoFee=editedFeePerClass*lessonCnt;
-      const editedTuitionFee=parseInt(editForm.tuitionFee)||0;
-      const effectiveAutoFee=(editedTuitionFee!==editedAutoFee)?editedTuitionFee:editedAutoFee;
-      const feeOverride=(totalDueVal!==(effectiveAutoFee+carryoverVal))?totalDueVal:null;
+      const autoTotalDue=editedFeePerClass*lessonCnt+carryoverVal;
+      const feeOverride=(totalDueVal!==autoTotalDue)?totalDueVal:null;
       const existing=tuitions.find(t=>t.student_id===studentId&&t.month===curMonth);
       const payload={
         student_id:studentId,month:curMonth,
@@ -297,7 +295,7 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
                   <tr key={s.id} className="tr" style={{borderBottom:"1px solid "+C.bl}}>
                     <td style={{padding:"10px 12px",fontWeight:600,color:C.tp}}>{s.name}</td>
                     <td style={{padding:"10px 12px",color:C.ts}}>
-                      {isEditing?<input type="number" value={editForm.fee_per_class} onChange={e=>setEditForm(p=>({...p,fee_per_class:e.target.value}))} style={{...eis,width:80}}/>:
+                      {isEditing?<input type="number" value={editForm.fee_per_class} onChange={e=>{const fpc=e.target.value;const newFee=(parseInt(fpc)||0)*r.lessonCnt;const carry=parseInt(editForm.carryover)||0;const newTotal=newFee+carry;const a=parseInt(editForm.amount)||0;setEditForm(p=>({...p,fee_per_class:fpc,tuitionFee:newFee,totalDue:newTotal,status:autoStatus(a,newTotal)}));}} style={{...eis,width:80}}/>:
                       <>₩{(s.fee_per_class||0).toLocaleString()}</>}
                     </td>
                     <td style={{padding:"10px 12px",fontWeight:600}}>{r.lessonCnt}회</td>
