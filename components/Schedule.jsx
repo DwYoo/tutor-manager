@@ -5,7 +5,7 @@ import { useAuth } from '@/components/AuthProvider';
 import LessonDetailModal from './student/LessonDetailModal';
 import { C, SC } from '@/components/Colors';
 import { p2, fd, m2s, DKS as DK, gwd, s5, sdy, lessonOnDate } from '@/lib/utils';
-const LSTATUS={scheduled:{l:"예정",c:"#78716C",bg:"#F5F5F4"},in_progress:{l:"진행중",c:"#EA580C",bg:"#FFF7ED"},completed:{l:"완료",c:"#16A34A",bg:"#F0FDF4"},cancelled:{l:"취소",c:"#DC2626",bg:"#FEF2F2"},makeup:{l:"보강",c:"#2563EB",bg:"#DBEAFE"}};
+const LSTATUS={scheduled:{l:"예정",c:"#78716C",bg:"#F5F5F4"},completed:{l:"완료",c:"#16A34A",bg:"#F0FDF4"},cancelled:{l:"취소",c:"#DC2626",bg:"#FEF2F2"},makeup:{l:"보강",c:"#2563EB",bg:"#DBEAFE"}};
 const ls={display:"block",fontSize:12,fontWeight:500,color:C.tt,marginBottom:6};
 const is={width:"100%",padding:"9px 12px",borderRadius:8,border:`1px solid ${C.bd}`,fontSize:14,color:C.tp,background:C.sf,outline:"none",fontFamily:"inherit"};
 const SHT=20,SMN=15;
@@ -112,8 +112,6 @@ export default function Schedule({menuBtn}){
   const undoStack=useRef([]);const[undoToast,setUndoToast]=useState(null);const undoToastTimer=useRef(null);
   const[mobileDay,setMobileDay]=useState(()=>{const d=new Date().getDay();return d===0?6:d-1;});
   const[mTimeSet,setMTS]=useState(false);
-  const[,setTick]=useState(0);
-  useEffect(()=>{const id=setInterval(()=>setTick(t=>t+1),60000);return()=>clearInterval(id);},[]);
   const gridRef=useRef(null);const dragRef=useRef(null);const movedRef=useRef(false);const swipeRef=useRef(null);
   const lpRef=useRef(null);const lpStartRef=useRef(null);const lpFired=useRef(false);
   const today=new Date();const wk=gwd(cur);
@@ -162,7 +160,7 @@ export default function Schedule({menuBtn}){
   const getStu=sid=>students.find(x=>x.id===sid);
   const toggleStu=sid=>setActive(p=>p===sid?null:sid);
   const todayStr=fd(today);
-  const effSt=(l,vd)=>{const s=l.status||'scheduled';if(s!=='scheduled')return s;const ds=vd||l.date;if(ds<todayStr)return'completed';if(ds===todayStr){const now=new Date(),nowMin=now.getHours()*60+now.getMinutes(),sm=l.start_hour*60+l.start_min,em=sm+l.duration;if(nowMin>=sm&&nowMin<em)return'in_progress';if(nowMin>=em)return'completed';}return'scheduled';};
+  const effSt=(l,vd)=>{const s=l.status||'scheduled';if(s!=='scheduled')return s;return(vd||l.date)<todayStr?'completed':'scheduled';};
   const gMonthDays=()=>{const y=cur.getFullYear(),m=cur.getMonth();const first=new Date(y,m,1);const startDow=first.getDay()===0?6:first.getDay()-1;const dim=new Date(y,m+1,0).getDate();const days=[];for(let i=-startDow;i<42;i++){const d=new Date(y,m,1+i);days.push(d);if(i>=dim-1+startDow&&days.length%7===0)break;}return days;};
 
   /* Conflict detection */
@@ -350,7 +348,7 @@ export default function Schedule({menuBtn}){
 
   return(
     <div className="sch-container" style={{minHeight:"100vh",background:C.bg,padding:28}} onClick={()=>ctxMenu&&setCtx(null)}>
-      <style>{`@keyframes ipPulse{0%,100%{box-shadow:0 0 0 2px transparent}50%{box-shadow:0 0 0 3px rgba(234,88,12,.25)}}.lb-ip{animation:ipPulse 2s ease-in-out infinite;}.lb{cursor:grab;transition:box-shadow .12s,transform .1s;}.lb:hover{box-shadow:0 4px 12px rgba(0,0,0,.12);transform:scale(1.02);}.nb{transition:all .1s;cursor:pointer;border:none;background:none;display:flex;align-items:center;justify-content:center;padding:8px;border-radius:8px;color:${C.ts};min-height:44px;min-width:44px;}.nb:hover{background:${C.sfh};}.cm-i{transition:background .1s;min-height:44px;}.cm-i:hover{background:${C.sfh};}@keyframes wkR{from{transform:translateX(50px);opacity:0}to{transform:translateX(0);opacity:1}}@keyframes wkL{from{transform:translateX(-50px);opacity:0}to{transform:translateX(0);opacity:1}}.wk-r{animation:wkR .2s ease-out}.wk-l{animation:wkL .2s ease-out}@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}@media(hover:hover){.mc-cell:hover{background:${C.sfh}!important;}}.mc-cell:active{background:${C.sfh}!important;}@media(max-width:768px){.sch-container{padding:12px!important;}.sch-header{padding:12px 14px!important;}.sch-header-title{font-size:15px!important;}.sch-header-sub{font-size:11px!important;}.sch-filter-row{display:none!important;}.sch-dur-btn{min-height:44px;min-width:44px;}select,input[type="date"],input[type="number"]{min-height:44px;}.sch-week-grid>div{min-width:0!important;}}`}</style>
+      <style>{`.lb{cursor:grab;transition:box-shadow .12s,transform .1s;}.lb:hover{box-shadow:0 4px 12px rgba(0,0,0,.12);transform:scale(1.02);}.nb{transition:all .1s;cursor:pointer;border:none;background:none;display:flex;align-items:center;justify-content:center;padding:8px;border-radius:8px;color:${C.ts};min-height:44px;min-width:44px;}.nb:hover{background:${C.sfh};}.cm-i{transition:background .1s;min-height:44px;}.cm-i:hover{background:${C.sfh};}@keyframes wkR{from{transform:translateX(50px);opacity:0}to{transform:translateX(0);opacity:1}}@keyframes wkL{from{transform:translateX(-50px);opacity:0}to{transform:translateX(0);opacity:1}}.wk-r{animation:wkR .2s ease-out}.wk-l{animation:wkL .2s ease-out}@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}@media(hover:hover){.mc-cell:hover{background:${C.sfh}!important;}}.mc-cell:active{background:${C.sfh}!important;}@media(max-width:768px){.sch-container{padding:12px!important;}.sch-header{padding:12px 14px!important;}.sch-header-title{font-size:15px!important;}.sch-header-sub{font-size:11px!important;}.sch-filter-row{display:none!important;}.sch-dur-btn{min-height:44px;min-width:44px;}select,input[type="date"],input[type="number"]{min-height:44px;}.sch-week-grid>div{min-width:0!important;}}`}</style>
 
       {/* Header */}
       <div className="sch-header" style={{background:C.sf,borderBottom:`1px solid ${C.bd}`,padding:"16px 24px",position:"sticky",top:0,zIndex:20}}>
@@ -438,9 +436,9 @@ export default function Schedule({menuBtn}){
                 )}
                 {dl.map(l=>{const co=gCo(l.student_id);const st=getStu(l.student_id);const tp=((l.start_hour*60+l.start_min)-stH*60)/SMN*SHT;const hp=Math.max(l.duration/SMN*SHT,SHT);
                   const isOrig=!l.is_recurring||l.date===fd(date);
-                  const lSt=effSt(l,fd(date));const isCan=lSt==='cancelled';const isIP=lSt==='in_progress';const dim=activeStu&&l.student_id!==activeStu;
+                  const lSt=effSt(l,fd(date));const isCan=lSt==='cancelled';const dim=activeStu&&l.student_id!==activeStu;
                   return(
-                    <div key={l.id} className={`lb${isIP?' lb-ip':''}`} onMouseDown={e=>onLD(e,l,date)} onContextMenu={e=>onRC(e,l,date)} style={{position:"absolute",top:tp,left:3,right:3,height:hp-2,borderRadius:8,background:isCan||dim?C.sfh:co.bg,borderLeft:`3px solid ${isCan||dim?C.bd:co.b}`,padding:"4px 8px",overflow:"hidden",zIndex:dim?1:isIP?4:3,opacity:isCan?.45:dim?.25:1,transition:"opacity .15s",boxShadow:isIP?`0 0 0 2px ${co.b}40`:'none'}}>
+                    <div key={l.id} className="lb" onMouseDown={e=>onLD(e,l,date)} onContextMenu={e=>onRC(e,l,date)} style={{position:"absolute",top:tp,left:3,right:3,height:hp-2,borderRadius:8,background:isCan||dim?C.sfh:co.bg,borderLeft:`3px solid ${isCan||dim?C.bd:co.b}`,padding:"4px 8px",overflow:"hidden",zIndex:dim?1:3,opacity:isCan?.45:dim?.25:1,transition:"opacity .15s"}}>
                       <div style={{display:"flex",alignItems:"center",gap:4}}>
                         <span style={{fontSize:11,fontWeight:600,color:isCan?C.tt:co.t,textDecoration:isCan?'line-through':'none'}}>{st?.name||""}</span>
                         <span style={{fontSize:8,fontWeight:700,color:LSTATUS[lSt]?.c,background:LSTATUS[lSt]?.bg,borderRadius:3,padding:"1px 4px",lineHeight:"14px"}}>{LSTATUS[lSt]?.l}</span>
@@ -513,14 +511,14 @@ export default function Schedule({menuBtn}){
                 {hrs.map((h,i)=>(<div key={h} style={{position:"absolute",top:i*SHT*4,left:0,right:0,height:SHT*4,borderBottom:`1px solid ${C.bl}`,pointerEvents:"none"}}><div style={{position:"absolute",top:SHT*2-1,left:0,right:0,height:1,background:C.bl,opacity:.5}}/></div>))}
                 {selDl.map(l=>{const co=gCo(l.student_id);const st=getStu(l.student_id);const tp=((l.start_hour*60+l.start_min)-stH*60)/SMN*SHT;const hp=Math.max(l.duration/SMN*SHT,SHT);
                   const isOrig=!l.is_recurring||l.date===fd(selDate);
-                  const lSt=effSt(l,fd(selDate));const isCan=lSt==='cancelled';const isIP=lSt==='in_progress';const dim=activeStu&&l.student_id!==activeStu;
+                  const lSt=effSt(l,fd(selDate));const isCan=lSt==='cancelled';const dim=activeStu&&l.student_id!==activeStu;
                   return(
-                    <div key={l.id} className={isIP?'lb-ip':''}
+                    <div key={l.id}
                       onTouchStart={e=>{lpFired.current=false;const t=e.touches[0];lpStartRef.current={x:t.clientX,y:t.clientY};lpRef.current=setTimeout(()=>{lpFired.current=true;if(navigator.vibrate)navigator.vibrate(30);setCtx({l,vd:selDate,mobile:true});},500);}}
                       onTouchMove={e=>{if(!lpStartRef.current)return;const t=e.touches[0];if(Math.abs(t.clientX-lpStartRef.current.x)>10||Math.abs(t.clientY-lpStartRef.current.y)>10){clearTimeout(lpRef.current);lpRef.current=null;}}}
                       onTouchEnd={()=>{clearTimeout(lpRef.current);lpRef.current=null;}}
                       onClick={e=>{e.stopPropagation();if(lpFired.current){lpFired.current=false;return;}openDetail(l,vd);}}
-                      style={{position:"absolute",top:tp,left:4,right:4,height:hp-2,borderRadius:10,background:isCan||dim?C.sfh:co.bg,borderLeft:`4px solid ${isCan||dim?C.bd:co.b}`,padding:"6px 10px",overflow:"hidden",zIndex:dim?1:isIP?4:3,opacity:isCan?.45:dim?.25:1,cursor:"pointer",transition:"opacity .15s",WebkitUserSelect:"none",userSelect:"none",boxShadow:isIP?`0 0 0 2px ${co.b}40`:'none'}}>
+                      style={{position:"absolute",top:tp,left:4,right:4,height:hp-2,borderRadius:10,background:isCan||dim?C.sfh:co.bg,borderLeft:`4px solid ${isCan||dim?C.bd:co.b}`,padding:"6px 10px",overflow:"hidden",zIndex:dim?1:3,opacity:isCan?.45:dim?.25:1,cursor:"pointer",transition:"opacity .15s",WebkitUserSelect:"none",userSelect:"none"}}>
                       <div style={{display:"flex",alignItems:"center",gap:6}}>
                         <span style={{fontSize:13,fontWeight:600,color:isCan?C.tt:co.t,textDecoration:isCan?'line-through':'none'}}>{st?.name||""}</span>
                         <span style={{fontSize:9,fontWeight:700,color:LSTATUS[lSt]?.c,background:LSTATUS[lSt]?.bg,borderRadius:3,padding:"1px 5px",lineHeight:"16px"}}>{LSTATUS[lSt]?.l}</span>
@@ -572,8 +570,8 @@ export default function Schedule({menuBtn}){
             <div style={{height:1,background:C.bd,margin:"4px 0"}}/>
             <div style={{padding:"6px 8px",fontSize:10,color:C.tt,fontWeight:600}}>상태 변경</div>
             <div style={{display:"flex",gap:4,padding:"2px 8px 8px"}}>
-              {Object.entries(LSTATUS).filter(([k])=>k!=='in_progress').map(([k,v])=>{
-                const cur=effSt(ctxMenu.l,fd(ctxMenu.vd))===k||effSt(ctxMenu.l,fd(ctxMenu.vd))==='in_progress'&&k==='scheduled';
+              {Object.entries(LSTATUS).map(([k,v])=>{
+                const cur=effSt(ctxMenu.l,fd(ctxMenu.vd))===k;
                 return(<button key={k} onClick={()=>updStatus(k)} style={{fontSize:10,fontWeight:cur?700:500,color:cur?v.c:C.ts,background:cur?v.bg:'transparent',border:`1px solid ${cur?v.c:C.bd}`,borderRadius:5,padding:"3px 7px",cursor:"pointer",fontFamily:"inherit",minHeight:44}}>{v.l}</button>);
               })}
             </div>
@@ -623,7 +621,7 @@ export default function Schedule({menuBtn}){
           <div style={{height:1,background:C.bd,margin:"8px 0"}}/>
           <div style={{padding:"8px 4px 4px",fontSize:12,color:C.tt,fontWeight:600}}>상태 변경</div>
           <div style={{display:"flex",gap:6,padding:"8px 4px 12px",flexWrap:"wrap"}}>
-            {Object.entries(LSTATUS).filter(([k])=>k!=='in_progress').map(([k,v])=>{const cur=effSt(ctxMenu.l,fd(ctxMenu.vd))===k||effSt(ctxMenu.l,fd(ctxMenu.vd))==='in_progress'&&k==='scheduled';return(<button key={k} onClick={()=>updStatus(k)} style={{fontSize:12,fontWeight:cur?700:500,color:cur?v.c:C.ts,background:cur?v.bg:'transparent',border:`1.5px solid ${cur?v.c:C.bd}`,borderRadius:8,padding:"8px 14px",cursor:"pointer",fontFamily:"inherit",minHeight:44}}>{v.l}</button>);})}
+            {Object.entries(LSTATUS).map(([k,v])=>{const cur=effSt(ctxMenu.l,fd(ctxMenu.vd))===k;return(<button key={k} onClick={()=>updStatus(k)} style={{fontSize:12,fontWeight:cur?700:500,color:cur?v.c:C.ts,background:cur?v.bg:'transparent',border:`1.5px solid ${cur?v.c:C.bd}`,borderRadius:8,padding:"8px 14px",cursor:"pointer",fontFamily:"inherit",minHeight:44}}>{v.l}</button>);})}
           </div>
           <div style={{height:1,background:C.bd,margin:"4px 0"}}/>
           <div style={{display:"flex",flexDirection:"column",gap:2,marginTop:4}}>
