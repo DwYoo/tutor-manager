@@ -84,8 +84,8 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
   const todayClasses=lessons.filter(l=>lessonOnDate(l,today)).sort((a,b)=>(a.start_hour*60+a.start_min)-(b.start_hour*60+b.start_min));
   const upcomingDays=[];
   const nowMin=today.getHours()*60+today.getMinutes();
-  for(let i=0;i<=3;i++){const d=new Date(today);d.setDate(today.getDate()+i);let cls=lessons.filter(l=>lessonOnDate(l,d)).sort((a,b)=>(a.start_hour*60+a.start_min)-(b.start_hour*60+b.start_min));if(i===0)cls=cls.filter(l=>(l.start_hour*60+l.start_min)>nowMin);if(cls.length>0)upcomingDays.push({date:d,dayLabel:i===0?`오늘 (${p2(d.getMonth()+1)}/${p2(d.getDate())})`:`${DK[d.getDay()]}요일 (${p2(d.getMonth()+1)}/${p2(d.getDate())})`,classes:cls});}
-  const weekData=wk.map((d,i)=>{const cnt=lessons.filter(l=>lessonOnDate(l,d)).length;return{day:DKS[i],c:cnt};});
+  for(let i=0;i<=3;i++){const d=new Date(today);d.setDate(today.getDate()+i);let cls=lessons.filter(l=>l.student_id!=null&&lessonOnDate(l,d)).sort((a,b)=>(a.start_hour*60+a.start_min)-(b.start_hour*60+b.start_min));if(i===0)cls=cls.filter(l=>(l.start_hour*60+l.start_min)>nowMin);if(cls.length>0)upcomingDays.push({date:d,dayLabel:i===0?`오늘 (${p2(d.getMonth()+1)}/${p2(d.getDate())})`:`${DK[d.getDay()]}요일 (${p2(d.getMonth()+1)}/${p2(d.getDate())})`,classes:cls});}
+  const weekData=wk.map((d,i)=>{const cnt=lessons.filter(l=>l.student_id!=null&&lessonOnDate(l,d)).length;return{day:DKS[i],c:cnt};});
   const todayIdx=weekOff===0?(today.getDay()===0?6:today.getDay()-1):-1;
 
   const countMonthLessons=(sid)=>{const dim=new Date(year,month,0).getDate();let cnt=0;for(let d=1;d<=dim;d++){const dt=new Date(year,month-1,d);cnt+=lessons.filter(l=>l.student_id===sid&&lessonOnDate(l,dt)).length;}return cnt;};
