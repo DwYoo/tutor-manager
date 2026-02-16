@@ -304,7 +304,7 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
                           <button disabled={saving} onClick={()=>saveEdit(s.id,r.lessonCnt)} style={{background:saving?"#999":C.pr,color:"#fff",border:"none",borderRadius:6,padding:"4px 10px",fontSize:10,fontWeight:600,cursor:saving?"not-allowed":"pointer",fontFamily:"inherit"}}>{saving?"저장 중...":"저장"}</button>
                           <button onClick={cancelEdit} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:6,padding:"4px 8px",fontSize:10,cursor:"pointer",fontFamily:"inherit"}}>취소</button>
                         </div>
-                      ):(<div style={{display:"flex",gap:4,alignItems:"center"}}><button onClick={()=>startEdit(r)} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,fontSize:11,fontFamily:"inherit"}}>수정</button><button onClick={()=>openReceipt(r)} style={{background:C.as,border:"1px solid "+C.ac,borderRadius:5,cursor:"pointer",color:C.ac,fontSize:10,fontWeight:600,padding:"3px 8px",fontFamily:"inherit"}}>영수증</button></div>)}
+                      ):(<div style={{display:"flex",gap:10,alignItems:"center"}}><button onClick={()=>startEdit(r)} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,fontSize:11,fontFamily:"inherit"}}>수정</button><button onClick={()=>openReceipt(r)} style={{background:C.as,border:"1px solid "+C.ac,borderRadius:5,cursor:"pointer",color:C.ac,fontSize:10,fontWeight:600,padding:"3px 8px",fontFamily:"inherit"}}>영수증</button></div>)}
                     </td>
                   </tr>
                 );
