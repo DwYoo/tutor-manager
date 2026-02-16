@@ -337,6 +337,7 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
         {subTab==="timeline"&&(()=>{
           const now=new Date();
           const isLessonDone=(l)=>{const end=new Date(l.date+"T00:00:00");end.setHours(l.start_hour,l.start_min+l.duration,0,0);return now>=end;};
+          const isLessonInProgress=(l)=>{const start=new Date(l.date+"T00:00:00");start.setHours(l.start_hour,l.start_min,0,0);const end=new Date(l.date+"T00:00:00");end.setHours(l.start_hour,l.start_min+l.duration,0,0);return now>=start&&now<end;};
           const doneLessons=lessons.filter(l=>isLessonDone(l));
           const upcomingLessons=lessons.filter(l=>!isLessonDone(l));
           const nextOne=upcomingLessons.length?[upcomingLessons[upcomingLessons.length-1]]:[];
@@ -355,14 +356,15 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
               <div style={{position:"absolute",left:7,top:16,bottom:16,width:2,background:C.bl}}/>
               {tlLessons.map((l,i)=>{
                 const isDone=isLessonDone(l);
+                const isIP=isLessonInProgress(l);
                 const isFirstDone=isDone&&(i===0||!isLessonDone(tlLessons[i-1]));
                 const hw=l.homework||[],hwDone=hw.filter(h=>(h.completion_pct||0)>=100).length,hwTotal=hw.length;
                 const em=l.start_hour*60+l.start_min+l.duration;
                 const hasSections=l.content||l.feedback||hwTotal>0||l.plan_shared;
                 return(
                   <div key={l.id} style={{position:"relative",marginBottom:16}}>
-                    <div style={{position:"absolute",left:-28+3,top:18,width:10,height:10,borderRadius:"50%",background:isFirstDone?col.b:!isDone?C.sf:C.bd,border:!isDone?"2px solid "+C.bd:"2px solid "+C.sf,zIndex:1}}/>
-                    <div onClick={()=>setLesDetailData(l)} style={{background:!isDone?C.as:C.sf,border:"1px solid "+(!isDone?C.al:C.bd),borderRadius:14,overflow:"hidden",cursor:"pointer",borderLeft:"3px solid "+(!isDone?C.ac:col.b)}} className="hcard">
+                    <div style={{position:"absolute",left:-28+3,top:18,width:10,height:10,borderRadius:"50%",background:isIP?"#EA580C":isFirstDone?col.b:!isDone?C.sf:C.bd,border:!isDone&&!isIP?"2px solid "+C.bd:"2px solid "+C.sf,zIndex:1}}/>
+                    <div onClick={()=>setLesDetailData(l)} style={{background:isIP?"#FFF7ED":!isDone?C.as:C.sf,border:"1px solid "+(isIP?"#FDBA74":!isDone?C.al:C.bd),borderRadius:14,overflow:"hidden",cursor:"pointer",borderLeft:"3px solid "+(isIP?"#EA580C":!isDone?C.ac:col.b)}} className="hcard">
                       {/* Header */}
                       <div style={{padding:"16px 20px "+(hasSections?"12px":"16px")}}>
                         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
@@ -371,7 +373,8 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
                             <div style={{fontSize:16,fontWeight:700,color:C.tp}}>{l.topic||l.subject||"-"}</div>
                           </div>
                           <div style={{display:"flex",gap:5,alignItems:"center",flexShrink:0,flexWrap:"wrap",justifyContent:"flex-end"}}>
-                            {!isDone&&<span style={{background:C.ac,color:"#fff",padding:"3px 10px",borderRadius:6,fontSize:11,fontWeight:600}}>예정</span>}
+                            {isIP&&<span style={{background:"#EA580C",color:"#fff",padding:"3px 10px",borderRadius:6,fontSize:11,fontWeight:600}}>진행중</span>}
+                            {!isDone&&!isIP&&<span style={{background:C.ac,color:"#fff",padding:"3px 10px",borderRadius:6,fontSize:11,fontWeight:600}}>예정</span>}
                             <span style={{background:col.bg,color:col.t,padding:"3px 10px",borderRadius:6,fontSize:11,fontWeight:600}}>{l.subject||s.subject}</span>
                             {hwTotal>0&&<span style={{fontSize:10,background:hwDone===hwTotal?C.sb:C.wb,color:hwDone===hwTotal?C.su:C.wn,padding:"3px 8px",borderRadius:5,fontWeight:600}}>숙제 {hwDone}/{hwTotal}</span>}
                             {l.content&&<span style={{fontSize:10,background:C.sfh,color:C.ts,padding:"3px 8px",borderRadius:5}}>내용</span>}
