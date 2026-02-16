@@ -97,8 +97,8 @@ export default function Tuition({menuBtn}){
     return false;
   }).sort((a,b)=>(a.sort_order??Infinity)-(b.sort_order??Infinity));
   const allStudents=[...activeStudents,...archivedWithActivity];
-  /* Stable student numbers based on creation order (never changes on archive/delete) */
-  const stuNumMap={};[...students].sort((a,b)=>{const ca=new Date(a.created_at).getTime(),cb=new Date(b.created_at).getTime();return ca!==cb?ca-cb:(a.id<b.id?-1:1);}).forEach((s,i)=>{stuNumMap[s.id]=i+1;});
+  /* Student numbers: sort_order 기반 (보관=유지, 순서변경=반영, 삭제=당겨짐) */
+  const stuNumMap={};[...students].sort((a,b)=>{const sa=a.sort_order??Infinity,sb=b.sort_order??Infinity;if(sa!==sb)return sa-sb;if(!!a.archived!==!!b.archived)return a.archived?1:-1;const ca=new Date(a.created_at).getTime(),cb=new Date(b.created_at).getTime();return ca!==cb?ca-cb:(a.id<b.id?-1:1);}).forEach((s,i)=>{stuNumMap[s.id]=i+1;});
   const monthRecs=allStudents.map(s=>{
     const rec=tuitions.find(t=>t.student_id===s.id&&t.month===curMonth);
     const autoLessonCnt=countLessons(s.id,year,month);

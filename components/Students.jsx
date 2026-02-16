@@ -49,7 +49,8 @@ export default function Students({onDetail,menuBtn}){
       if(error){toast?.('학생 정보 저장에 실패했습니다','error');setSaving(false);return;}
       toast?.('학생 정보가 저장되었습니다');fetchStudents();
     }else{
-      const{error}=await supabase.from('students').insert({...full,color_index:students.length%8,fee_status:'unpaid',user_id:user.id});
+      const maxSort=students.reduce((m,s)=>Math.max(m,s.sort_order??-1),-1);
+      const{error}=await supabase.from('students').insert({...full,color_index:students.length%8,fee_status:'unpaid',user_id:user.id,sort_order:maxSort+1});
       if(error){toast?.('학생 추가에 실패했습니다','error');setSaving(false);return;}
       toast?.('학생이 추가되었습니다');fetchStudents();
     }
@@ -62,8 +63,8 @@ export default function Students({onDetail,menuBtn}){
 
   const activeStudents=students.filter(s=>!s.archived).sort((a,b)=>(a.sort_order??Infinity)-(b.sort_order??Infinity));
   const archivedStudents=students.filter(s=>!!s.archived);
-  /* Stable student numbers based on creation order */
-  const stuNumMap={};[...students].sort((a,b)=>{const ca=new Date(a.created_at).getTime(),cb=new Date(b.created_at).getTime();return ca!==cb?ca-cb:(a.id<b.id?-1:1);}).forEach((s,i)=>{stuNumMap[s.id]=i+1;});
+  /* Student numbers: sort_order 기반 (보관=유지, 순서변경=반영, 삭제=당겨짐) */
+  const stuNumMap={};[...students].sort((a,b)=>{const sa=a.sort_order??Infinity,sb=b.sort_order??Infinity;if(sa!==sb)return sa-sb;if(!!a.archived!==!!b.archived)return a.archived?1:-1;const ca=new Date(a.created_at).getTime(),cb=new Date(b.created_at).getTime();return ca!==cb?ca-cb:(a.id<b.id?-1:1);}).forEach((s,i)=>{stuNumMap[s.id]=i+1;});
   const filtered=(showArchived?archivedStudents:activeStudents).filter(s=>(s.name||'').includes(search)||(s.subject||'').includes(search)||(s.school||'').includes(search));
 
   const canDrag=!showArchived&&!search;
