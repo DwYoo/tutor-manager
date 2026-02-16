@@ -233,6 +233,9 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
     if(error){toast?.('학습 계획 수정에 실패했습니다','error');return;}
     setStudyPlans(p=>p.map(sp=>sp.id===id?{...sp,title:editStudyPlanTitle,body:editStudyPlanBody,is_shared:!editStudyPlanShared}:sp));setEditingStudyPlan(null);setEditStudyPlanTitle("");setEditStudyPlanBody("");
   };
+  const delStudyPlan=async(id)=>{if(!confirm('학습 계획을 삭제하시겠습니까?'))return;const{error}=await supabase.from('study_plans').delete().eq('id',id);if(error){toast?.('삭제에 실패했습니다','error');return;}setStudyPlans(p=>p.filter(sp=>sp.id!==id));toast?.('학습 계획이 삭제되었습니다');};
+  const delPlanComment=async(id)=>{if(!confirm('학습 리포트를 삭제하시겠습니까?'))return;const{error}=await supabase.from('reports').delete().eq('id',id);if(error){toast?.('삭제에 실패했습니다','error');return;}setPlanComments(p=>p.filter(c=>c.id!==id));toast?.('학습 리포트가 삭제되었습니다');};
+  const delReport=async(id)=>{if(!confirm('레포트를 삭제하시겠습니까?'))return;const{error}=await supabase.from('reports').delete().eq('id',id);if(error){toast?.('삭제에 실패했습니다','error');return;}setReports(p=>p.filter(r=>r.id!==id));toast?.('레포트가 삭제되었습니다');};
   const handleFileDrop=async(e)=>{e.preventDefault();setFileDrag(false);const files=e.dataTransfer?e.dataTransfer.files:e.target.files;if(!files||!files.length)return;setUploading(true);
     for(const file of files){
       const ext=file.name.split('.').pop().toLowerCase();
@@ -489,7 +492,7 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
                 <div style={{position:"absolute",left:-20+1,top:6,width:10,height:10,borderRadius:"50%",background:i===0?C.ac:C.bd}}/>
                 <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:18,borderLeft:i===0?"3px solid "+C.ac:"none"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-                    <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}><span style={{fontSize:14,fontWeight:600,color:C.tp}}>{r.title}</span>{r.is_shared?<span style={{background:C.as,color:C.ac,padding:"2px 8px",borderRadius:5,fontSize:10,fontWeight:600}}>공유됨</span>:<span style={{background:C.sfh,color:C.tt,padding:"2px 8px",borderRadius:5,fontSize:10}}>비공개</span>}</div>
+                    <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}><span style={{fontSize:14,fontWeight:600,color:C.tp}}>{r.title}</span>{r.is_shared?<span style={{background:C.as,color:C.ac,padding:"2px 8px",borderRadius:5,fontSize:10,fontWeight:600}}>공유됨</span>:<span style={{background:C.sfh,color:C.tt,padding:"2px 8px",borderRadius:5,fontSize:10}}>비공개</span>}{!isParent&&<button onClick={()=>delReport(r.id)} style={{background:"none",border:"none",fontSize:10,color:C.tt,cursor:"pointer",fontFamily:"inherit",padding:0,opacity:.6}}>삭제</button>}</div>
                     <span style={{fontSize:12,color:C.tt,flexShrink:0}}>{r.date}</span>
                   </div>
                   <div style={{fontSize:13,color:C.ts,lineHeight:1.7,whiteSpace:"pre-wrap"}}>{r.body}</div>
@@ -1047,7 +1050,7 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
                       <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
                         <span style={{fontSize:14,fontWeight:600,color:C.tp}}>{sp.title||"학습 계획"}</span>
                         {sp.is_shared?<span style={{background:C.as,color:C.ac,padding:"2px 8px",borderRadius:5,fontSize:10,fontWeight:600}}>공유됨</span>:<span style={{background:C.sfh,color:C.tt,padding:"2px 8px",borderRadius:5,fontSize:10}}>비공개</span>}
-                        {!isParent&&editingStudyPlan!==sp.id&&<button onClick={()=>{setEditingStudyPlan(sp.id);setEditStudyPlanTitle(sp.title||"");setEditStudyPlanBody(sp.body||"");setEditStudyPlanShared(!sp.is_shared);}} style={{background:"none",border:"none",fontSize:10,color:C.ac,cursor:"pointer",fontFamily:"inherit",padding:0}}>수정</button>}
+                        {!isParent&&editingStudyPlan!==sp.id&&<><button onClick={()=>{setEditingStudyPlan(sp.id);setEditStudyPlanTitle(sp.title||"");setEditStudyPlanBody(sp.body||"");setEditStudyPlanShared(!sp.is_shared);}} style={{background:"none",border:"none",fontSize:10,color:C.ac,cursor:"pointer",fontFamily:"inherit",padding:0}}>수정</button><button onClick={()=>delStudyPlan(sp.id)} style={{background:"none",border:"none",fontSize:10,color:C.tt,cursor:"pointer",fontFamily:"inherit",padding:0,opacity:.6}}>삭제</button></>}
                       </div>
                       <span style={{fontSize:12,color:C.tt,flexShrink:0}}>{sp.date}</span>
                     </div>
@@ -1099,7 +1102,7 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
                       <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
                         <span style={{fontSize:14,fontWeight:600,color:C.tp}}>{c.title||"리포트"}</span>
                         {c.is_shared?<span style={{background:C.as,color:C.ac,padding:"2px 8px",borderRadius:5,fontSize:10,fontWeight:600}}>공유됨</span>:<span style={{background:C.sfh,color:C.tt,padding:"2px 8px",borderRadius:5,fontSize:10}}>비공개</span>}
-                        {!isParent&&editingComment!==c.id&&<button onClick={()=>{setEditingComment(c.id);setEditCommentTitle(c.title||"");setEditCommentText(c.body||"");setEditCommentShared(!c.is_shared);}} style={{background:"none",border:"none",fontSize:10,color:C.ac,cursor:"pointer",fontFamily:"inherit",padding:0}}>수정</button>}
+                        {!isParent&&editingComment!==c.id&&<><button onClick={()=>{setEditingComment(c.id);setEditCommentTitle(c.title||"");setEditCommentText(c.body||"");setEditCommentShared(!c.is_shared);}} style={{background:"none",border:"none",fontSize:10,color:C.ac,cursor:"pointer",fontFamily:"inherit",padding:0}}>수정</button><button onClick={()=>delPlanComment(c.id)} style={{background:"none",border:"none",fontSize:10,color:C.tt,cursor:"pointer",fontFamily:"inherit",padding:0,opacity:.6}}>삭제</button></>}
                       </div>
                       <span style={{fontSize:12,color:C.tt,flexShrink:0}}>{c.date}</span>
                     </div>
