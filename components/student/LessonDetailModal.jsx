@@ -15,6 +15,8 @@ export default function LessonDetailModal({ les, student, textbooks = [], onUpda
   const em = sh * 60 + sm + dur;
   const [tab, setTab] = useState("plan");
   const contentRef = useRef(null);
+  const planSharedRef = useRef(null);
+  const feedbackRef = useRef(null);
   const [topic, setTopic] = useState(les.top ?? les.topic ?? "");
   const [content, setContent] = useState(les.content || "");
   const [feedback, setFeedback] = useState(les.feedback || "");
@@ -91,9 +93,15 @@ export default function LessonDetailModal({ les, student, textbooks = [], onUpda
 
           {tab === "feedback" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              {textbooks.length>0&&(<div style={{marginBottom:0}}>
+                <label style={ls}>교재</label>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                  {textbooks.map(tb=>(<button key={tb.id} onClick={()=>{const ta=feedbackRef.current;if(!ta)return;const pos=ta.selectionStart||feedback.length;const txt=`[${tb.title}] `;insertViaExec(ta,txt,pos,pos);setFeedback(ta.value);markDirty();}} style={{padding:"4px 10px",borderRadius:6,border:"1px solid "+C.bd,background:C.sf,color:C.ts,fontSize:11,fontWeight:500,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:4}}>📚 {tb.title}</button>))}
+                </div>
+              </div>)}
               <div>
                 <label style={ls}>피드백 <span style={{ color: C.ac, fontWeight: 600 }}>(공유용)</span></label>
-                <textarea className="ldm-textarea" value={feedback} onChange={e => { setFeedback(e.target.value); markDirty(); }} onKeyDown={e => bk(e, feedback, setFeedback, markDirty)} style={{ ...is, minHeight: 120, resize: "vertical", lineHeight: 1.6 }} placeholder="학생 이해도, 태도, 개선점..." />
+                <textarea ref={feedbackRef} className="ldm-textarea" value={feedback} onChange={e => { setFeedback(e.target.value); markDirty(); }} onKeyDown={e => bk(e, feedback, setFeedback, markDirty)} style={{ ...is, minHeight: 120, resize: "vertical", lineHeight: 1.6 }} placeholder="학생 이해도, 태도, 개선점..." />
               </div>
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
@@ -204,9 +212,15 @@ export default function LessonDetailModal({ les, student, textbooks = [], onUpda
 
           {tab === "plan" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              {textbooks.length>0&&(<div style={{marginBottom:0}}>
+                <label style={ls}>교재</label>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                  {textbooks.map(tb=>(<button key={tb.id} onClick={()=>{const ta=planSharedRef.current;if(!ta)return;const pos=ta.selectionStart||planShared.length;const txt=`[${tb.title}] `;insertViaExec(ta,txt,pos,pos);setPlanShared(ta.value);markDirty();}} style={{padding:"4px 10px",borderRadius:6,border:"1px solid "+C.bd,background:C.sf,color:C.ts,fontSize:11,fontWeight:500,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:4}}>📚 {tb.title}</button>))}
+                </div>
+              </div>)}
               <div>
                 <label style={{ ...ls, color: C.ac, fontWeight: 600 }}>수업 계획 <span style={{ fontWeight: 400 }}>(공유용)</span></label>
-                <textarea className="ldm-textarea" value={planShared} onChange={e => { setPlanShared(e.target.value); markDirty(); }} onKeyDown={e => bk(e, planShared, setPlanShared, markDirty)} style={{ ...is, minHeight: 100, resize: "vertical", lineHeight: 1.6 }} placeholder="수업 목표, 진도, 준비물..." />
+                <textarea ref={planSharedRef} className="ldm-textarea" value={planShared} onChange={e => { setPlanShared(e.target.value); markDirty(); }} onKeyDown={e => bk(e, planShared, setPlanShared, markDirty)} style={{ ...is, minHeight: 100, resize: "vertical", lineHeight: 1.6 }} placeholder="수업 목표, 진도, 준비물..." />
               </div>
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>

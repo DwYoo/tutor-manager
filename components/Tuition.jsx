@@ -109,16 +109,19 @@ export default function Tuition({menuBtn}){
       amount:r.paidAmount,
       status:autoStatus(r.paidAmount,r.totalDue),
       memo:r.record.memo||"",
+      fee_per_class:r.student.fee_per_class||0,
     });
   };
   const cancelEdit=()=>{setEditId(null);setEditForm({});};
 
-  const saveEdit=async(studentId,autoFee)=>{
+  const saveEdit=async(studentId,lessonCnt)=>{
     if(saving)return;setSaving(true);
     try{
       const totalDueVal=parseInt(editForm.totalDue)||0;
       const carryoverVal=parseInt(editForm.carryover)||0;
-      const feeOverride=(totalDueVal!==(autoFee+carryoverVal))?totalDueVal:null;
+      const editedFeePerClass=parseInt(editForm.fee_per_class)||0;
+      const editedAutoFee=editedFeePerClass*lessonCnt;
+      const feeOverride=(totalDueVal!==(editedAutoFee+carryoverVal))?totalDueVal:null;
       const existing=tuitions.find(t=>t.student_id===studentId&&t.month===curMonth);
       const payload={
         student_id:studentId,month:curMonth,
@@ -138,8 +141,9 @@ export default function Tuition({menuBtn}){
         const{data,error}=await supabase.from('tuition').insert(payload).select().single();
         if(!error&&data)setTuitions(p=>[...p,data]);
       }
-      await supabase.from('students').update({fee_status:editForm.status}).eq('id',studentId);
-      setStudents(p=>p.map(s=>s.id===studentId?{...s,fee_status:editForm.status}:s));
+      const feePerClass=parseInt(editForm.fee_per_class)||0;
+      await supabase.from('students').update({fee_status:editForm.status,fee_per_class:feePerClass}).eq('id',studentId);
+      setStudents(p=>p.map(s=>s.id===studentId?{...s,fee_status:editForm.status,fee_per_class:feePerClass}:s));
       setEditId(null);setEditForm({});
     }finally{setSaving(false);}
   };
@@ -196,7 +200,10 @@ export default function Tuition({menuBtn}){
                 return(
                   <tr key={s.id} className="tr" style={{borderBottom:"1px solid "+C.bl}}>
                     <td style={{padding:"10px 12px",fontWeight:600,color:C.tp}}>{s.name}</td>
-                    <td style={{padding:"10px 12px",color:C.ts}}>₩{(s.fee_per_class||0).toLocaleString()}</td>
+                    <td style={{padding:"10px 12px",color:C.ts}}>
+                      {isEditing?<input type="number" value={editForm.fee_per_class} onChange={e=>setEditForm(p=>({...p,fee_per_class:e.target.value}))} style={{...eis,width:80}}/>:
+                      <>₩{(s.fee_per_class||0).toLocaleString()}</>}
+                    </td>
                     <td style={{padding:"10px 12px",fontWeight:600}}>{r.lessonCnt}회</td>
                     <td style={{padding:"10px 12px",fontWeight:500,color:C.tp}}>₩{r.autoFee.toLocaleString()}</td>
                     <td style={{padding:"10px 12px"}}>
@@ -209,7 +216,7 @@ export default function Tuition({menuBtn}){
                       ):(
                         <div>
                           <span style={{fontWeight:700,color:C.tp}}>₩{r.totalDue.toLocaleString()}</span>
-                          {r.isOverridden&&<span onClick={()=>resetFee(s.id)} style={{marginLeft:4,fontSize:9,color:C.ac,cursor:"pointer",background:C.al,padding:"1px 4px",borderRadius:3}} title="자동계산으로 되돌리기">수동</span>}
+                          {r.isOverridden&&<button onClick={()=>resetFee(s.id)} style={{marginLeft:6,fontSize:9,color:"#fff",cursor:"pointer",background:C.ac,padding:"3px 8px",borderRadius:4,border:"none",fontWeight:600,fontFamily:"inherit",display:"inline-flex",alignItems:"center",gap:3}} title="자동계산으로 되돌리기">수동 ✕ 자동으로</button>}
                         </div>
                       )}
                     </td>
@@ -228,7 +235,7 @@ export default function Tuition({menuBtn}){
                     <td style={{padding:"10px 12px"}}>
                       {isEditing?(
                         <div style={{display:"flex",gap:4}}>
-                          <button disabled={saving} onClick={()=>saveEdit(s.id,r.autoFee)} style={{background:saving?"#999":C.pr,color:"#fff",border:"none",borderRadius:6,padding:"4px 10px",fontSize:10,fontWeight:600,cursor:saving?"not-allowed":"pointer",fontFamily:"inherit"}}>{saving?"저장 중...":"저장"}</button>
+                          <button disabled={saving} onClick={()=>saveEdit(s.id,r.lessonCnt)} style={{background:saving?"#999":C.pr,color:"#fff",border:"none",borderRadius:6,padding:"4px 10px",fontSize:10,fontWeight:600,cursor:saving?"not-allowed":"pointer",fontFamily:"inherit"}}>{saving?"저장 중...":"저장"}</button>
                           <button onClick={cancelEdit} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:6,padding:"4px 8px",fontSize:10,cursor:"pointer",fontFamily:"inherit"}}>취소</button>
                         </div>
                       ):(<button onClick={()=>startEdit(r)} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,fontSize:11,fontFamily:"inherit"}}>수정</button>)}
