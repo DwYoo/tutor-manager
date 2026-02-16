@@ -35,10 +35,6 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
   const [calMonth,setCalMonth]=useState(new Date());
   const [showNew,setShowNew]=useState(false);
   const [nT,setNT]=useState("");const [nB,setNB]=useState("");const [nS,setNS]=useState(false); // nS is "비공개" checkbox (true = private)
-  const [editingReport,setEditingReport]=useState(null);
-  const [editReportTitle,setEditReportTitle]=useState("");
-  const [editReportBody,setEditReportBody]=useState("");
-  const [editReportShared,setEditReportShared]=useState(false);
   const [wForm,setWForm]=useState({book:"",chapter:"",problem_num:"",reason:"",note:""});
   const [wFilter,setWFilter]=useState("");const [wPage,setWPage]=useState(0);const [wSearch,setWSearch]=useState("");const [wBulkMode,setWBulkMode]=useState(false);const [wSelected,setWSelected]=useState(new Set());
   const [wExpanded,setWExpanded]=useState(()=>{try{const s=localStorage.getItem("wExp_"+student.id);return s?JSON.parse(s):{};}catch{return{};}});
@@ -174,9 +170,6 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
   const wTimers=useRef({});
   const updWrong=(id,key,val)=>{setWrongs(p=>p.map(w=>w.id===id?{...w,[key]:val}:w));const tk=id+key;clearTimeout(wTimers.current[tk]);wTimers.current[tk]=setTimeout(async()=>{await supabase.from('wrong_answers').update({[key]:val}).eq('id',id);},500);};
   const addRp=async()=>{if(!nT.trim())return;const{data,error}=await supabase.from('reports').insert({student_id:s.id,title:nT,body:nB,is_shared:!nS,date:fd(new Date()),user_id:user.id}).select().single();if(error){toast?.('레포트 저장에 실패했습니다','error');return;}if(data){setReports(p=>[data,...p]);setNT("");setNB("");setNS(false);setShowNew(false);toast?.('레포트가 등록되었습니다');}};
-  const openEditReport=(r)=>{setEditingReport(r);setEditReportTitle(r.title);setEditReportBody(r.body||"");setEditReportShared(!r.is_shared);};
-  const saveEditReport=async()=>{if(!editingReport||!editReportTitle.trim())return;const{error}=await supabase.from('reports').update({title:editReportTitle,body:editReportBody,is_shared:!editReportShared}).eq('id',editingReport.id);if(error){toast?.('레포트 수정에 실패했습니다','error');return;}setReports(p=>p.map(r=>r.id===editingReport.id?{...r,title:editReportTitle,body:editReportBody,is_shared:!editReportShared}:r));setEditingReport(null);toast?.('레포트가 수정되었습니다');};
-  const delReport=async(id)=>{if(!confirm('이 기록을 삭제하시겠습니까?'))return;const{error}=await supabase.from('reports').delete().eq('id',id);if(error){toast?.('삭제에 실패했습니다','error');return;}setReports(p=>p.filter(r=>r.id!==id));toast?.('기록이 삭제되었습니다');};
   const addScore=async()=>{if(!scoreForm.score&&!scoreForm.grade)return;const ins={student_id:s.id,date:scoreForm.date,label:scoreForm.label,user_id:user.id};if(scoreForm.score)ins.score=parseInt(scoreForm.score);if(scoreForm.grade)ins.grade=parseInt(scoreForm.grade);let{data,error}=await supabase.from('scores').insert(ins).select().single();if(error&&scoreForm.grade){const{grade,...insNoGrade}=ins;({data,error}=await supabase.from('scores').insert(insNoGrade).select().single());}if(error){toast?.('성적 추가에 실패했습니다','error');return;}if(data){if(scoreForm.grade&&!data.grade)data.grade=parseInt(scoreForm.grade);setScores(p=>[...p,data]);setScoreForm({date:"",score:"",label:"",grade:""});setShowAddScore(false);toast?.('성적이 추가되었습니다');}};
   const openEditScore=(sc)=>{setEditScore(sc);setEditScoreForm({date:sc.date||"",score:sc.score!=null?String(sc.score):"",label:sc.label||"",grade:sc.grade!=null?String(sc.grade):""});};
   const saveEditScore=async()=>{if(!editScore||(!editScoreForm.score&&!editScoreForm.grade))return;const upd={date:editScoreForm.date,label:editScoreForm.label,score:editScoreForm.score?parseInt(editScoreForm.score):null,grade:editScoreForm.grade?parseInt(editScoreForm.grade):null};let{error}=await supabase.from('scores').update(upd).eq('id',editScore.id);if(error&&upd.grade!==undefined){const{grade,...updNoGrade}=upd;({error}=await supabase.from('scores').update(updNoGrade).eq('id',editScore.id));}if(error){toast?.('성적 수정에 실패했습니다','error');return;}setScores(p=>p.map(x=>x.id===editScore.id?{...x,...upd}:x));setEditScore(null);toast?.('성적이 수정되었습니다');};
@@ -226,13 +219,6 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
     if(error){toast?.('학습 계획 수정에 실패했습니다','error');return;}
     setStudyPlans(p=>p.map(sp=>sp.id===id?{...sp,title:editStudyPlanTitle,body:editStudyPlanBody,is_shared:!editStudyPlanShared}:sp));setEditingStudyPlan(null);setEditStudyPlanTitle("");setEditStudyPlanBody("");
   };
-  const deleteStudyPlan=async(id)=>{
-    if(!confirm('이 학습 계획을 삭제하시겠습니까?'))return;
-    const{error}=await supabase.from('study_plans').delete().eq('id',id);
-    if(error){toast?.('삭제에 실패했습니다','error');return;}
-    setStudyPlans(p=>p.filter(sp=>sp.id!==id));
-    toast?.('학습 계획이 삭제되었습니다');
-  };
   const handleFileDrop=async(e)=>{e.preventDefault();setFileDrag(false);const files=e.dataTransfer?e.dataTransfer.files:e.target.files;if(!files||!files.length)return;setUploading(true);
     for(const file of files){
       const ext=file.name.split('.').pop().toLowerCase();
@@ -253,21 +239,13 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
     const url=window.location.origin+"/share/"+tk;
     try{await navigator.clipboard.writeText(url);setShareCopied(true);setTimeout(()=>setShareCopied(false),2000);}catch{prompt("링크를 복사하세요:",url);}
   };
-  const revokeShareLink=async()=>{
-    if(!shareToken)return;
-    if(!confirm('공유 링크를 삭제하시겠습니까? 기존 링크는 더 이상 작동하지 않습니다.'))return;
-    const{error}=await supabase.from('students').update({share_token:null}).eq('id',s.id);
-    if(error){toast?.('링크 삭제에 실패했습니다','error');return;}
-    setShareToken(null);
-    toast?.('공유 링크가 삭제되었습니다');
-  };
   const addTextbook=async()=>{if(!tbForm.title.trim())return;const{data,error}=await supabase.from('textbooks').insert({student_id:s.id,title:tbForm.title.trim(),publisher:tbForm.publisher.trim(),subject:tbForm.subject.trim(),chapters:[],user_id:user.id}).select().single();if(error){toast?.('교재 추가에 실패했습니다','error');return;}if(data){setTextbooks(p=>[data,...p]);setTbForm({title:"",publisher:"",subject:""});toast?.('교재가 등록되었습니다');}};
   const delTextbook=async(id)=>{const{error}=await supabase.from('textbooks').delete().eq('id',id);if(error){toast?.('교재 삭제에 실패했습니다','error');return;}setTextbooks(p=>p.filter(t=>t.id!==id));toast?.('교재가 삭제되었습니다');};
   const saveEditTb=async()=>{if(!editTb||!editTbForm.title.trim())return;const{error}=await supabase.from('textbooks').update({title:editTbForm.title.trim(),publisher:editTbForm.publisher.trim(),subject:editTbForm.subject.trim()}).eq('id',editTb.id);if(error){toast?.('교재 수정에 실패했습니다','error');return;}setTextbooks(p=>p.map(t=>t.id===editTb.id?{...t,title:editTbForm.title.trim(),publisher:editTbForm.publisher.trim(),subject:editTbForm.subject.trim()}:t));setEditTb(null);toast?.('교재가 수정되었습니다');};
   const addChapter=async(tbId,name)=>{if(!name.trim())return;const tb=textbooks.find(t=>t.id===tbId);if(!tb)return;const chs=[...(tb.chapters||[]),name.trim()];const{error}=await supabase.from('textbooks').update({chapters:chs}).eq('id',tbId);if(error){toast?.('단원 추가에 실패했습니다','error');return;}setTextbooks(p=>p.map(t=>t.id===tbId?{...t,chapters:chs}:t));};
   const delChapter=async(tbId,idx)=>{const tb=textbooks.find(t=>t.id===tbId);if(!tb)return;const chs=[...(tb.chapters||[])];chs.splice(idx,1);const{error}=await supabase.from('textbooks').update({chapters:chs}).eq('id',tbId);if(error){toast?.('단원 삭제에 실패했습니다','error');return;}setTextbooks(p=>p.map(t=>t.id===tbId?{...t,chapters:chs}:t));};
   const updLesDetail=async(id,data)=>{
-    const u={};if(data.top!==undefined)u.topic=data.top;if(data.content!==undefined)u.content=data.content;if(data.feedback!==undefined)u.feedback=data.feedback;if(data.tMemo!==undefined)u.private_memo=data.tMemo;if(data.planShared!==undefined)u.plan_shared=data.planShared;if(data.planPrivate!==undefined)u.plan_private=data.planPrivate;if(data.isShared!==undefined)u.is_shared=data.isShared;
+    const u={};if(data.top!==undefined)u.topic=data.top;if(data.content!==undefined)u.content=data.content;if(data.feedback!==undefined)u.feedback=data.feedback;if(data.tMemo!==undefined)u.private_memo=data.tMemo;if(data.planShared!==undefined)u.plan_shared=data.planShared;if(data.planPrivate!==undefined)u.plan_private=data.planPrivate;
     if(Object.keys(u).length){const{error}=await supabase.from('lessons').update(u).eq('id',id);if(error){toast?.('수업 정보 저장에 실패했습니다','error');return;}}
     // Sync homework to DB
     const les=lessons.find(l=>l.id===id);
@@ -308,7 +286,6 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
         </div>
         <div className="share-btns" style={{display:"flex",alignItems:"center",gap:10}}>
           <button onClick={copyShareLink} style={{background:shareCopied?C.sb:C.as,color:shareCopied?C.su:C.ac,border:"1px solid "+(shareCopied?"#BBF7D0":C.al),borderRadius:8,padding:"6px 12px",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",transition:"all .2s"}}>{shareCopied?"링크 복사됨":"공유 링크"}</button>
-          {shareToken&&<button onClick={revokeShareLink} style={{background:C.db,color:C.dn,border:"1px solid #FECACA",borderRadius:8,padding:"6px 12px",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",transition:"all .2s"}}>링크 삭제</button>}
         </div>
       </div>
 
@@ -492,23 +469,13 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
               <div style={{position:"absolute",left:5,top:8,bottom:8,width:2,background:C.bl}}/>
               {reports.filter(r=>isParent?r.is_shared:true).map((r,i)=>(<div key={r.id} style={{position:"relative",marginBottom:16}}>
                 <div style={{position:"absolute",left:-20+1,top:6,width:10,height:10,borderRadius:"50%",background:i===0?C.ac:C.bd}}/>
-                {editingReport?.id===r.id?(<div style={{background:C.sf,border:"2px solid "+C.ac,borderRadius:14,padding:18}}>
-                  <div style={{marginBottom:10}}><label style={ls}>제목</label><input value={editReportTitle} onChange={e=>setEditReportTitle(e.target.value)} style={is} placeholder="제목"/></div>
-                  <div style={{marginBottom:10}}><label style={ls}>내용</label><textarea value={editReportBody} onChange={e=>setEditReportBody(e.target.value)} style={{...is,height:120,resize:"vertical"}} placeholder="내용"/></div>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                    <label style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:C.ts,cursor:"pointer"}}><input type="checkbox" checked={editReportShared} onChange={e=>setEditReportShared(e.target.checked)}/><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>비공개</label>
-                    <div style={{display:"flex",gap:8}}><button onClick={()=>setEditingReport(null)} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:8,padding:"8px 14px",fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>취소</button><button onClick={saveEditReport} style={{background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"8px 16px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>저장</button></div>
-                  </div>
-                </div>):(<div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:18,borderLeft:i===0?"3px solid "+C.ac:"none"}}>
+                <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:18,borderLeft:i===0?"3px solid "+C.ac:"none"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
                     <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}><span style={{fontSize:14,fontWeight:600,color:C.tp}}>{r.title}</span>{r.is_shared?<span style={{background:C.as,color:C.ac,padding:"2px 8px",borderRadius:5,fontSize:10,fontWeight:600}}>공유됨</span>:<span style={{background:C.sfh,color:C.tt,padding:"2px 8px",borderRadius:5,fontSize:10}}>비공개</span>}</div>
-                    <div style={{display:"flex",alignItems:"center",gap:8}}>
-                      <span style={{fontSize:12,color:C.tt,flexShrink:0}}>{r.date}</span>
-                      {!isParent&&(<><button onClick={()=>openEditReport(r)} style={{background:"none",border:"none",color:C.ac,cursor:"pointer",fontSize:11,fontFamily:"inherit",padding:"2px 6px"}}>수정</button><button onClick={()=>delReport(r.id)} style={{background:"none",border:"none",color:C.dn,cursor:"pointer",fontSize:11,fontFamily:"inherit",padding:"2px 6px"}}>삭제</button></>)}
-                    </div>
+                    <span style={{fontSize:12,color:C.tt,flexShrink:0}}>{r.date}</span>
                   </div>
                   <div style={{fontSize:13,color:C.ts,lineHeight:1.7,whiteSpace:"pre-wrap"}}>{r.body}</div>
-                </div>)}
+                </div>
               </div>))}
             </div>
           )}
@@ -1047,7 +1014,7 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
                       <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
                         <span style={{fontSize:14,fontWeight:600,color:C.tp}}>{sp.title||"학습 계획"}</span>
                         {sp.is_shared?<span style={{background:C.as,color:C.ac,padding:"2px 8px",borderRadius:5,fontSize:10,fontWeight:600}}>공유됨</span>:<span style={{background:C.sfh,color:C.tt,padding:"2px 8px",borderRadius:5,fontSize:10}}>비공개</span>}
-                        {!isParent&&editingStudyPlan!==sp.id&&(<><button onClick={()=>{setEditingStudyPlan(sp.id);setEditStudyPlanTitle(sp.title||"");setEditStudyPlanBody(sp.body||"");setEditStudyPlanShared(!sp.is_shared);}} style={{background:"none",border:"none",fontSize:10,color:C.ac,cursor:"pointer",fontFamily:"inherit",padding:0}}>수정</button><button onClick={()=>deleteStudyPlan(sp.id)} style={{background:"none",border:"none",fontSize:10,color:C.dn,cursor:"pointer",fontFamily:"inherit",padding:0}}>삭제</button></>)}
+                        {!isParent&&editingStudyPlan!==sp.id&&<button onClick={()=>{setEditingStudyPlan(sp.id);setEditStudyPlanTitle(sp.title||"");setEditStudyPlanBody(sp.body||"");setEditStudyPlanShared(!sp.is_shared);}} style={{background:"none",border:"none",fontSize:10,color:C.ac,cursor:"pointer",fontFamily:"inherit",padding:0}}>수정</button>}
                       </div>
                       <span style={{fontSize:12,color:C.tt,flexShrink:0}}>{sp.date}</span>
                     </div>
