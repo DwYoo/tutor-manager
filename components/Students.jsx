@@ -62,6 +62,8 @@ export default function Students({onDetail,menuBtn}){
 
   const activeStudents=students.filter(s=>!s.archived).sort((a,b)=>(a.sort_order??Infinity)-(b.sort_order??Infinity));
   const archivedStudents=students.filter(s=>!!s.archived);
+  /* Stable student numbers based on creation order */
+  const stuNumMap={};[...students].sort((a,b)=>{const ca=new Date(a.created_at).getTime(),cb=new Date(b.created_at).getTime();return ca!==cb?ca-cb:(a.id<b.id?-1:1);}).forEach((s,i)=>{stuNumMap[s.id]=i+1;});
   const filtered=(showArchived?archivedStudents:activeStudents).filter(s=>(s.name||'').includes(search)||(s.subject||'').includes(search)||(s.school||'').includes(search));
 
   const canDrag=!showArchived&&!search;
@@ -111,7 +113,7 @@ export default function Students({onDetail,menuBtn}){
               <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14}}>
                 <div style={{width:40,height:40,borderRadius:10,background:col.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:700,color:col.t}}>{(s.name||"?")[0]}</div>
                 <div style={{flex:1}}>
-                  <div style={{fontSize:15,fontWeight:700,color:C.tp}}>{s.name}</div>
+                  <div style={{fontSize:15,fontWeight:700,color:C.tp}}><span style={{color:C.tt,fontWeight:400,fontSize:11,marginRight:4}}>{stuNumMap[s.id]}</span>{s.name}</div>
                   <div style={{display:"flex",gap:4,marginTop:2}}>
                     <span style={{background:col.bg,color:col.t,padding:"2px 8px",borderRadius:5,fontSize:11,fontWeight:600}}>{s.subject}</span>
                     <span style={{background:C.sfh,color:C.ts,padding:"2px 8px",borderRadius:5,fontSize:11}}>{s.grade}</span>
