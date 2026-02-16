@@ -167,8 +167,8 @@ export default function Tuition({menuBtn}){
     const d=new Date();
     setReceiptData(r);
     setRcptForm({
-      serialNo:`${year}.${p2(month)}-${p2((idx??0)+1)}`,period:`${year}년 ${month}월`,
-      regNo:(()=>{try{return localStorage.getItem('rcpt-regNo')||'';}catch{return '';}})(),
+      serialNo:`${String(year).slice(-2)}${p2(month)}-${p2((idx??0)+1)}`,period:`${year}년 ${month}월`,
+      regNo:p2((idx??0)+1),
       name:r.student.name||'',birthDate:'',subject:r.student.subject||'',
       tuitionFee:String(r.paidAmount||0),
       etcLabel1:'',etcAmt1:'',etcLabel2:'',etcAmt2:'',
@@ -178,7 +178,7 @@ export default function Tuition({menuBtn}){
   };
   const printReceipt=()=>{
     const f=rcptForm;
-    try{if(f.tutorName)localStorage.setItem('rcpt-tutor',f.tutorName);if(f.regNo)localStorage.setItem('rcpt-regNo',f.regNo);}catch{}
+    try{if(f.tutorName)localStorage.setItem('rcpt-tutor',f.tutorName);}catch{}
     const tFee=parseInt(f.tuitionFee)||0;
     const e1=parseInt(f.etcAmt1)||0;
     const e2=parseInt(f.etcAmt2)||0;
@@ -368,7 +368,7 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
               <div><label style={rls}>성명</label><input value={rcptForm.name||''} onChange={e=>setRcptForm(p=>({...p,name:e.target.value}))} style={ris}/></div>
               <div><label style={rls}>교습과목</label><input value={rcptForm.subject||''} onChange={e=>setRcptForm(p=>({...p,subject:e.target.value}))} style={ris}/></div>
-              <div><label style={rls}>등록번호</label><input value={rcptForm.regNo||''} onChange={e=>setRcptForm(p=>({...p,regNo:e.target.value}))} style={ris} placeholder="교습자 등록번호 (자동 저장)"/></div>
+              <div><label style={rls}>등록번호</label><input value={rcptForm.regNo||''} readOnly style={{...ris,background:C.sfh,color:C.tt}}/></div>
               <div><label style={rls}>생년월일</label><input value={rcptForm.birthDate||''} onChange={e=>setRcptForm(p=>({...p,birthDate:e.target.value}))} style={ris} placeholder="선택사항"/></div>
             </div>
             <div style={{fontSize:12,fontWeight:600,color:C.tt,marginBottom:8,borderBottom:"1px solid "+C.bd,paddingBottom:4}}>납부 명세</div>
