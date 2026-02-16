@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
@@ -29,6 +29,9 @@ export default function Tuition({menuBtn}){
   const[rcptUploading,setRcptUploading]=useState(false);
   const[rcptDragOver,setRcptDragOver]=useState(false);
   const[sealImg,setSealImg]=useState(()=>{try{return localStorage.getItem('rcpt-seal')||'';}catch{return '';}});
+  const[showSignPad,setShowSignPad]=useState(false);
+  const signCanvasRef=useRef(null);
+  const signDrawing=useRef(false);
   const[hiddenStudents,setHiddenStudents]=useState(()=>{try{return JSON.parse(localStorage.getItem('tuition-hidden')||'{}');}catch{return{};}});
   const[showHidden,setShowHidden]=useState(false);
 
@@ -582,18 +585,33 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
               <input value={rcptForm.tutorName||''} onChange={e=>setRcptForm(p=>({...p,tutorName:e.target.value}))} style={ris} placeholder="이름 또는 학원명 (자동 저장)"/>
             </div>
             <div style={{marginBottom:24}}>
-              <label style={rls}>인감 / 서명 이미지</label>
-              <div style={{display:"flex",alignItems:"center",gap:10}}>
-                {sealImg?<>
-                  <img src={sealImg} style={{width:40,height:40,objectFit:"contain",border:"1px solid "+C.bd,borderRadius:6,padding:2,background:"#fff"}} alt="인감"/>
-                  <button onClick={()=>{setSealImg('');try{localStorage.removeItem('rcpt-seal');}catch{}}} style={{background:"none",border:"1px solid "+C.bd,borderRadius:6,padding:"4px 10px",fontSize:11,cursor:"pointer",color:C.ts,fontFamily:"inherit"}}>삭제</button>
-                </>:
+              <label style={rls}>인감 / 서명</label>
+              {sealImg?<div style={{display:"flex",alignItems:"center",gap:10}}>
+                <img src={sealImg} style={{width:48,height:48,objectFit:"contain",border:"1px solid "+C.bd,borderRadius:6,padding:2,background:"#fff"}} alt="인감"/>
+                <button onClick={()=>{setSealImg('');try{localStorage.removeItem('rcpt-seal');}catch{}}} style={{background:"none",border:"1px solid "+C.bd,borderRadius:6,padding:"4px 10px",fontSize:11,cursor:"pointer",color:C.ts,fontFamily:"inherit"}}>삭제</button>
+                <span style={{fontSize:10,color:C.tt}}>자동 적용 중</span>
+              </div>:showSignPad?<div>
+                <canvas ref={el=>{signCanvasRef.current=el;if(el&&!el._init){el._init=true;const ctx=el.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,el.width,el.height);ctx.strokeStyle='#000';ctx.lineWidth=2;ctx.lineCap='round';ctx.lineJoin='round';
+                  const getPos=(e)=>{const r=el.getBoundingClientRect();const t=e.touches?e.touches[0]:e;return{x:t.clientX-r.left,y:t.clientY-r.top};};
+                  const onDown=(e)=>{e.preventDefault();signDrawing.current=true;const p=getPos(e);ctx.beginPath();ctx.moveTo(p.x,p.y);};
+                  const onMove=(e)=>{if(!signDrawing.current)return;e.preventDefault();const p=getPos(e);ctx.lineTo(p.x,p.y);ctx.stroke();};
+                  const onUp=()=>{signDrawing.current=false;};
+                  el.addEventListener('mousedown',onDown);el.addEventListener('mousemove',onMove);el.addEventListener('mouseup',onUp);el.addEventListener('mouseleave',onUp);
+                  el.addEventListener('touchstart',onDown,{passive:false});el.addEventListener('touchmove',onMove,{passive:false});el.addEventListener('touchend',onUp);}}}
+                  width={240} height={100} style={{border:"1px solid "+C.bd,borderRadius:8,cursor:"crosshair",background:"#fff",display:"block",touchAction:"none"}}/>
+                <div style={{display:"flex",gap:8,marginTop:8}}>
+                  <button onClick={()=>{const el=signCanvasRef.current;if(!el)return;const ctx=el.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,el.width,el.height);}} style={{background:C.sfh,border:"1px solid "+C.bd,borderRadius:6,padding:"4px 10px",fontSize:11,cursor:"pointer",color:C.ts,fontFamily:"inherit"}}>지우기</button>
+                  <button onClick={()=>{const el=signCanvasRef.current;if(!el)return;const d=el.toDataURL('image/png');setSealImg(d);try{localStorage.setItem('rcpt-seal',d);}catch{}setShowSignPad(false);}} style={{background:C.pr,color:"#fff",border:"none",borderRadius:6,padding:"4px 12px",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>저장</button>
+                  <button onClick={()=>setShowSignPad(false)} style={{background:"none",border:"1px solid "+C.bd,borderRadius:6,padding:"4px 10px",fontSize:11,cursor:"pointer",color:C.ts,fontFamily:"inherit"}}>취소</button>
+                </div>
+              </div>:<div style={{display:"flex",alignItems:"center",gap:8}}>
+                <button onClick={()=>setShowSignPad(true)} style={{background:C.sfh,border:"1px solid "+C.bd,borderRadius:6,padding:"6px 12px",fontSize:11,cursor:"pointer",color:C.tp,fontFamily:"inherit"}}>서명 그리기</button>
                 <label style={{background:C.sfh,border:"1px solid "+C.bd,borderRadius:6,padding:"6px 12px",fontSize:11,cursor:"pointer",color:C.tp,fontFamily:"inherit"}}>
                   이미지 등록
                   <input type="file" accept="image/*" style={{display:"none"}} onChange={e=>{const file=e.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>{const d=ev.target?.result;if(d){setSealImg(d);try{localStorage.setItem('rcpt-seal',d);}catch{}}};reader.readAsDataURL(file);e.target.value='';}}/>
-                </label>}
+                </label>
                 <span style={{fontSize:10,color:C.tt}}>한 번 등록하면 자동 적용</span>
-              </div>
+              </div>}
             </div>
             <div style={{display:"flex",justifyContent:"flex-end",gap:10}}>
               <button onClick={()=>setReceiptData(null)} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:8,padding:"10px 20px",fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>닫기</button>
