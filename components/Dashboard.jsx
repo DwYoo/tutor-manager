@@ -1,16 +1,20 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import LessonDetailModal from './student/LessonDetailModal'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { C, SC } from '@/components/Colors'
 import { p2, fd, DK, DKS, gwd, lessonOnDate } from '@/lib/utils'
 import { syncHomework } from '@/lib/homework'
+import { useShell } from '@/components/AppShell'
 const BN={prep:"다음 수업 준비",upcoming:"다가오는 수업",unrecorded:"기록 미완료",alerts:"주의 학생",weekChart:"주간 수업",studentList:"학생 근황",tuition:"수업료 요약",lessonRate:"수업 이행률",classHours:"수업시간 요약"};
 const DFL={left:["prep","upcoming","lessonRate"],right:["unrecorded","alerts","weekChart","classHours","tuition"],bottom:["studentList"],hidden:[]};
 
-export default function Dashboard({onNav,onDetail,menuBtn}){
+export default function Dashboard(){
+  const router=useRouter();
+  const{menuBtn}=useShell();
   const tog=menuBtn;
   const[students,setStudents]=useState([]);
   const[lessons,setLessons]=useState([]);
@@ -175,11 +179,11 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
                 <div style={{fontSize:10,color:C.tt,marginBottom:4}}>지난 수업</div>
                 <div style={{fontSize:12,fontWeight:600,color:C.tp}}>{last?.topic||last?.subject||"기록 없음"}</div>
               </div>
-              <div onClick={e=>{e.stopPropagation();onDetail(ns,{mainTab:"study",subTab:"homework"});}} style={{background:C.bg,borderRadius:8,padding:"10px 12px",cursor:"pointer"}}>
+              <div onClick={e=>{e.stopPropagation();router.push('/students/'+ns.id+'?mainTab=study&subTab=homework');}} style={{background:C.bg,borderRadius:8,padding:"10px 12px",cursor:"pointer"}}>
                 <div style={{fontSize:10,color:C.tt,marginBottom:4}}>내준 숙제</div>
                 <div style={{fontSize:12,fontWeight:600,color:hwTotal===0?C.tt:C.tp}}>{hwTotal===0?"없음":`${hwTotal}건`}</div>
               </div>
-              <div onClick={e=>{e.stopPropagation();onDetail(ns,{mainTab:"analysis",subTab:"scores"});}} style={{background:C.bg,borderRadius:8,padding:"10px 12px",cursor:"pointer"}}>
+              <div onClick={e=>{e.stopPropagation();router.push('/students/'+ns.id+'?mainTab=analysis&subTab=scores');}} style={{background:C.bg,borderRadius:8,padding:"10px 12px",cursor:"pointer"}}>
                 <div style={{fontSize:10,color:C.tt,marginBottom:4}}>최근 성적</div>
                 <div style={{fontSize:12,fontWeight:600,color:scoreTrend==="up"?C.su:scoreTrend==="down"?C.dn:C.tp}}>
                   {lastScore?`${lastScore.score}점 ${scoreTrend==="up"?"↑":scoreTrend==="down"?"↓":"→"}`:"기록 없음"}
@@ -201,7 +205,7 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
               <div style={{fontSize:12,fontWeight:600,color:C.ts,marginBottom:8}}>{day.dayLabel}</div>
               <div style={{display:"flex",flexDirection:"column",gap:6,overflowX:"auto",flexWrap:"nowrap",WebkitOverflowScrolling:"touch"}}>
                 {day.classes.map(l=>{const stu=getStu(l.student_id);const co=getCol(l.student_id);return(
-                  <div key={l.id} onClick={()=>stu&&onDetail(stu)} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderRadius:8,border:`1px solid ${C.bl}`,borderLeft:`3px solid ${co.b}`,cursor:"pointer",flexShrink:0}} className="hcard">
+                  <div key={l.id} onClick={()=>stu&&router.push('/students/'+stu.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderRadius:8,border:`1px solid ${C.bl}`,borderLeft:`3px solid ${co.b}`,cursor:"pointer",flexShrink:0}} className="hcard">
                     <div style={{fontSize:12,color:C.tt,fontWeight:500,minWidth:44}}>{p2(l.start_hour)}:{p2(l.start_min)}</div>
                     <div style={{width:24,height:24,borderRadius:6,background:co.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:co.t}}>{(stu?.name||"?")[0]}</div>
                     <div style={{fontSize:13,fontWeight:500,color:C.tp}}>{stu?.name||"-"}</div>
@@ -236,7 +240,7 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
         <h3 style={{fontSize:15,fontWeight:600,color:C.tp,marginBottom:12}}>주의가 필요한 학생</h3>
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
           {studentAlerts.slice(0,5).map(({student:s,alerts:al})=>{const co=SC[(s.color_index||0)%8];return(
-            <div key={s.id} onClick={()=>onDetail(s)} style={{display:"flex",alignItems:"flex-start",gap:8,padding:"10px 10px",borderRadius:8,border:`1px solid ${C.bl}`,cursor:"pointer"}} className="hcard">
+            <div key={s.id} onClick={()=>router.push('/students/'+s.id)} style={{display:"flex",alignItems:"flex-start",gap:8,padding:"10px 10px",borderRadius:8,border:`1px solid ${C.bl}`,cursor:"pointer"}} className="hcard">
               <div style={{width:24,height:24,borderRadius:6,background:co.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:co.t,flexShrink:0,marginTop:1}}>{(s.name||"?")[0]}</div>
               <div style={{flex:1}}>
                 <div style={{fontSize:12,fontWeight:600,color:C.tp,marginBottom:4}}>{s.name}</div>
@@ -249,7 +253,7 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
         </div>
       </div>);
     case 'weekChart': return(
-      <div onClick={()=>{if(!editMode)onNav("schedule");}} style={{background:C.sf,border:`1px solid ${C.bd}`,borderRadius:14,padding:20,cursor:"pointer"}} className="hcard">
+      <div onClick={()=>{if(!editMode)router.push('/schedule');}} style={{background:C.sf,border:`1px solid ${C.bd}`,borderRadius:14,padding:20,cursor:"pointer"}} className="hcard">
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
           <h3 style={{fontSize:15,fontWeight:600,color:C.tp,margin:0}}>주간 수업</h3>
           <div style={{display:"flex",alignItems:"center",gap:6}}>
@@ -281,13 +285,13 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
       <div style={{background:C.sf,border:`1px solid ${C.bd}`,borderRadius:14,padding:20}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
           <h3 style={{fontSize:15,fontWeight:600,color:C.tp}}>학생 근황</h3>
-          <button onClick={()=>onNav("students")} style={{fontSize:11,color:C.ac,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>전체보기 →</button>
+          <button onClick={()=>router.push('/students')} style={{fontSize:11,color:C.ac,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>전체보기 →</button>
         </div>
         {stuStat.length>0?(
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:10}}>
           {stuStat.map(({s,hwInc,recent,nc})=>{const co=SC[(s.color_index||0)%8];
             return(
-            <div key={s.id} onClick={()=>onDetail(s)} style={{padding:12,borderRadius:10,border:`1px solid ${C.bl}`,cursor:"pointer"}} className="hcard">
+            <div key={s.id} onClick={()=>router.push('/students/'+s.id)} style={{padding:12,borderRadius:10,border:`1px solid ${C.bl}`,cursor:"pointer"}} className="hcard">
               <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
                 <div style={{width:28,height:28,borderRadius:7,background:co.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:co.t}}>{(s.name||"?")[0]}</div>
                 <div style={{flex:1,minWidth:0}}>
@@ -303,7 +307,7 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
         )}
       </div>);}
     case 'tuition': return(
-      <div onClick={()=>onNav("tuition")} style={{background:C.sf,border:`1px solid ${C.bd}`,borderRadius:14,padding:"14px 20px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}} className="hcard">
+      <div onClick={()=>router.push('/tuition')} style={{background:C.sf,border:`1px solid ${C.bd}`,borderRadius:14,padding:"14px 20px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}} className="hcard">
         <div><span style={{fontSize:11,color:C.tt}}>월 수입</span><span style={{fontSize:13,fontWeight:600,color:C.tp,marginLeft:8}}>{totalFee>0?`₩${totalFee.toLocaleString()}`:"₩0"}</span></div>
         <div style={{width:1,height:20,background:C.bd}}/>
         <div><span style={{fontSize:11,color:C.tt}}>미수금</span><span style={{fontSize:13,fontWeight:600,color:unpaidAmount>0?C.dn:C.su,marginLeft:8}}>{unpaidAmount>0?`₩${unpaidAmount.toLocaleString()}`:"₩0"}</span></div>

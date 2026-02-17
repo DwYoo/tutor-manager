@@ -1,5 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/components/AuthProvider';
 import { C, SC } from '@/components/Colors';
 import { p2, m2s, bk, insertViaExec } from '@/lib/utils';
 const ls={display:"block",fontSize:12,fontWeight:500,color:C.tt,marginBottom:6};
@@ -9,6 +11,7 @@ const IcX=()=><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke
 const IcLock=()=><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>;
 
 export default function LessonDetailModal({ les, student, textbooks = [], onUpdate, onClose }) {
+  const { user } = useAuth();
   const col = SC[(student?.color_index ?? 0) % 8];
   const sh = les.sh ?? les.start_hour ?? 0, sm = les.sm ?? les.start_min ?? 0, dur = les.dur ?? les.duration ?? 0;
   const sub = les.sub ?? les.subject ?? "", rep = les.rep ?? les.is_recurring ?? false;
@@ -25,7 +28,8 @@ export default function LessonDetailModal({ les, student, textbooks = [], onUpda
   const [planShared, setPlanShared] = useState(les.planShared ?? les.plan_shared ?? "");
   const [planPrivate, setPlanPrivate] = useState(les.planPrivate ?? les.plan_private ?? "");
   const [files, setFiles] = useState(les.files || []);
-  const [newFileName, setNewFileName] = useState("");
+  const [fileDrag, setFileDrag] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [newHw, setNewHw] = useState("");
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -37,8 +41,27 @@ export default function LessonDetailModal({ les, student, textbooks = [], onUpda
   const addHw = () => { if (!newHw.trim()) return; setHw(p => [...p, { id: Date.now(), title: newHw, pct: 0, note: "" }]); setNewHw(""); markDirty(); };
   const delHw = id => { setHw(p => p.filter(h => h.id !== id)); markDirty(); };
   const updHw = (id, k, v) => { setHw(p => p.map(h => h.id === id ? { ...h, [k]: v } : h)); markDirty(); };
-  const addFile = () => { if (!newFileName.trim()) return; setFiles(p => [...p, { id: Date.now(), name: newFileName, type: newFileName.split(".").pop() || "file" }]); setNewFileName(""); markDirty(); };
-  const delFile = id => { setFiles(p => p.filter(f => f.id !== id)); markDirty(); };
+  const handleFileUpload = async (fileList) => {
+    if (!fileList?.length || !user?.id || !student?.id) return;
+    setUploading(true);
+    for (const file of fileList) {
+      const ext = file.name.split('.').pop().toLowerCase();
+      const ftype = ["pdf"].includes(ext) ? "pdf" : ["jpg","jpeg","png","gif","webp"].includes(ext) ? "img" : "file";
+      const path = `students/${student.id}/${Date.now()}_${file.name}`;
+      const { error: upErr } = await supabase.storage.from('files').upload(path, file);
+      if (upErr) continue;
+      const { data: urlData } = supabase.storage.from('files').getPublicUrl(path);
+      const { data, error } = await supabase.from('files').insert({ student_id: student.id, lesson_id: les.id, file_name: file.name, file_type: ftype, file_url: urlData.publicUrl, user_id: user.id }).select().single();
+      if (!error && data) { setFiles(p => [...p, data]); markDirty(); }
+    }
+    setUploading(false);
+  };
+  const handleFileDrop = async (e) => { e.preventDefault(); setFileDrag(false); await handleFileUpload(e.dataTransfer?.files); };
+  const handleFileInput = async (e) => { await handleFileUpload(e.target.files); e.target.value = ''; };
+  const delFile = async (id) => {
+    await supabase.from('files').delete().eq('id', id);
+    setFiles(p => p.filter(f => f.id !== id)); markDirty();
+  };
   const doSave = async () => { if (saving) return; setSaving(true); try { await onUpdate(les.id, { top: topic, content, feedback, tMemo, hw, planPrivate, planShared, files }); setDirty(false); onClose(); } catch(e) { /* error handled by parent toast */ } finally { setSaving(false); } };
 
   const tabs = [{ id: "plan", l: "계획" }, { id: "content", l: "수업 내용" }, { id: "feedback", l: "피드백" }, { id: "hw", l: "숙제" }, { id: "files", l: "자료" }];
@@ -186,24 +209,32 @@ export default function LessonDetailModal({ les, student, textbooks = [], onUpda
 
           {tab === "files" && (
             <div>
-              <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-                <input value={newFileName} onChange={e => setNewFileName(e.target.value)} onKeyDown={e => { if (e.key === "Enter") addFile(); }} style={{ ...is, flex: 1 }} placeholder="파일명 입력 (예: 연습문제.pdf)" />
-                <button onClick={addFile} style={{ background: C.pr, color: "#fff", border: "none", borderRadius: 8, padding: "9px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>추가</button>
+              <div onDragOver={e => { e.preventDefault(); setFileDrag(true); }} onDragLeave={() => setFileDrag(false)} onDrop={handleFileDrop}
+                style={{ border: "2px dashed " + (fileDrag ? C.ac : C.bd), borderRadius: 14, padding: uploading ? 20 : 24, textAlign: "center", marginBottom: 16, background: fileDrag ? C.as : C.sf, transition: "all .15s", cursor: "pointer", position: "relative" }}>
+                {uploading ? (
+                  <div style={{ fontSize: 13, color: C.ac, fontWeight: 500 }}>업로드 중...</div>
+                ) : (
+                  <label style={{ cursor: "pointer", display: "block" }}>
+                    <div style={{ fontSize: 20, marginBottom: 6 }}>{fileDrag ? "📥" : "📎"}</div>
+                    <div style={{ fontSize: 13, color: fileDrag ? C.ac : C.ts }}>{fileDrag ? "놓으면 업로드됩니다" : "파일을 드래그하거나 클릭하여 추가"}</div>
+                    <input type="file" multiple style={{ display: "none" }} onChange={handleFileInput} />
+                  </label>
+                )}
               </div>
               {files.length === 0 ? (
-                <div style={{ textAlign: "center", padding: 40, color: C.tt }}><div style={{ fontSize: 14 }}>등록된 자료가 없습니다</div></div>
+                <div style={{ textAlign: "center", padding: 24, color: C.tt }}><div style={{ fontSize: 14 }}>등록된 자료가 없습니다</div></div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {files.map(f => {
                     const icon = (f.file_type||f.type) === "pdf" ? "📄" : (f.file_type||f.type) === "img" ? "🖼️" : "📎";
                     return (
                       <div key={f.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", border: "1px solid " + C.bd, borderRadius: 10 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <span style={{ fontSize: 16 }}>{icon}</span>
-                          <span style={{ fontSize: 13, fontWeight: 500, color: C.tp }}>{(f.file_name||f.name)}</span>
-                          <span style={{ fontSize: 10, color: C.tt, background: C.sfh, padding: "1px 6px", borderRadius: 4 }}>{(f.file_type||f.type)}</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0 }}>
+                          <span style={{ fontSize: 16, flexShrink: 0 }}>{icon}</span>
+                          <span style={{ fontSize: 13, fontWeight: 500, color: C.tp, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.file_name || f.name}</span>
+                          {f.file_type && <span style={{ fontSize: 10, color: C.tt, background: C.sfh, padding: "1px 6px", borderRadius: 4, flexShrink: 0 }}>{f.file_type}</span>}
                         </div>
-                        <button onClick={() => delFile(f.id)} style={{ background: "none", border: "none", cursor: "pointer", color: C.tt, fontSize: 12 }}>✕</button>
+                        <button onClick={() => delFile(f.id)} style={{ background: "none", border: "none", cursor: "pointer", color: C.tt, fontSize: 12, flexShrink: 0, padding: 4 }}>✕</button>
                       </div>
                     );
                   })}

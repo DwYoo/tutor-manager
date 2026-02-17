@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback, useRef, Fragment } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, BarChart, Bar, Cell, ReferenceLine } from 'recharts';
@@ -9,6 +10,7 @@ import { C, SC } from '@/components/Colors';
 import { p2, fd, m2s, bk } from '@/lib/utils';
 import { syncHomework } from '@/lib/homework';
 import { exportStudentReportPDF } from '@/lib/export';
+import { useShell } from '@/components/AppShell';
 const REASON_COLORS=["#2563EB","#DC2626","#F59E0B","#16A34A","#8B5CF6","#EC4899","#06B6D4","#F97316"];
 const ls={display:"block",fontSize:12,fontWeight:500,color:C.tt,marginBottom:6};
 const is={width:"100%",padding:"9px 12px",borderRadius:8,border:"1px solid "+C.bd,fontSize:14,color:C.tp,background:C.sf,outline:"none",fontFamily:"inherit"};
@@ -17,7 +19,9 @@ const CustomTooltip=({active,payload})=>{if(!active||!payload?.length)return nul
 const ReasonTooltip=({active,payload})=>{if(!active||!payload?.length)return null;const d=payload[0].payload;return(<div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:10,padding:"8px 12px",boxShadow:"0 4px 12px rgba(0,0,0,.08)"}}><div style={{fontSize:11,color:C.tt,marginBottom:2}}>{d.name}</div><div style={{fontSize:14,fontWeight:700,color:d.fill||C.ac}}>{d.count}문항</div></div>);};
 const TruncTick=({x,y,payload,fill,maxLen=5})=>{const t=payload?.value||"";const d=t.length>maxLen?t.slice(0,maxLen)+"…":t;return(<text x={x} y={y+10} textAnchor="middle" fontSize={9} fill={fill}>{d}</text>);};
 
-export default function StudentDetail({ student, initialTab, onBack, menuBtn }) {
+export default function StudentDetail({ student, initialTab }) {
+  const router=useRouter();
+  const{menuBtn}=useShell();
   const{user}=useAuth();
   const toast=useToast();
   const s = student;
@@ -299,7 +303,7 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
       <div className="sd-header" style={{display:"flex",alignItems:"center",gap:16,marginBottom:24}}>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           {tog}
-          <button onClick={onBack} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,display:"flex",padding:4}}><IcBack/></button>
+          <button onClick={()=>router.push('/students')} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,display:"flex",padding:4}}><IcBack/></button>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:14,flex:1}}>
           <div style={{width:48,height:48,borderRadius:14,background:col.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,fontWeight:800,color:col.t}}>{(s.name||"?")[0]}</div>
