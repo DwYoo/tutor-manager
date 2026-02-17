@@ -110,21 +110,21 @@ export default function Dashboard(){
 
   const todayLabel=`${today.getFullYear()}년 ${today.getMonth()+1}월 ${today.getDate()}일 ${DK[today.getDay()]}요일`;
 
-  /* ── 수업 이행률 (월별 예정 vs 완료) ── */
+  /* ── 수업 이행률 (월별 전체 / 완료 / 예정) ── */
   const lessonRateData=(()=>{
     const dim=new Date(year,month,0).getDate();
     const todayDate=today.getDate();
-    let scheduled=0,completed=0;
+    let total=0,completed=0,upcoming=0;
     for(let d=1;d<=dim;d++){
       const dt=new Date(year,month-1,d);
       const dayLessons=lessons.filter(l=>l.student_id!=null&&l.status!=='cancelled'&&lessonOnDate(l,dt));
-      scheduled+=dayLessons.length;
-      if(d<=todayDate){
-        const done=dayLessons.filter(l=>l.content&&l.content.trim()!=='');
-        completed+=done.length;
+      total+=dayLessons.length;
+      if(d>todayDate){
+        upcoming+=dayLessons.length;
+      }else{
+        completed+=dayLessons.length;
       }
     }
-    const rate=scheduled>0?Math.round(completed/scheduled*100):0;
     // per-student breakdown
     const perStudent=activeStudents.slice(0,8).map(st=>{
       let sch=0,comp=0;
@@ -132,11 +132,11 @@ export default function Dashboard(){
         const dt=new Date(year,month-1,d);
         const dl=lessons.filter(l=>l.student_id===st.id&&l.status!=='cancelled'&&lessonOnDate(l,dt));
         sch+=dl.length;
-        if(d<=todayDate) comp+=dl.filter(l=>l.content&&l.content.trim()!=='').length;
+        if(d<=todayDate) comp+=dl.length;
       }
       return{name:(st.name||'?').slice(0,4),scheduled:sch,completed:comp};
     }).filter(x=>x.scheduled>0);
-    return{scheduled,completed,rate,perStudent};
+    return{total,completed,upcoming,perStudent};
   })();
 
   /* ── 수업시간 요약 (주간/월간) ── */
@@ -314,22 +314,21 @@ export default function Dashboard(){
       </div>);
     case 'lessonRate': return(
       <div style={{background:C.sf,border:`1px solid ${C.bd}`,borderRadius:14,padding:20}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-          <h3 style={{fontSize:15,fontWeight:600,color:C.tp,margin:0}}>{month}월 수업 이행률</h3>
-          <span style={{fontSize:13,fontWeight:700,color:lessonRateData.rate>=80?C.su:lessonRateData.rate>=50?C.wn:C.dn}}>{lessonRateData.rate}%</span>
+        <div style={{marginBottom:16}}>
+          <h3 style={{fontSize:15,fontWeight:600,color:C.tp,margin:0}}>{month}월 수업 현황</h3>
         </div>
         <div style={{display:"flex",gap:16,marginBottom:14}}>
           <div style={{flex:1,background:C.as,borderRadius:10,padding:"10px 14px",textAlign:"center"}}>
-            <div style={{fontSize:10,color:C.ac,marginBottom:2}}>예정</div>
-            <div style={{fontSize:18,fontWeight:700,color:C.ac}}>{lessonRateData.scheduled}</div>
+            <div style={{fontSize:10,color:C.ac,marginBottom:2}}>전체</div>
+            <div style={{fontSize:18,fontWeight:700,color:C.ac}}>{lessonRateData.total}</div>
           </div>
           <div style={{flex:1,background:C.sb,borderRadius:10,padding:"10px 14px",textAlign:"center"}}>
             <div style={{fontSize:10,color:C.su,marginBottom:2}}>완료</div>
             <div style={{fontSize:18,fontWeight:700,color:C.su}}>{lessonRateData.completed}</div>
           </div>
-          <div style={{flex:1,background:lessonRateData.scheduled-lessonRateData.completed>0?C.db:C.sb,borderRadius:10,padding:"10px 14px",textAlign:"center"}}>
-            <div style={{fontSize:10,color:lessonRateData.scheduled-lessonRateData.completed>0?C.dn:C.su,marginBottom:2}}>미기록</div>
-            <div style={{fontSize:18,fontWeight:700,color:lessonRateData.scheduled-lessonRateData.completed>0?C.dn:C.su}}>{lessonRateData.scheduled-lessonRateData.completed}</div>
+          <div style={{flex:1,background:C.as,borderRadius:10,padding:"10px 14px",textAlign:"center"}}>
+            <div style={{fontSize:10,color:C.ac,marginBottom:2}}>예정</div>
+            <div style={{fontSize:18,fontWeight:700,color:C.ac}}>{lessonRateData.upcoming}</div>
           </div>
         </div>
         {lessonRateData.perStudent.length>0&&(
