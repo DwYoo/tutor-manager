@@ -3,11 +3,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import LessonDetailModal from './student/LessonDetailModal'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { C, SC } from '@/components/Colors'
 import { p2, fd, DK, DKS, gwd, lessonOnDate } from '@/lib/utils'
 import { syncHomework } from '@/lib/homework'
-const BN={prep:"다음 수업 준비",upcoming:"다가오는 수업",unrecorded:"기록 미완료",alerts:"주의 학생",weekChart:"주간 수업",studentList:"학생 근황",tuition:"수업료 요약"};
-const DFL={left:["prep","upcoming"],right:["unrecorded","alerts","weekChart","tuition"],bottom:["studentList"],hidden:[]};
+const BN={prep:"다음 수업 준비",upcoming:"다가오는 수업",unrecorded:"기록 미완료",alerts:"주의 학생",weekChart:"주간 수업",studentList:"학생 근황",tuition:"수업료 요약",lessonRate:"수업 이행률",classHours:"수업시간 요약"};
+const DFL={left:["prep","upcoming","lessonRate"],right:["unrecorded","alerts","weekChart","classHours","tuition"],bottom:["studentList"],hidden:[]};
 
 export default function Dashboard({onNav,onDetail,menuBtn}){
   const tog=menuBtn;
@@ -104,6 +105,52 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
   activeStudents.forEach(s=>{const al=[];const stuHw=lessons.filter(l=>l.student_id===s.id).flatMap(l=>l.homework||[]);const recentHw=stuHw.slice(-10);if(recentHw.length>=2){const inc=recentHw.filter(h=>(h.completion_pct||0)<100).length;const rate=Math.round((1-inc/recentHw.length)*100);if(rate<50)al.push({type:"hw",label:`숙제 완료율 ${rate}%`,color:C.dn,bg:C.db});}const stuScores=scores.filter(sc=>sc.student_id===s.id).sort((a,b)=>(a.date||"").localeCompare(b.date||""));if(stuScores.length>=2){const cur=stuScores[stuScores.length-1].score,prev=stuScores[stuScores.length-2].score;if(cur<prev)al.push({type:"score",label:`성적 하락 ${prev}→${cur}`,color:C.wn,bg:C.wb});}if(al.length>0)studentAlerts.push({student:s,alerts:al});});
 
   const todayLabel=`${today.getFullYear()}년 ${today.getMonth()+1}월 ${today.getDate()}일 ${DK[today.getDay()]}요일`;
+
+  /* ── 수업 이행률 (월별 예정 vs 완료) ── */
+  const lessonRateData=(()=>{
+    const dim=new Date(year,month,0).getDate();
+    const todayDate=today.getDate();
+    let scheduled=0,completed=0;
+    for(let d=1;d<=dim;d++){
+      const dt=new Date(year,month-1,d);
+      const dayLessons=lessons.filter(l=>l.student_id!=null&&l.status!=='cancelled'&&lessonOnDate(l,dt));
+      scheduled+=dayLessons.length;
+      if(d<=todayDate){
+        const done=dayLessons.filter(l=>l.content&&l.content.trim()!=='');
+        completed+=done.length;
+      }
+    }
+    const rate=scheduled>0?Math.round(completed/scheduled*100):0;
+    // per-student breakdown
+    const perStudent=activeStudents.slice(0,8).map(st=>{
+      let sch=0,comp=0;
+      for(let d=1;d<=dim;d++){
+        const dt=new Date(year,month-1,d);
+        const dl=lessons.filter(l=>l.student_id===st.id&&l.status!=='cancelled'&&lessonOnDate(l,dt));
+        sch+=dl.length;
+        if(d<=todayDate) comp+=dl.filter(l=>l.content&&l.content.trim()!=='').length;
+      }
+      return{name:(st.name||'?').slice(0,4),scheduled:sch,completed:comp};
+    }).filter(x=>x.scheduled>0);
+    return{scheduled,completed,rate,perStudent};
+  })();
+
+  /* ── 수업시간 요약 (주간/월간) ── */
+  const classHoursData=(()=>{
+    const dim=new Date(year,month,0).getDate();
+    let monthMin=0;
+    for(let d=1;d<=dim;d++){
+      const dt=new Date(year,month-1,d);
+      monthMin+=lessons.filter(l=>l.student_id!=null&&l.status!=='cancelled'&&lessonOnDate(l,dt)).reduce((a,l)=>a+(l.duration||0),0);
+    }
+    let weekMin=0;
+    const thisWk=gwd(today);
+    thisWk.forEach(d=>{
+      weekMin+=lessons.filter(l=>l.student_id!=null&&l.status!=='cancelled'&&lessonOnDate(l,d)).reduce((a,l)=>a+(l.duration||0),0);
+    });
+    return{weekMin,weekH:Math.floor(weekMin/60),weekM:weekMin%60,monthMin,monthH:Math.floor(monthMin/60),monthM:monthMin%60};
+  })();
+  const RateTooltip=({active,payload})=>{if(!active||!payload?.length)return null;const d=payload[0].payload;return(<div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:10,padding:"10px 14px",boxShadow:"0 4px 12px rgba(0,0,0,.08)"}}><div style={{fontSize:12,fontWeight:600,color:C.tp,marginBottom:4}}>{d.name}</div><div style={{fontSize:11,color:C.ac}}>예정 {d.scheduled}회</div><div style={{fontSize:11,color:C.su}}>완료 {d.completed}회</div></div>);};
 
   /* ── Block content by ID ── */
   const getBlockContent=(id)=>{
@@ -260,6 +307,57 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
         <div><span style={{fontSize:11,color:C.tt}}>월 수입</span><span style={{fontSize:13,fontWeight:600,color:C.tp,marginLeft:8}}>{totalFee>0?`₩${totalFee.toLocaleString()}`:"₩0"}</span></div>
         <div style={{width:1,height:20,background:C.bd}}/>
         <div><span style={{fontSize:11,color:C.tt}}>미수금</span><span style={{fontSize:13,fontWeight:600,color:unpaidAmount>0?C.dn:C.su,marginLeft:8}}>{unpaidAmount>0?`₩${unpaidAmount.toLocaleString()}`:"₩0"}</span></div>
+      </div>);
+    case 'lessonRate': return(
+      <div style={{background:C.sf,border:`1px solid ${C.bd}`,borderRadius:14,padding:20}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+          <h3 style={{fontSize:15,fontWeight:600,color:C.tp,margin:0}}>{month}월 수업 이행률</h3>
+          <span style={{fontSize:13,fontWeight:700,color:lessonRateData.rate>=80?C.su:lessonRateData.rate>=50?C.wn:C.dn}}>{lessonRateData.rate}%</span>
+        </div>
+        <div style={{display:"flex",gap:16,marginBottom:14}}>
+          <div style={{flex:1,background:C.as,borderRadius:10,padding:"10px 14px",textAlign:"center"}}>
+            <div style={{fontSize:10,color:C.ac,marginBottom:2}}>예정</div>
+            <div style={{fontSize:18,fontWeight:700,color:C.ac}}>{lessonRateData.scheduled}</div>
+          </div>
+          <div style={{flex:1,background:C.sb,borderRadius:10,padding:"10px 14px",textAlign:"center"}}>
+            <div style={{fontSize:10,color:C.su,marginBottom:2}}>완료</div>
+            <div style={{fontSize:18,fontWeight:700,color:C.su}}>{lessonRateData.completed}</div>
+          </div>
+          <div style={{flex:1,background:lessonRateData.scheduled-lessonRateData.completed>0?C.db:C.sb,borderRadius:10,padding:"10px 14px",textAlign:"center"}}>
+            <div style={{fontSize:10,color:lessonRateData.scheduled-lessonRateData.completed>0?C.dn:C.su,marginBottom:2}}>미기록</div>
+            <div style={{fontSize:18,fontWeight:700,color:lessonRateData.scheduled-lessonRateData.completed>0?C.dn:C.su}}>{lessonRateData.scheduled-lessonRateData.completed}</div>
+          </div>
+        </div>
+        {lessonRateData.perStudent.length>0&&(
+          <div style={{overflow:"hidden"}}>
+            <ResponsiveContainer width="100%" height={140}>
+              <BarChart data={lessonRateData.perStudent} margin={{top:5,right:5,left:-20,bottom:0}}>
+                <CartesianGrid strokeDasharray="3 3" stroke={C.bl} vertical={false}/>
+                <XAxis dataKey="name" tick={{fontSize:10,fill:C.tt}} axisLine={false} tickLine={false}/>
+                <YAxis tick={{fontSize:10,fill:C.tt}} axisLine={false} tickLine={false} allowDecimals={false}/>
+                <Tooltip content={<RateTooltip/>}/>
+                <Bar dataKey="scheduled" fill={C.al} radius={[4,4,0,0]} barSize={14} name="예정"/>
+                <Bar dataKey="completed" fill={C.su} radius={[4,4,0,0]} barSize={14} name="완료"/>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </div>);
+    case 'classHours': return(
+      <div style={{background:C.sf,border:`1px solid ${C.bd}`,borderRadius:14,padding:20}}>
+        <h3 style={{fontSize:15,fontWeight:600,color:C.tp,margin:0,marginBottom:16}}>수업시간 요약</h3>
+        <div style={{display:"flex",gap:14}}>
+          <div style={{flex:1,background:"linear-gradient(135deg,"+C.as+" 0%,"+C.sf+" 100%)",border:"1px solid "+C.al,borderRadius:12,padding:16,textAlign:"center"}}>
+            <div style={{fontSize:11,color:C.ac,marginBottom:4,fontWeight:500}}>이번 주</div>
+            <div style={{fontSize:22,fontWeight:700,color:C.ac}}>{classHoursData.weekH}<span style={{fontSize:13,fontWeight:500}}>시간</span></div>
+            {classHoursData.weekM>0&&<div style={{fontSize:12,color:C.ts}}>{classHoursData.weekM}분</div>}
+          </div>
+          <div style={{flex:1,background:"linear-gradient(135deg,"+C.sb+" 0%,"+C.sf+" 100%)",border:"1px solid #BBF7D0",borderRadius:12,padding:16,textAlign:"center"}}>
+            <div style={{fontSize:11,color:C.su,marginBottom:4,fontWeight:500}}>{month}월 전체</div>
+            <div style={{fontSize:22,fontWeight:700,color:C.su}}>{classHoursData.monthH}<span style={{fontSize:13,fontWeight:500}}>시간</span></div>
+            {classHoursData.monthM>0&&<div style={{fontSize:12,color:C.ts}}>{classHoursData.monthM}분</div>}
+          </div>
+        </div>
       </div>);
     default: return null;
     }

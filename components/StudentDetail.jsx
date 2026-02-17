@@ -8,6 +8,7 @@ import { useToast } from '@/components/Toast';
 import { C, SC } from '@/components/Colors';
 import { p2, fd, m2s, bk } from '@/lib/utils';
 import { syncHomework } from '@/lib/homework';
+import { exportStudentReportPDF } from '@/lib/export';
 const REASON_COLORS=["#2563EB","#DC2626","#F59E0B","#16A34A","#8B5CF6","#EC4899","#06B6D4","#F97316"];
 const ls={display:"block",fontSize:12,fontWeight:500,color:C.tt,marginBottom:6};
 const is={width:"100%",padding:"9px 12px",borderRadius:8,border:"1px solid "+C.bd,fontSize:14,color:C.tp,background:C.sf,outline:"none",fontFamily:"inherit"};
@@ -90,6 +91,9 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
   const [standaloneFiles,setStandaloneFiles]=useState([]);
   const [shareToken,setShareToken]=useState(s.share_token||null);
   const [shareCopied,setShareCopied]=useState(false);
+  const [sharePerms,setSharePerms]=useState(s.share_permissions||{homework_edit:false,homework_view:true,scores_view:true,lessons_view:true,wrong_view:true,files_view:true,reports_view:true,plans_view:true});
+  const [showSharePerms,setShowSharePerms]=useState(false);
+  const [permSaving,setPermSaving]=useState(false);
   const [textbooks,setTextbooks]=useState([]);
   const [tbForm,setTbForm]=useState({title:"",publisher:"",subject:""});
   const [editTb,setEditTb]=useState(null);
@@ -260,6 +264,13 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
     const url=window.location.origin+"/share/"+tk;
     try{await navigator.clipboard.writeText(url);setShareCopied(true);setTimeout(()=>setShareCopied(false),2000);}catch{prompt("링크를 복사하세요:",url);}
   };
+  const saveSharePerms=async(perms)=>{
+    setPermSaving(true);
+    const{error}=await supabase.from('students').update({share_permissions:perms}).eq('id',s.id);
+    setPermSaving(false);
+    if(error){toast?.('권한 저장에 실패했습니다','error');return;}
+    setSharePerms(perms);toast?.('공유 권한이 저장되었습니다');
+  };
   const addTextbook=async()=>{if(!tbForm.title.trim())return;const{data,error}=await supabase.from('textbooks').insert({student_id:s.id,title:tbForm.title.trim(),publisher:tbForm.publisher.trim(),subject:tbForm.subject.trim(),chapters:[],user_id:user.id}).select().single();if(error){toast?.('교재 추가에 실패했습니다','error');return;}if(data){setTextbooks(p=>[data,...p]);setTbForm({title:"",publisher:"",subject:""});toast?.('교재가 등록되었습니다');}};
   const delTextbook=async(id)=>{const{error}=await supabase.from('textbooks').delete().eq('id',id);if(error){toast?.('교재 삭제에 실패했습니다','error');return;}setTextbooks(p=>p.filter(t=>t.id!==id));toast?.('교재가 삭제되었습니다');};
   const saveEditTb=async()=>{if(!editTb||!editTbForm.title.trim())return;const{error}=await supabase.from('textbooks').update({title:editTbForm.title.trim(),publisher:editTbForm.publisher.trim(),subject:editTbForm.subject.trim()}).eq('id',editTb.id);if(error){toast?.('교재 수정에 실패했습니다','error');return;}setTextbooks(p=>p.map(t=>t.id===editTb.id?{...t,title:editTbForm.title.trim(),publisher:editTbForm.publisher.trim(),subject:editTbForm.subject.trim()}:t));setEditTb(null);toast?.('교재가 수정되었습니다');};
@@ -297,9 +308,48 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
           </div>
         </div>
         <div className="share-btns" style={{display:"flex",alignItems:"center",gap:10}}>
+          <button onClick={()=>exportStudentReportPDF({student:s,scores,lessons,wrongs})} style={{background:C.sf,color:C.ts,border:"1px solid "+C.bd,borderRadius:8,padding:"6px 12px",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>PDF 리포트</button>
           <button onClick={copyShareLink} style={{background:shareCopied?C.sb:C.as,color:shareCopied?C.su:C.ac,border:"1px solid "+(shareCopied?"#BBF7D0":C.al),borderRadius:8,padding:"6px 12px",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",transition:"all .2s"}}>{shareCopied?"링크 복사됨":"공유 링크"}</button>
+          <button onClick={()=>setShowSharePerms(true)} style={{background:C.sf,color:C.ts,border:"1px solid "+C.bd,borderRadius:8,padding:"6px 12px",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>공유 설정</button>
         </div>
       </div>
+
+      {/* 공유 권한 설정 모달 */}
+      {showSharePerms&&(
+        <div onClick={()=>setShowSharePerms(false)} style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.3)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:C.sf,borderRadius:14,padding:24,width:"100%",maxWidth:400,boxShadow:"0 8px 30px rgba(0,0,0,.12)"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+              <h3 style={{fontSize:16,fontWeight:700,color:C.tp,margin:0}}>공유 링크 권한 설정</h3>
+              <button onClick={()=>setShowSharePerms(false)} style={{background:"none",border:"none",cursor:"pointer",fontSize:16,color:C.tt,fontFamily:"inherit"}}>✕</button>
+            </div>
+            <div style={{fontSize:12,color:C.ts,marginBottom:16,lineHeight:1.5}}>공유 링크에서 학부모/학생이 볼 수 있는 항목과 수정 가능 항목을 설정합니다.</div>
+            {[
+              {key:"lessons_view",label:"수업 이력 보기"},
+              {key:"homework_view",label:"숙제 현황 보기"},
+              {key:"homework_edit",label:"숙제 완료도 수정",desc:"학부모/학생이 직접 숙제 완료 퍼센트를 변경할 수 있습니다"},
+              {key:"scores_view",label:"성적 보기"},
+              {key:"wrong_view",label:"오답 노트 보기"},
+              {key:"reports_view",label:"학습 리포트 보기"},
+              {key:"plans_view",label:"학습 계획 보기"},
+              {key:"files_view",label:"자료실 보기"},
+            ].map(({key,label,desc})=>(
+              <div key={key} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"10px 0",borderBottom:"1px solid "+C.bl}}>
+                <label style={{display:"flex",alignItems:"center",gap:8,flex:1,cursor:"pointer"}}>
+                  <input type="checkbox" checked={!!sharePerms[key]} onChange={e=>{setSharePerms(p=>({...p,[key]:e.target.checked}));}} style={{width:16,height:16,cursor:"pointer",accentColor:C.ac,flexShrink:0}}/>
+                  <div>
+                    <div style={{fontSize:13,fontWeight:500,color:C.tp}}>{label}</div>
+                    {desc&&<div style={{fontSize:11,color:C.tt,marginTop:2}}>{desc}</div>}
+                  </div>
+                </label>
+              </div>
+            ))}
+            <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
+              <button onClick={()=>setShowSharePerms(false)} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:8,padding:"8px 16px",fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>취소</button>
+              <button disabled={permSaving} onClick={()=>saveSharePerms(sharePerms)} style={{background:permSaving?"#999":C.pr,color:"#fff",border:"none",borderRadius:8,padding:"8px 16px",fontSize:12,fontWeight:600,cursor:permSaving?"not-allowed":"pointer",fontFamily:"inherit"}}>{permSaving?"저장 중...":"저장"}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main tabs */}
       <div className="sd-tabs" style={{display:"flex",gap:4,marginBottom:4,borderBottom:"1px solid "+C.bd,paddingBottom:0}}>
