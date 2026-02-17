@@ -94,6 +94,7 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
   const [sharePerms,setSharePerms]=useState(s.share_permissions||{homework_edit:false,homework_view:true,scores_view:true,lessons_view:true,wrong_view:true,files_view:true,reports_view:true,plans_view:true});
   const [showSharePerms,setShowSharePerms]=useState(false);
   const [permSaving,setPermSaving]=useState(false);
+  useEffect(()=>{if(!showSharePerms)return;const h=e=>{if(e.key==="Escape")setShowSharePerms(false);};window.addEventListener("keydown",h);return()=>window.removeEventListener("keydown",h);},[showSharePerms]);
   const [textbooks,setTextbooks]=useState([]);
   const [tbForm,setTbForm]=useState({title:"",publisher:"",subject:""});
   const [editTb,setEditTb]=useState(null);
@@ -269,7 +270,7 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
     const{error}=await supabase.from('students').update({share_permissions:perms}).eq('id',s.id);
     setPermSaving(false);
     if(error){toast?.('권한 저장에 실패했습니다','error');return;}
-    setSharePerms(perms);toast?.('공유 권한이 저장되었습니다');
+    setSharePerms(perms);setShowSharePerms(false);toast?.('공유 권한이 저장되었습니다');
   };
   const addTextbook=async()=>{if(!tbForm.title.trim())return;const{data,error}=await supabase.from('textbooks').insert({student_id:s.id,title:tbForm.title.trim(),publisher:tbForm.publisher.trim(),subject:tbForm.subject.trim(),chapters:[],user_id:user.id}).select().single();if(error){toast?.('교재 추가에 실패했습니다','error');return;}if(data){setTextbooks(p=>[data,...p]);setTbForm({title:"",publisher:"",subject:""});toast?.('교재가 등록되었습니다');}};
   const delTextbook=async(id)=>{const{error}=await supabase.from('textbooks').delete().eq('id',id);if(error){toast?.('교재 삭제에 실패했습니다','error');return;}setTextbooks(p=>p.filter(t=>t.id!==id));toast?.('교재가 삭제되었습니다');};
