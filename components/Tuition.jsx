@@ -5,6 +5,7 @@ import { useAuth } from '@/components/AuthProvider';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { C, STATUS } from '@/components/Colors';
 import { p2, lessonOnDate } from '@/lib/utils';
+import { exportTuitionCSV } from '@/lib/export';
 const IcL=()=>(<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>);
 const IcR=()=>(<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>);
 const CustomTooltip=({active,payload})=>{if(!active||!payload?.length)return null;const d=payload[0].payload;return(<div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:10,padding:"10px 14px",boxShadow:"0 4px 12px rgba(0,0,0,.08)"}}><div style={{fontSize:12,color:C.tt,marginBottom:4}}>{d.month}</div><div style={{fontSize:16,fontWeight:700,color:C.ac}}>₩{payload[0].value.toLocaleString()}</div></div>);};
@@ -416,6 +417,7 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
           <button className="nb" onClick={prevM}><IcL/></button>
           <span style={{fontSize:15,fontWeight:600,color:C.tp,minWidth:110,textAlign:"center"}}>{year}년 {month}월</span>
           <button className="nb" onClick={nextM}><IcR/></button>
+          <button onClick={()=>exportTuitionCSV(monthRecs,`${year}년 ${month}월`)} style={{marginLeft:8,padding:"6px 14px",borderRadius:8,border:"1px solid "+C.bd,background:C.sf,color:C.ts,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>CSV 내보내기</button>
         </div>
       </div>
 

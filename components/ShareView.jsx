@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
 import { C, SC } from '@/components/Colors';
 import { p2, m2s } from '@/lib/utils';
+import { exportStudentReportPDF, generateMonthlySummary } from '@/lib/export';
 const REASON_COLORS=["#2563EB","#DC2626","#F59E0B","#16A34A","#8B5CF6","#EC4899","#06B6D4","#F97316"];
 const ScoreTooltip=({active,payload})=>{if(!active||!payload?.length)return null;const d=payload[0].payload;return(<div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:10,padding:"10px 14px",boxShadow:"0 4px 12px rgba(0,0,0,.08)"}}><div style={{fontSize:12,color:C.tt,marginBottom:4}}>{d.label||d.date}</div><div style={{fontSize:16,fontWeight:700,color:C.ac}}>{d.score}점</div></div>);};
 
@@ -29,6 +30,8 @@ export default function ShareView({ token }) {
   const [chartMode, setChartMode] = useState("grade");
   const [wExpanded, setWExpanded] = useState({});
   const [calMonth, setCalMonth] = useState(new Date());
+  const [perms, setPerms] = useState({homework_edit:false,homework_view:true,scores_view:true,lessons_view:true,wrong_view:true,files_view:true,reports_view:true,plans_view:true});
+  const [hwSaving, setHwSaving] = useState(null);
 
   useEffect(() => {
     if (!token) return;
@@ -41,6 +44,7 @@ export default function ShareView({ token }) {
         const { data: stu, error: e } = await supabase.from('students').select('*').eq('share_token', token).maybeSingle();
         if (e || !stu) { setError('not_found'); setLoading(false); return; }
         setS(stu);
+        if (stu.share_permissions) setPerms(p => ({ ...p, ...stu.share_permissions }));
         let a, b, c, d, f, g, tb;
         try {
           [a, b, c, d, f, g, tb] = await Promise.all([
@@ -69,6 +73,7 @@ export default function ShareView({ token }) {
       // RPC 성공: 단일 JSON 응답에서 데이터 추출
       if (!data || !data.student) { setError('not_found'); setLoading(false); return; }
       setS(data.student);
+      if (data.student.share_permissions) setPerms(p => ({ ...p, ...data.student.share_permissions }));
       const allHw = data.homework || [];
       setLessons((data.lessons || []).map(l => ({
         ...l,
@@ -85,6 +90,20 @@ export default function ShareView({ token }) {
       setLoading(false);
     })();
   }, [token]);
+
+  const updateHwCompletion = async (hwId, pct) => {
+    setHwSaving(hwId);
+    try {
+      const { data: res } = await supabase.rpc('update_shared_homework', { p_token: token, p_homework_id: hwId, p_completion_pct: pct });
+      if (res?.error) { setHwSaving(null); return; }
+      // Update local state
+      setLessons(prev => prev.map(l => ({
+        ...l,
+        homework: (l.homework || []).map(h => h.id === hwId ? { ...h, completion_pct: pct } : h)
+      })));
+    } catch { /* ignore */ }
+    setHwSaving(null);
+  };
 
   if (loading) return (
     <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -149,11 +168,11 @@ export default function ShareView({ token }) {
   const lessonFiles = pastLessons.flatMap(l => (l.files || []).map(f => ({ ...f, lesDate: l.date, lesTopic: l.topic || l.subject })));
 
   const tabs = [
-    { id: "lessons", l: "수업", count: 0, subs: [{ id: "history", l: "수업 이력" }, { id: "schedule", l: "수업 일정" }] },
-    { id: "study", l: "학습 관리", count: 0 },
-    { id: "analysis", l: "학습 분석", count: 0 },
-    { id: "files", l: "자료실", count: lessonFiles.length + standaloneFiles.length },
-  ];
+    perms.lessons_view !== false && { id: "lessons", l: "수업", count: 0, subs: [{ id: "history", l: "수업 이력" }, { id: "schedule", l: "수업 일정" }] },
+    (perms.homework_view !== false || perms.wrong_view !== false) && { id: "study", l: "학습 관리", count: 0 },
+    (perms.scores_view !== false || perms.reports_view !== false) && { id: "analysis", l: "학습 분석", count: 0 },
+    perms.files_view !== false && { id: "files", l: "자료실", count: lessonFiles.length + standaloneFiles.length },
+  ].filter(Boolean);
 
   return (
     <div className="share-container" style={{ minHeight: "100vh", background: C.bg }}>
@@ -167,15 +186,59 @@ export default function ShareView({ token }) {
               <div style={{ fontSize: 20, fontWeight: 700, color: C.tp }}>{s.name}</div>
               <div style={{ fontSize: 13, color: C.ts }}>{s.subject} · {s.grade}{s.school ? " · " + s.school : ""}</div>
             </div>
+            <button onClick={() => exportStudentReportPDF({ student: s, scores, lessons, wrongs })} style={{ background: C.sf, color: C.ts, border: "1px solid " + C.bd, borderRadius: 8, padding: "8px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap", flexShrink: 0 }}>PDF 리포트</button>
           </div>
         </div>
       </div>
 
+      {/* 월간 진도 요약 */}
+      {(() => {
+        const now = new Date();
+        const yr = now.getFullYear(), mo = now.getMonth() + 1;
+        const allHw = pastLessons.flatMap(l => (l.homework || []).map(h => ({ ...h, lesDate: l.date })));
+        const summary = generateMonthlySummary({ lessons, scores, homework: allHw, year: yr, month: mo });
+        if (summary.totalClasses === 0) return null;
+        return (
+          <div style={{ background: C.sf, borderBottom: "1px solid " + C.bd, padding: "20px 0" }}>
+            <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 20px" }}>
+              <h3 style={{ fontSize: 14, fontWeight: 700, color: C.tp, marginBottom: 12 }}>{mo}월 진도 요약</h3>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(130px,1fr))", gap: 10 }}>
+                <div style={{ background: C.as, borderRadius: 10, padding: "12px 14px", textAlign: "center" }}>
+                  <div style={{ fontSize: 10, color: C.ac, marginBottom: 2 }}>총 수업</div>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: C.ac }}>{summary.totalClasses}회</div>
+                </div>
+                <div style={{ background: C.sb, borderRadius: 10, padding: "12px 14px", textAlign: "center" }}>
+                  <div style={{ fontSize: 10, color: C.su, marginBottom: 2 }}>기록 완료</div>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: C.su }}>{summary.completedLessons}회</div>
+                </div>
+                {summary.avgScore != null && (
+                  <div style={{ background: "#EDE9FE", borderRadius: 10, padding: "12px 14px", textAlign: "center" }}>
+                    <div style={{ fontSize: 10, color: "#8B5CF6", marginBottom: 2 }}>평균 점수</div>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: "#8B5CF6" }}>{summary.avgScore}점</div>
+                  </div>
+                )}
+                {summary.hwRate != null && (
+                  <div style={{ background: summary.hwRate >= 80 ? C.sb : C.wb, borderRadius: 10, padding: "12px 14px", textAlign: "center" }}>
+                    <div style={{ fontSize: 10, color: summary.hwRate >= 80 ? C.su : C.wn, marginBottom: 2 }}>숙제 완료</div>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: summary.hwRate >= 80 ? C.su : C.wn }}>{summary.hwRate}%</div>
+                  </div>
+                )}
+              </div>
+              {summary.topics.length > 0 && (
+                <div style={{ marginTop: 10, fontSize: 12, color: C.ts, lineHeight: 1.6 }}>
+                  학습 주제: {summary.topics.slice(0, 6).join(', ')}{summary.topics.length > 6 ? ` 외 ${summary.topics.length - 6}개` : ''}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Recent Report and Study Plan (above tabs) */}
       {(() => {
-        const allReports = [...planComments, ...reports].filter(r => r.is_shared !== false).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+        const allReports = perms.reports_view !== false ? [...planComments, ...reports].filter(r => r.is_shared !== false).sort((a, b) => (b.date || "").localeCompare(a.date || "")) : [];
         const recentReport = allReports[0];
-        const sharedPlans = studyPlans.filter(sp => sp.is_shared !== false).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+        const sharedPlans = perms.plans_view !== false ? studyPlans.filter(sp => sp.is_shared !== false).sort((a, b) => (b.date || "").localeCompare(a.date || "")) : [];
         const recentPlan = sharedPlans[0];
 
         if (!recentReport && !recentPlan) return null;
@@ -283,17 +346,25 @@ export default function ShareView({ token }) {
                           <div style={{ fontSize: 13, color: C.tp, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{l.plan_shared}</div>
                         </div>}
                         {hw.length > 0 && <div style={{ marginTop: 12 }}>
-                          <div style={{ fontSize: 11, fontWeight: 600, color: C.tt, marginBottom: 6 }}>숙제</div>
+                          <div style={{ fontSize: 11, fontWeight: 600, color: C.tt, marginBottom: 6 }}>숙제{perms.homework_edit && <span style={{ color: C.ac, marginLeft: 6 }}>수정 가능</span>}</div>
                           {hw.map(h => {
                             const hpct = h.completion_pct || 0;
                             const hpc = hpct >= 100 ? C.su : hpct > 30 ? C.wn : hpct > 0 ? "#EA580C" : C.dn;
+                            const saving = hwSaving === h.id;
                             return (
                             <div key={h.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0" }}>
                               <div style={{ width: 60, height: 6, borderRadius: 3, background: C.bl, overflow: "hidden", flexShrink: 0 }}>
                                 <div style={{ width: hpct + "%", height: "100%", borderRadius: 3, background: hpc }} />
                               </div>
                               <span style={{ fontSize: 12, color: C.tp, flex: 1 }}>{h.title}</span>
-                              <span style={{ fontSize: 11, color: hpc, fontWeight: 600 }}>{hpct}%</span>
+                              {perms.homework_edit ? (
+                                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                                  <input type="range" min="0" max="100" step="10" value={hpct} disabled={saving} onChange={e => updateHwCompletion(h.id, parseInt(e.target.value))} style={{ width: 60, accentColor: hpc, cursor: saving ? "not-allowed" : "pointer" }} />
+                                  <span style={{ fontSize: 11, color: hpc, fontWeight: 600, minWidth: 30, textAlign: "right" }}>{saving ? "..." : hpct + "%"}</span>
+                                </div>
+                              ) : (
+                                <span style={{ fontSize: 11, color: hpc, fontWeight: 600 }}>{hpct}%</span>
+                              )}
                             </div>
                             );
                           })}
@@ -462,6 +533,7 @@ export default function ShareView({ token }) {
         {/* === 학습 관리 === */}
         {tab === "study" && (<div>
           {/* Homework section */}
+          {perms.homework_view !== false && (<>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp, margin: 0 }}>숙제 현황</h3>
@@ -521,7 +593,14 @@ export default function ShareView({ token }) {
                       <div style={{ flex: 1, height: 8, background: C.bl, borderRadius: 4, overflow: "hidden" }}>
                         <div style={{ width: pct + "%", minWidth: pct > 0 ? 8 : 0, height: "100%", borderRadius: 4, background: pc, transition: "width .15s" }} />
                       </div>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: pc, minWidth: 36, textAlign: "right" }}>{pct}%</span>
+                      {perms.homework_edit ? (
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <input type="range" min="0" max="100" step="10" value={pct} disabled={hwSaving === h.id} onChange={e => updateHwCompletion(h.id, parseInt(e.target.value))} style={{ width: 70, accentColor: pc, cursor: hwSaving === h.id ? "not-allowed" : "pointer" }} />
+                          <span style={{ fontSize: 13, fontWeight: 700, color: pc, minWidth: 36, textAlign: "right" }}>{hwSaving === h.id ? "..." : pct + "%"}</span>
+                        </div>
+                      ) : (
+                        <span style={{ fontSize: 13, fontWeight: 700, color: pc, minWidth: 36, textAlign: "right" }}>{pct}%</span>
+                      )}
                     </div>
                   </div>
                   );
@@ -529,8 +608,10 @@ export default function ShareView({ token }) {
               </div>}
             </>);
           })()}
+          </>)}
 
           {/* Wrong answers section */}
+          {perms.wrong_view !== false && (<>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
             <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp, margin: 0 }}>오답노트</h3>
             {wrongs.length > 0 && (
@@ -624,6 +705,7 @@ export default function ShareView({ token }) {
               </div>
             )}
           </>)}
+          </>)}
 
           {/* Textbooks section */}
           {textbooks.length > 0 && (<>
@@ -652,6 +734,7 @@ export default function ShareView({ token }) {
         {/* === 분석 === */}
         {tab === "analysis" && (<div>
           {/* SWOT */}
+          {perms.plans_view !== false && (<>
           <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp, marginBottom: 12 }}>학습 오버뷰</h3>
           <div style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 14, padding: 20, marginBottom: 16 }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: C.ac, marginBottom: 10 }}>🧭 학습 전략</div>
@@ -663,8 +746,10 @@ export default function ShareView({ token }) {
             <SwotCard label="🚀 기회 (O)" bg="#EFF6FF" border="#BFDBFE" color={C.ac} text={s.plan_opportunity} />
             <SwotCard label="⚠️ 위협 (T)" bg={C.wb} border="#FDE68A" color="#B45309" text={s.plan_threat} />
           </div>
+          </>)}
 
           {/* Scores */}
+          {perms.scores_view !== false && (<>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
             <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp, margin: 0 }}>성적 추이</h3>
             {scores.length > 0 && (
@@ -723,9 +808,10 @@ export default function ShareView({ token }) {
               </>
             )}
           </>)}
+          </>)}
 
           {/* Past Reports (below scores chart) */}
-          {(() => {
+          {perms.reports_view !== false && (() => {
             const allReports = [...planComments, ...reports].filter(r => r.is_shared !== false).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
             const pastReports = allReports.slice(1); // All reports except the most recent one
             return pastReports.length > 0 ? (

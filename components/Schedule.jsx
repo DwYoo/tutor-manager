@@ -483,15 +483,11 @@ export default function Schedule({menuBtn}){
               <div style={{borderRight:`1px solid ${C.bl}`}}>
                 {hrs.map(h=>(<div key={h} style={{height:SHT*4,display:"flex",alignItems:"flex-start",justifyContent:"flex-end",padding:"2px 6px 0 0",fontSize:10,color:C.tt,fontWeight:500,borderBottom:`1px solid ${C.bl}`}}>{p2(h)}</div>))}
               </div>
-              {/* Day column — tap or drag empty area to add lesson */}
+              {/* Day column — tap empty area to add lesson (mobile: no drag) */}
               <div
-                onTouchStart={e=>{if(e.target!==e.currentTarget)return;const t=e.touches[0];const r=e.currentTarget.getBoundingClientRect();const y=t.clientY-r.top;const raw=stH*60+Math.round(y/SHT)*SMN;const anc=s5(raw);mDragRef.current={anc,startY:t.clientY,moved:false,col:e.currentTarget};setMDC({s:anc,e:anc+SMN});}}
-                onTouchMove={e=>{const md=mDragRef.current;if(!md)return;const t=e.touches[0];const dy=Math.abs(t.clientY-md.startY);if(dy>8)md.moved=true;if(!md.moved)return;e.preventDefault();const r=md.col.getBoundingClientRect();const y=t.clientY-r.top;const raw=stH*60+Math.round(y/SHT)*SMN;const cm=s5(raw);setMDC({s:Math.min(md.anc,cm),e:Math.max(md.anc,cm)+SMN});}}
-                onTouchEnd={()=>{const md=mDragRef.current;mDragRef.current=null;if(!md){setMDC(null);return;}const st=mDC||{s:md.anc,e:md.anc+SMN};const dur=st.e-st.s;setMDC(null);if(md.moved&&dur>=SMN){const h=Math.floor(st.s/60),mn=st.s%60;setEL({date:vd,start_hour:Math.max(0,Math.min(23,h)),start_min:Math.max(0,mn),duration:dur,subject:"",topic:"",is_recurring:false});setMO(true);}else if(!md.moved){const h=Math.floor(md.anc/60),mn=md.anc%60;setEL({date:vd,start_hour:Math.max(0,Math.min(23,h)),start_min:Math.max(0,mn),duration:durPresets[0]||90,subject:"",topic:"",is_recurring:false});setMO(true);}}}
-                onClick={e=>{e.preventDefault();}}
-                style={{position:"relative",height:tH,background:selIt?"rgba(37,99,235,.02)":"transparent",touchAction:"pan-x"}}>
+                onClick={e=>{if(e.target!==e.currentTarget)return;const r=e.currentTarget.getBoundingClientRect();const y=e.clientY-r.top;const raw=stH*60+Math.round(y/SHT)*SMN;const anc=s5(raw);const h=Math.floor(anc/60),mn=anc%60;setEL({date:vd,start_hour:Math.max(0,Math.min(23,h)),start_min:Math.max(0,mn),duration:durPresets[0]||90,subject:"",topic:"",is_recurring:false});setMO(true);}}
+                style={{position:"relative",height:tH,background:selIt?"rgba(37,99,235,.02)":"transparent",touchAction:"auto"}}>
                 {hrs.map((h,i)=>(<div key={h} style={{position:"absolute",top:i*SHT*4,left:0,right:0,height:SHT*4,borderBottom:`1px solid ${C.bl}`,pointerEvents:"none"}}><div style={{position:"absolute",top:SHT*2-1,left:0,right:0,height:1,background:C.bl,opacity:.5}}/></div>))}
-                {mDC&&<div style={{position:"absolute",top:((mDC.s-stH*60)/SMN)*SHT,left:4,right:4,height:Math.max(((mDC.e-mDC.s)/SMN)*SHT,SHT),background:C.al,border:`2px dashed ${C.ac}`,borderRadius:10,opacity:.7,zIndex:8,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,color:C.ac,fontWeight:600,pointerEvents:"none",flexDirection:"column"}}><span>{m2s(mDC.s)} ~ {m2s(mDC.e)}</span><span>({mDC.e-mDC.s}분)</span></div>}
                 {selDl.map(l=>{const isPers=!l.student_id;const co=gCo(l.student_id);const st=getStu(l.student_id);const tp=((l.start_hour*60+l.start_min)-stH*60)/SMN*SHT;const hp=Math.max(l.duration/SMN*SHT,SHT);
                   const isOrig=!l.is_recurring||l.date===fd(selDate);
                   const lSt=effSt(l,fd(selDate));const isCan=lSt==='cancelled';const dim=activeStu&&l.student_id&&l.student_id!==activeStu;
