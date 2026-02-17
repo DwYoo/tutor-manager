@@ -41,8 +41,6 @@ export default function Students({onDetail,menuBtn}){
 
   const saveStudent=async()=>{
     if(!form.name.trim()||saving)return;setSaving(true);
-    const payload={...form,fee:parseInt(form.fee)||0,fee_per_class:parseInt(form.fee_per_class)||0};
-    delete payload.fee;delete payload.fee_per_class;
     const full={...form,fee:parseInt(form.fee)||0,fee_per_class:parseInt(form.fee_per_class)||0};
     if(editStu){
       const{error}=await supabase.from('students').update(full).eq('id',editStu.id);
