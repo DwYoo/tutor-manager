@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import LessonDetailModal from './student/LessonDetailModal'
 import { C, SC } from '@/components/Colors'
 import { p2, fd, DK, DKS, gwd, lessonOnDate } from '@/lib/utils'
+import { syncHomework } from '@/lib/homework'
 const BN={prep:"다음 수업 준비",upcoming:"다가오는 수업",unrecorded:"기록 미완료",alerts:"주의 학생",weekChart:"주간 수업",studentList:"학생 근황",tuition:"수업료 요약"};
 const DFL={left:["prep","upcoming"],right:["unrecorded","alerts","weekChart","tuition"],bottom:["studentList"],hidden:[]};
 
@@ -62,13 +63,8 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
     if(data.feedback!==undefined)u.feedback=data.feedback;if(data.tMemo!==undefined)u.private_memo=data.tMemo;
     if(data.planShared!==undefined)u.plan_shared=data.planShared;if(data.planPrivate!==undefined)u.plan_private=data.planPrivate;
     if(Object.keys(u).length)await supabase.from('lessons').update(u).eq('id',id);
-    const les=lessons.find(l=>l.id===id);const oldHw=les?.homework||[],newHw=data.hw||[];
-    const toDel=oldHw.filter(h=>!newHw.some(n=>n.id===h.id));
-    const toIns=newHw.filter(h=>!oldHw.some(o=>o.id===h.id));
-    const toUpd=newHw.filter(h=>oldHw.some(o=>o.id===h.id));
-    if(toDel.length)await supabase.from('homework').delete().in('id',toDel.map(h=>h.id));
-    if(toIns.length)await supabase.from('homework').insert(toIns.map(h=>({lesson_id:id,title:h.title,completion_pct:h.completion_pct||0,note:h.note||""}))).select();
-    for(const h of toUpd)await supabase.from('homework').update({title:h.title,completion_pct:h.completion_pct||0,note:h.note||""}).eq('id',h.id);
+    const les=lessons.find(l=>l.id===id);
+    await syncHomework(id, les?.homework||[], data.hw||[]);
     fetchData();
   };
 
@@ -88,7 +84,7 @@ export default function Dashboard({onNav,onDetail,menuBtn}){
   const weekData=wk.map((d,i)=>{const cnt=lessons.filter(l=>l.student_id!=null&&lessonOnDate(l,d)).length;return{day:DKS[i],c:cnt};});
   const todayIdx=weekOff===0?(today.getDay()===0?6:today.getDay()-1):-1;
 
-  const countMonthLessons=(sid)=>{const dim=new Date(year,month,0).getDate();let cnt=0;for(let d=1;d<=dim;d++){const dt=new Date(year,month-1,d);cnt+=lessons.filter(l=>l.student_id===sid&&lessonOnDate(l,dt)).length;}return cnt;};
+  const countMonthLessons=(sid)=>{const dim=new Date(year,month,0).getDate();let cnt=0;for(let d=1;d<=dim;d++){const dt=new Date(year,month-1,d);cnt+=lessons.filter(l=>l.student_id===sid&&l.status!=='cancelled'&&lessonOnDate(l,dt)).length;}return cnt;};
   const autoStatus=(amt,due)=>amt>=due?"paid":amt>0?"partial":"unpaid";
   const monthRecs=activeStudents.map(s=>{const rec=tuitions.find(t=>t.student_id===s.id&&t.month===curMonth);const lessonCnt=countMonthLessons(s.id);const autoFee=(s.fee_per_class||0)*lessonCnt;const carryover=rec?.carryover||0;const autoTotalDue=autoFee+carryover;const totalDue=(rec&&rec.fee_override!=null)?rec.fee_override:autoTotalDue;const paidAmount=rec?.amount||0;const status=autoStatus(paidAmount,totalDue);return{student:s,totalDue,paidAmount,status};});
   const totalFee=monthRecs.reduce((a,r)=>a+r.totalDue,0);

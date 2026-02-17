@@ -7,6 +7,7 @@ import LessonDetailModal from './student/LessonDetailModal';
 import { useToast } from '@/components/Toast';
 import { C, SC } from '@/components/Colors';
 import { p2, fd, m2s, bk } from '@/lib/utils';
+import { syncHomework } from '@/lib/homework';
 const REASON_COLORS=["#2563EB","#DC2626","#F59E0B","#16A34A","#8B5CF6","#EC4899","#06B6D4","#F97316"];
 const ls={display:"block",fontSize:12,fontWeight:500,color:C.tt,marginBottom:6};
 const is={width:"100%",padding:"9px 12px",borderRadius:8,border:"1px solid "+C.bd,fontSize:14,color:C.tp,background:C.sf,outline:"none",fontFamily:"inherit"};
@@ -267,18 +268,9 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
   const updLesDetail=async(id,data)=>{
     const u={};if(data.top!==undefined)u.topic=data.top;if(data.content!==undefined)u.content=data.content;if(data.feedback!==undefined)u.feedback=data.feedback;if(data.tMemo!==undefined)u.private_memo=data.tMemo;if(data.planShared!==undefined)u.plan_shared=data.planShared;if(data.planPrivate!==undefined)u.plan_private=data.planPrivate;
     if(Object.keys(u).length){const{error}=await supabase.from('lessons').update(u).eq('id',id);if(error){toast?.('수업 정보 저장에 실패했습니다','error');return;}}
-    // Sync homework to DB
     const les=lessons.find(l=>l.id===id);
-    const oldHw=les?.homework||[],newHw=data.hw||[];
-    const oldIds=new Set(oldHw.map(h=>h.id));
-    const toDel=oldHw.filter(h=>!newHw.some(n=>n.id===h.id));
-    const toIns=newHw.filter(h=>!oldIds.has(h.id));
-    const toUpd=newHw.filter(h=>oldIds.has(h.id));
-    if(toDel.length)await supabase.from('homework').delete().in('id',toDel.map(h=>h.id));
-    let ins=[];
-    if(toIns.length){const{data:d}=await supabase.from('homework').insert(toIns.map(h=>({lesson_id:id,title:h.title,completion_pct:h.completion_pct||0,note:h.note||""}))).select();ins=d||[];}
-    for(const h of toUpd)await supabase.from('homework').update({title:h.title,completion_pct:h.completion_pct||0,note:h.note||""}).eq('id',h.id);
-    const finalHw=[...toUpd,...ins];
+    const{finalHw,error:hwErr}=await syncHomework(id, les?.homework||[], data.hw||[]);
+    if(hwErr){toast?.(hwErr,'error');}
     setLesDetailData(p=>p?{...p,...data,homework:finalHw}:p);
     setLessons(p=>p.map(l=>l.id===id?{...l,...u,homework:finalHw,files:data.files||l.files}:l));
     toast?.('수업 정보가 저장되었습니다');

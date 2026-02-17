@@ -33,38 +33,55 @@ export default function ShareView({ token }) {
   useEffect(() => {
     if (!token) return;
     (async () => {
-      const { data: stu, error: e } = await supabase.from('students').select('*').eq('share_token', token).maybeSingle();
-      if (e) {
-        // RLS 정책으로 인한 접근 차단 또는 기타 오류
-        console.error('Share link query error:', e.message, e.code);
-        setError('not_found');
+      // RPC 함수로 토큰 기반 단건 조회 (RLS 보안 수정 반영)
+      const { data, error: rpcErr } = await supabase.rpc('get_shared_student_data', { p_token: token });
+      if (rpcErr) {
+        // RPC 함수가 아직 배포되지 않은 경우 기존 방식으로 fallback
+        console.warn('RPC fallback: get_shared_student_data not available, using direct queries');
+        const { data: stu, error: e } = await supabase.from('students').select('*').eq('share_token', token).maybeSingle();
+        if (e || !stu) { setError('not_found'); setLoading(false); return; }
+        setS(stu);
+        let a, b, c, d, f, g, tb;
+        try {
+          [a, b, c, d, f, g, tb] = await Promise.all([
+            supabase.from('lessons').select('*, homework(*)').eq('student_id', stu.id).order('date', { ascending: false }),
+            supabase.from('scores').select('*').eq('student_id', stu.id).order('created_at'),
+            supabase.from('wrong_answers').select('*').eq('student_id', stu.id).order('created_at', { ascending: false }),
+            supabase.from('reports').select('*').eq('student_id', stu.id).order('date', { ascending: false }),
+            supabase.from('files').select('*').eq('student_id', stu.id).is('lesson_id', null).order('created_at', { ascending: false }),
+            supabase.from('study_plans').select('*').eq('student_id', stu.id).order('date', { ascending: false }),
+            supabase.from('textbooks').select('*').eq('student_id', stu.id).order('created_at', { ascending: false }).then(r => r, () => ({ data: [], error: null })),
+          ]);
+        } catch { setError('fetch_error'); setLoading(false); return; }
+        if (a.error || b.error || c.error || d.error || f.error || g.error) { setError('fetch_error'); setLoading(false); return; }
+        setLessons(a.data || []);
+        setScores(b.data || []);
+        setWrongs(c.data || []);
+        const allReps = d.data || [];
+        setReports(allReps.filter(r => r.type !== 'plan'));
+        setPlanComments(allReps.filter(r => r.type === 'plan'));
+        setStudyPlans(g.data || []);
+        setStandaloneFiles(f.data || []);
+        setTextbooks(tb.data || []);
         setLoading(false);
         return;
       }
-      if (!stu) { setError('not_found'); setLoading(false); return; }
-      setS(stu);
-      let a, b, c, d, f, g, tb;
-      try {
-        [a, b, c, d, f, g, tb] = await Promise.all([
-          supabase.from('lessons').select('*, homework(*)').eq('student_id', stu.id).order('date', { ascending: false }),
-          supabase.from('scores').select('*').eq('student_id', stu.id).order('created_at'),
-          supabase.from('wrong_answers').select('*').eq('student_id', stu.id).order('created_at', { ascending: false }),
-          supabase.from('reports').select('*').eq('student_id', stu.id).order('date', { ascending: false }),
-          supabase.from('files').select('*').eq('student_id', stu.id).is('lesson_id', null).order('created_at', { ascending: false }),
-          supabase.from('study_plans').select('*').eq('student_id', stu.id).order('date', { ascending: false }),
-          supabase.from('textbooks').select('*').eq('student_id', stu.id).order('created_at', { ascending: false }).then(r => r, () => ({ data: [], error: null })),
-        ]);
-      } catch { setError('fetch_error'); setLoading(false); return; }
-      if (a.error || b.error || c.error || d.error || f.error || g.error) { setError('fetch_error'); setLoading(false); return; }
-      setLessons(a.data || []);
-      setScores(b.data || []);
-      setWrongs(c.data || []);
-      const allReps = d.data || [];
+      // RPC 성공: 단일 JSON 응답에서 데이터 추출
+      if (!data || !data.student) { setError('not_found'); setLoading(false); return; }
+      setS(data.student);
+      const allHw = data.homework || [];
+      setLessons((data.lessons || []).map(l => ({
+        ...l,
+        homework: allHw.filter(h => h.lesson_id === l.id)
+      })));
+      setScores(data.scores || []);
+      setWrongs(data.wrong_answers || []);
+      const allReps = data.reports || [];
       setReports(allReps.filter(r => r.type !== 'plan'));
       setPlanComments(allReps.filter(r => r.type === 'plan'));
-      setStudyPlans(g.data || []);
-      setStandaloneFiles(f.data || []);
-      setTextbooks(tb.data || []);
+      setStudyPlans(data.study_plans || []);
+      setStandaloneFiles(data.files || []);
+      setTextbooks(data.textbooks || []);
       setLoading(false);
     })();
   }, [token]);

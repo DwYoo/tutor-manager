@@ -3,8 +3,10 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
 import LessonDetailModal from './student/LessonDetailModal';
+import { useToast } from '@/components/Toast';
 import { C, SC } from '@/components/Colors';
 import { p2, fd, m2s, DKS as DK, gwd, s5, sdy, lessonOnDate } from '@/lib/utils';
+import { syncHomework } from '@/lib/homework';
 const LSTATUS={scheduled:{l:"예정",c:"#78716C",bg:"#F5F5F4"},in_progress:{l:"진행중",c:"#EA580C",bg:"#FFF7ED"},completed:{l:"완료",c:"#16A34A",bg:"#F0FDF4"},cancelled:{l:"취소",c:"#DC2626",bg:"#FEF2F2"},makeup:{l:"보강",c:"#2563EB",bg:"#DBEAFE"}};
 const ls={display:"block",fontSize:12,fontWeight:500,color:C.tt,marginBottom:6};
 const is={width:"100%",padding:"9px 12px",borderRadius:8,border:`1px solid ${C.bd}`,fontSize:14,color:C.tp,background:C.sf,outline:"none",fontFamily:"inherit"};
@@ -90,6 +92,7 @@ function SchModal({les,students,onSave,onClose,checkConflict,durPresets,isMobile
 export default function Schedule({menuBtn}){
   const tog=menuBtn;
   const{user}=useAuth();
+  const toast=useToast();
   const[cur,setCur]=useState(new Date());
   const[viewMode,setVM]=useState(()=>{try{const v=localStorage.getItem('sch_viewMode');return v||'week';}catch{return 'week';}});
   const[lessons,setLessons]=useState([]);
@@ -224,7 +227,8 @@ export default function Schedule({menuBtn}){
   };
   const del=async(id)=>{
     const old=lessons.find(l=>l.id===id);const st=old?getStu(old.student_id):null;
-    await supabase.from('lessons').delete().eq('id',id);
+    const{error}=await supabase.from('lessons').delete().eq('id',id);
+    if(error){toast?.('수업 삭제에 실패했습니다','error');return;}
     setLessons(p=>p.filter(l=>l.id!==id));
     if(old){pushUndo(async()=>{const{student_id,date,start_hour,start_min,duration,subject,topic,is_recurring,recurring_day,status:os,content,feedback,private_memo,plan_shared,plan_private}=old;const{data}=await supabase.from('lessons').insert({student_id,date,start_hour,start_min,duration,subject,topic,is_recurring,recurring_day,status:os||'scheduled',content,feedback,private_memo,plan_shared,plan_private,user_id:user.id}).select('*, homework(*), files(*)').single();if(data)setLessons(p=>[...p,data]);},`${st?.name||''} 수업 삭제`);}
     setMO(false);setEL(null);setCtx(null);
@@ -232,11 +236,15 @@ export default function Schedule({menuBtn}){
   const delFuture=async(id,viewDate)=>{
     const les=lessons.find(l=>l.id===id);const st=les?getStu(les.student_id):null;
     if(!les||les.date===viewDate){
-      setLessons(p=>p.filter(l=>l.id!==id));setMO(false);setEL(null);setCtx(null);await supabase.from('lessons').delete().eq('id',id);
+      const{error}=await supabase.from('lessons').delete().eq('id',id);
+      if(error){toast?.('수업 삭제에 실패했습니다','error');return;}
+      setLessons(p=>p.filter(l=>l.id!==id));setMO(false);setEL(null);setCtx(null);
       if(les){pushUndo(async()=>{const{student_id,date,start_hour,start_min,duration,subject,topic,is_recurring,recurring_day,status:os,recurring_end_date}=les;const{data}=await supabase.from('lessons').insert({student_id,date,start_hour,start_min,duration,subject,topic,is_recurring,recurring_day,recurring_end_date,status:os||'scheduled',user_id:user.id}).select('*, homework(*), files(*)').single();if(data)setLessons(p=>[...p,data]);},`${st?.name||''} 반복수업 삭제`);}
     }else{
       const oldEnd=les.recurring_end_date;
-      setLessons(p=>p.map(l=>l.id===id?{...l,recurring_end_date:viewDate}:l));setMO(false);setEL(null);setCtx(null);await supabase.from('lessons').update({recurring_end_date:viewDate}).eq('id',id);
+      const{error}=await supabase.from('lessons').update({recurring_end_date:viewDate}).eq('id',id);
+      if(error){toast?.('수업 수정에 실패했습니다','error');return;}
+      setLessons(p=>p.map(l=>l.id===id?{...l,recurring_end_date:viewDate}:l));setMO(false);setEL(null);setCtx(null);
       pushUndo(async()=>{await supabase.from('lessons').update({recurring_end_date:oldEnd||null}).eq('id',id);setLessons(p=>p.map(l=>l.id===id?{...l,recurring_end_date:oldEnd||null}:l));},`${st?.name||''} 이후 반복 삭제`);
     }
   };
@@ -249,18 +257,8 @@ export default function Schedule({menuBtn}){
     if(data.planShared!==undefined)u.plan_shared=data.planShared;
     if(data.planPrivate!==undefined)u.plan_private=data.planPrivate;
     if(Object.keys(u).length)await supabase.from('lessons').update(u).eq('id',id);
-    // Sync homework to DB
     const les=lessons.find(l=>l.id===id);
-    const oldHw=les?.homework||[],newHw=data.hw||[];
-    const oldIds=new Set(oldHw.map(h=>h.id));
-    const toDel=oldHw.filter(h=>!newHw.some(n=>n.id===h.id));
-    const toIns=newHw.filter(h=>!oldIds.has(h.id));
-    const toUpd=newHw.filter(h=>oldIds.has(h.id));
-    if(toDel.length)await supabase.from('homework').delete().in('id',toDel.map(h=>h.id));
-    let ins=[];
-    if(toIns.length){const{data:d}=await supabase.from('homework').insert(toIns.map(h=>({lesson_id:id,title:h.title,completion_pct:h.completion_pct||0,note:h.note||""}))).select();ins=d||[];}
-    for(const h of toUpd)await supabase.from('homework').update({title:h.title,completion_pct:h.completion_pct||0,note:h.note||""}).eq('id',h.id);
-    const finalHw=[...toUpd,...ins];
+    const{finalHw}=await syncHomework(id, les?.homework||[], data.hw||[]);
     setLessons(p=>p.map(l=>l.id===id?{...l,...u,homework:finalHw,files:data.files||l.files}:l));
   };
 
@@ -306,7 +304,7 @@ export default function Schedule({menuBtn}){
   };
 
   const onRC=(e,l,vd)=>{e.preventDefault();e.stopPropagation();setCtx({x:e.clientX,y:e.clientY,l,vd});};
-  const delSingle=async(id,viewDate)=>{const les=lessons.find(l=>l.id===id);if(!les){setMO(false);setEL(null);setCtx(null);return;}const st=getStu(les.student_id);const prev=Array.isArray(les.recurring_exceptions)?les.recurring_exceptions:[];const exc=[...prev,viewDate];setLessons(p=>p.map(l=>l.id===id?{...l,recurring_exceptions:exc}:l));setMO(false);setEL(null);setCtx(null);await supabase.from('lessons').update({recurring_exceptions:exc}).eq('id',id);pushUndo(async()=>{await supabase.from('lessons').update({recurring_exceptions:prev}).eq('id',id);setLessons(p=>p.map(l=>l.id===id?{...l,recurring_exceptions:prev}:l));},`${st?.name||''} 이 수업 삭제`);};
+  const delSingle=async(id,viewDate)=>{const les=lessons.find(l=>l.id===id);if(!les){setMO(false);setEL(null);setCtx(null);return;}const st=getStu(les.student_id);const prev=Array.isArray(les.recurring_exceptions)?les.recurring_exceptions:[];const exc=[...prev,viewDate];const{error}=await supabase.from('lessons').update({recurring_exceptions:exc}).eq('id',id);if(error){toast?.('수업 삭제에 실패했습니다','error');return;}setLessons(p=>p.map(l=>l.id===id?{...l,recurring_exceptions:exc}:l));setMO(false);setEL(null);setCtx(null);pushUndo(async()=>{await supabase.from('lessons').update({recurring_exceptions:prev}).eq('id',id);setLessons(p=>p.map(l=>l.id===id?{...l,recurring_exceptions:prev}:l));},`${st?.name||''} 이 수업 삭제`);};
 
   const onGD=(e,di)=>{
     if(dragRef.current)return;const g=gridRef.current;if(!g)return;const r=g.getBoundingClientRect(),hOff=e.currentTarget.getBoundingClientRect().top-r.top+g.scrollTop,y=e.clientY-r.top+g.scrollTop-hOff;
