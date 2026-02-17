@@ -1,6 +1,7 @@
 import './globals.css'
 import AuthProvider from '@/components/AuthProvider'
 import { ToastProvider } from '@/components/Toast'
+import ErrorBoundary from '@/components/ErrorBoundary'
 
 export const metadata = {
   title: '과외 매니저',
@@ -27,7 +28,7 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body>
-        <AuthProvider><ToastProvider>{children}</ToastProvider></AuthProvider>
+        <ErrorBoundary><AuthProvider><ToastProvider>{children}</ToastProvider></AuthProvider></ErrorBoundary>
       </body>
     </html>
   )

@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { C, STATUS } from '@/components/Colors';
-import { p2 } from '@/lib/utils';
+import { p2, lessonOnDate } from '@/lib/utils';
 const IcL=()=>(<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>);
 const IcR=()=>(<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>);
 const CustomTooltip=({active,payload})=>{if(!active||!payload?.length)return null;const d=payload[0].payload;return(<div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:10,padding:"10px 14px",boxShadow:"0 4px 12px rgba(0,0,0,.08)"}}><div style={{fontSize:12,color:C.tt,marginBottom:4}}>{d.month}</div><div style={{fontSize:16,fontWeight:700,color:C.ac}}>₩{payload[0].value.toLocaleString()}</div></div>);};
@@ -124,22 +124,12 @@ export default function Tuition({menuBtn}){
     const dim=new Date(yr,mo,0).getDate();
     let cnt=0;
     for(let d=1;d<=dim;d++){
-      const ds=yr+"-"+p2(mo)+"-"+p2(d);
-      const dw=new Date(yr,mo-1,d).getDay();
-      const dwN=dw===0?7:dw;
-      cnt+=lessons.filter(l=>{
-        if(l.student_id!==sid)return false;
-        if(l.status==='cancelled')return false;
-        const ld=(l.date||"").slice(0,10);
-        if(l.is_recurring&&l.recurring_exceptions&&l.recurring_exceptions.includes(ds))return false;
-        if(ld===ds)return true;
-        if(l.is_recurring&&+l.recurring_day===dwN){
-          if(ds<ld)return false;
-          if(l.recurring_end_date&&ds>=(l.recurring_end_date+"").slice(0,10))return false;
-          return true;
-        }
-        return false;
-      }).length;
+      const dt=new Date(yr,mo-1,d);
+      cnt+=lessons.filter(l=>
+        l.student_id===sid&&
+        l.status!=='cancelled'&&
+        lessonOnDate(l,dt)
+      ).length;
     }
     return cnt;
   };
