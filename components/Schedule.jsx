@@ -7,6 +7,7 @@ import { useToast } from '@/components/Toast';
 import { C, SC } from '@/components/Colors';
 import { p2, fd, m2s, DKS as DK, gwd, s5, sdy, lessonOnDate } from '@/lib/utils';
 import { syncHomework } from '@/lib/homework';
+import { useShell } from '@/components/AppShell';
 const LSTATUS={scheduled:{l:"예정",c:"#78716C",bg:"#F5F5F4"},in_progress:{l:"진행중",c:"#EA580C",bg:"#FFF7ED"},completed:{l:"완료",c:"#16A34A",bg:"#F0FDF4"},cancelled:{l:"취소",c:"#DC2626",bg:"#FEF2F2"},makeup:{l:"보강",c:"#2563EB",bg:"#DBEAFE"}};
 const ls={display:"block",fontSize:12,fontWeight:500,color:C.tt,marginBottom:6};
 const is={width:"100%",padding:"9px 12px",borderRadius:8,border:`1px solid ${C.bd}`,fontSize:14,color:C.tp,background:C.sf,outline:"none",fontFamily:"inherit"};
@@ -89,7 +90,8 @@ function SchModal({les,students,onSave,onClose,checkConflict,durPresets,isMobile
 }
 
 /* ── Main Schedule ── */
-export default function Schedule({menuBtn}){
+export default function Schedule(){
+  const{menuBtn}=useShell();
   const tog=menuBtn;
   const{user}=useAuth();
   const toast=useToast();
