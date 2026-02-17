@@ -154,7 +154,7 @@ export default function Dashboard(){
     });
     return{weekMin,weekH:Math.floor(weekMin/60),weekM:weekMin%60,monthMin,monthH:Math.floor(monthMin/60),monthM:monthMin%60};
   })();
-  const RateTooltip=({active,payload})=>{if(!active||!payload?.length)return null;const d=payload[0].payload;return(<div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:10,padding:"10px 14px",boxShadow:"0 4px 12px rgba(0,0,0,.08)"}}><div style={{fontSize:12,fontWeight:600,color:C.tp,marginBottom:4}}>{d.name}</div><div style={{fontSize:11,color:C.ac}}>예정 {d.scheduled}회</div><div style={{fontSize:11,color:C.su}}>완료 {d.completed}회</div></div>);};
+  const RateTooltip=({active,payload})=>{if(!active||!payload?.length)return null;const d=payload[0].payload;return(<div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:10,padding:"10px 14px",boxShadow:"0 4px 12px rgba(0,0,0,.08)"}}><div style={{fontSize:12,fontWeight:600,color:C.tp,marginBottom:4}}>{d.name}</div><div style={{fontSize:11,color:C.ac}}>전체 {d.scheduled}회</div><div style={{fontSize:11,color:C.su}}>완료 {d.completed}회</div></div>);};
 
   /* ── Block content by ID ── */
   const getBlockContent=(id)=>{
@@ -326,9 +326,9 @@ export default function Dashboard(){
             <div style={{fontSize:10,color:C.su,marginBottom:2}}>완료</div>
             <div style={{fontSize:18,fontWeight:700,color:C.su}}>{lessonRateData.completed}</div>
           </div>
-          <div style={{flex:1,background:C.as,borderRadius:10,padding:"10px 14px",textAlign:"center"}}>
-            <div style={{fontSize:10,color:C.ac,marginBottom:2}}>예정</div>
-            <div style={{fontSize:18,fontWeight:700,color:C.ac}}>{lessonRateData.upcoming}</div>
+          <div style={{flex:1,background:C.wb,borderRadius:10,padding:"10px 14px",textAlign:"center"}}>
+            <div style={{fontSize:10,color:C.wn,marginBottom:2}}>예정</div>
+            <div style={{fontSize:18,fontWeight:700,color:C.wn}}>{lessonRateData.upcoming}</div>
           </div>
         </div>
         {lessonRateData.perStudent.length>0&&(
@@ -339,7 +339,7 @@ export default function Dashboard(){
                 <XAxis dataKey="name" tick={{fontSize:10,fill:C.tt}} axisLine={false} tickLine={false}/>
                 <YAxis tick={{fontSize:10,fill:C.tt}} axisLine={false} tickLine={false} allowDecimals={false}/>
                 <Tooltip content={<RateTooltip/>}/>
-                <Bar dataKey="scheduled" fill={C.al} radius={[4,4,0,0]} barSize={14} name="예정"/>
+                <Bar dataKey="scheduled" fill={C.al} radius={[4,4,0,0]} barSize={14} name="전체"/>
                 <Bar dataKey="completed" fill={C.su} radius={[4,4,0,0]} barSize={14} name="완료"/>
               </BarChart>
             </ResponsiveContainer>
