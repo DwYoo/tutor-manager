@@ -346,28 +346,35 @@ export default function ShareView({ token }) {
                           <div style={{ fontSize: 13, color: C.tp, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{l.plan_shared}</div>
                         </div>}
                         {hw.length > 0 && <div style={{ marginTop: 12 }}>
-                          <div style={{ fontSize: 11, fontWeight: 600, color: C.tt, marginBottom: 6 }}>숙제{perms.homework_edit && <span style={{ color: C.ac, marginLeft: 6 }}>수정 가능</span>}</div>
+                          <div style={{ fontSize: 11, fontWeight: 600, color: C.tt, marginBottom: 8 }}>숙제</div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                           {hw.map(h => {
                             const hpct = h.completion_pct || 0;
                             const hpc = hpct >= 100 ? C.su : hpct > 30 ? C.wn : hpct > 0 ? "#EA580C" : C.dn;
+                            const hbg = hpct >= 100 ? C.sb : hpct > 30 ? C.wb : hpct > 0 ? "#FFF7ED" : C.db;
                             const saving = hwSaving === h.id;
                             return (
-                            <div key={h.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0" }}>
-                              <div style={{ width: 60, height: 6, borderRadius: 3, background: C.bl, overflow: "hidden", flexShrink: 0 }}>
-                                <div style={{ width: hpct + "%", height: "100%", borderRadius: 3, background: hpc }} />
+                            <div key={h.id} style={{ border: "1px solid " + C.bd, borderRadius: 12, padding: "12px 14px" }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                                <span style={{ fontSize: 13, fontWeight: 600, color: C.tp }}>{h.title}</span>
+                                <span style={{ fontSize: 12, fontWeight: 700, color: hpc, background: hbg, padding: "2px 8px", borderRadius: 6 }}>{saving ? "..." : hpct + "%"}</span>
                               </div>
-                              <span style={{ fontSize: 12, color: C.tp, flex: 1 }}>{h.title}</span>
                               {perms.homework_edit ? (
-                                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                                  <input type="range" min="0" max="100" step="10" value={hpct} disabled={saving} onChange={e => updateHwCompletion(h.id, parseInt(e.target.value))} style={{ width: 60, accentColor: hpc, cursor: saving ? "not-allowed" : "pointer" }} />
-                                  <span style={{ fontSize: 11, color: hpc, fontWeight: 600, minWidth: 30, textAlign: "right" }}>{saving ? "..." : hpct + "%"}</span>
+                                <div onMouseDown={e => { e.preventDefault(); const bar = e.currentTarget; const calc = ev => { const r = bar.getBoundingClientRect(); const v = Math.max(0, Math.min(100, Math.round(((ev.clientX || ev.touches?.[0]?.clientX || 0) - r.left) / r.width * 20) * 5)); updateHwCompletion(h.id, v); }; calc(e); const mv = ev => calc(ev); const up = () => { window.removeEventListener("mousemove", mv); window.removeEventListener("mouseup", up); window.removeEventListener("touchmove", mv); window.removeEventListener("touchend", up); }; window.addEventListener("mousemove", mv); window.addEventListener("mouseup", up); window.addEventListener("touchmove", mv); window.addEventListener("touchend", up); }}
+                                  onTouchStart={e => { const bar = e.currentTarget; const calc = ev => { const r = bar.getBoundingClientRect(); const cx = ev.touches?.[0]?.clientX ?? ev.changedTouches?.[0]?.clientX ?? 0; const v = Math.max(0, Math.min(100, Math.round((cx - r.left) / r.width * 20) * 5)); updateHwCompletion(h.id, v); }; calc(e); const mv = ev => { ev.preventDefault(); calc(ev); }; const up = () => { window.removeEventListener("touchmove", mv); window.removeEventListener("touchend", up); }; window.addEventListener("touchmove", mv, { passive: false }); window.addEventListener("touchend", up); }}
+                                  style={{ width: "100%", height: 10, background: C.bl, borderRadius: 5, cursor: "pointer", position: "relative", touchAction: "none" }}>
+                                  <div style={{ height: "100%", width: hpct + "%", background: hpc, borderRadius: 5, transition: "width .1s", pointerEvents: "none" }} />
+                                  <div style={{ position: "absolute", top: "50%", left: hpct + "%", transform: "translate(-50%,-50%)", width: 18, height: 18, borderRadius: "50%", background: "#fff", border: "3px solid " + hpc, boxShadow: "0 1px 4px rgba(0,0,0,.15)", pointerEvents: "none", transition: "left .1s" }} />
                                 </div>
                               ) : (
-                                <span style={{ fontSize: 11, color: hpc, fontWeight: 600 }}>{hpct}%</span>
+                                <div style={{ width: "100%", height: 8, background: C.bl, borderRadius: 4, overflow: "hidden" }}>
+                                  <div style={{ height: "100%", width: hpct + "%", background: hpc, borderRadius: 4 }} />
+                                </div>
                               )}
                             </div>
                             );
                           })}
+                          </div>
                         </div>}
                         {(!l.content && !l.feedback && !l.private_memo && hw.length === 0) && (
                           <div style={{ padding: "12px 0", fontSize: 13, color: C.tt }}>상세 기록이 없습니다</div>
@@ -587,21 +594,20 @@ export default function ShareView({ token }) {
                         <div style={{ fontSize: 14, fontWeight: 600, color: C.tp }}>{h.title}</div>
                         <div style={{ fontSize: 11, color: C.tt, marginTop: 2 }}>{h.lesDate} · {h.lesSub}</div>
                       </div>
-                      <span style={{ fontSize: 10, background: pb, color: pc, padding: "2px 8px", borderRadius: 5, fontWeight: 600, flexShrink: 0 }}>{sl}</span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: pc, background: pb, padding: "2px 8px", borderRadius: 6, flexShrink: 0 }}>{hwSaving === h.id ? "..." : pct + "%"}</span>
                     </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <div style={{ flex: 1, height: 8, background: C.bl, borderRadius: 4, overflow: "hidden" }}>
-                        <div style={{ width: pct + "%", minWidth: pct > 0 ? 8 : 0, height: "100%", borderRadius: 4, background: pc, transition: "width .15s" }} />
+                    {perms.homework_edit ? (
+                      <div onMouseDown={e => { e.preventDefault(); const bar = e.currentTarget; const calc = ev => { const r = bar.getBoundingClientRect(); const v = Math.max(0, Math.min(100, Math.round(((ev.clientX || ev.touches?.[0]?.clientX || 0) - r.left) / r.width * 20) * 5)); updateHwCompletion(h.id, v); }; calc(e); const mv = ev => calc(ev); const up = () => { window.removeEventListener("mousemove", mv); window.removeEventListener("mouseup", up); window.removeEventListener("touchmove", mv); window.removeEventListener("touchend", up); }; window.addEventListener("mousemove", mv); window.addEventListener("mouseup", up); window.addEventListener("touchmove", mv); window.addEventListener("touchend", up); }}
+                        onTouchStart={e => { const bar = e.currentTarget; const calc = ev => { const r = bar.getBoundingClientRect(); const cx = ev.touches?.[0]?.clientX ?? ev.changedTouches?.[0]?.clientX ?? 0; const v = Math.max(0, Math.min(100, Math.round((cx - r.left) / r.width * 20) * 5)); updateHwCompletion(h.id, v); }; calc(e); const mv = ev => { ev.preventDefault(); calc(ev); }; const up = () => { window.removeEventListener("touchmove", mv); window.removeEventListener("touchend", up); }; window.addEventListener("touchmove", mv, { passive: false }); window.addEventListener("touchend", up); }}
+                        style={{ width: "100%", height: 10, background: C.bl, borderRadius: 5, cursor: "pointer", position: "relative", touchAction: "none" }}>
+                        <div style={{ height: "100%", width: pct + "%", minWidth: pct > 0 ? 8 : 0, background: pc, borderRadius: 5, transition: "width .1s", pointerEvents: "none" }} />
+                        <div style={{ position: "absolute", top: "50%", left: pct + "%", transform: "translate(-50%,-50%)", width: 18, height: 18, borderRadius: "50%", background: "#fff", border: "3px solid " + pc, boxShadow: "0 1px 4px rgba(0,0,0,.15)", pointerEvents: "none", transition: "left .1s" }} />
                       </div>
-                      {perms.homework_edit ? (
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <input type="range" min="0" max="100" step="10" value={pct} disabled={hwSaving === h.id} onChange={e => updateHwCompletion(h.id, parseInt(e.target.value))} style={{ width: 70, accentColor: pc, cursor: hwSaving === h.id ? "not-allowed" : "pointer" }} />
-                          <span style={{ fontSize: 13, fontWeight: 700, color: pc, minWidth: 36, textAlign: "right" }}>{hwSaving === h.id ? "..." : pct + "%"}</span>
-                        </div>
-                      ) : (
-                        <span style={{ fontSize: 13, fontWeight: 700, color: pc, minWidth: 36, textAlign: "right" }}>{pct}%</span>
-                      )}
-                    </div>
+                    ) : (
+                      <div style={{ width: "100%", height: 8, background: C.bl, borderRadius: 4, overflow: "hidden" }}>
+                        <div style={{ width: pct + "%", minWidth: pct > 0 ? 8 : 0, height: "100%", borderRadius: 4, background: pc }} />
+                      </div>
+                    )}
                   </div>
                   );
                 })}
