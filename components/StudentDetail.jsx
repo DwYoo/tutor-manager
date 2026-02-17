@@ -13,6 +13,7 @@ const is={width:"100%",padding:"9px 12px",borderRadius:8,border:"1px solid "+C.b
 const IcBack=()=>(<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>);
 const CustomTooltip=({active,payload})=>{if(!active||!payload?.length)return null;const d=payload[0].payload;return(<div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:10,padding:"10px 14px",boxShadow:"0 4px 12px rgba(0,0,0,.08)"}}><div style={{fontSize:12,color:C.tt,marginBottom:4}}>{d.label||d.date}</div>{d.score!=null&&<div style={{fontSize:16,fontWeight:700,color:C.ac}}>{d.score}점</div>}{d.grade!=null&&<div style={{fontSize:d.score!=null?13:16,fontWeight:700,color:"#8B5CF6"}}>{d.grade}등급</div>}</div>);};
 const ReasonTooltip=({active,payload})=>{if(!active||!payload?.length)return null;const d=payload[0].payload;return(<div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:10,padding:"8px 12px",boxShadow:"0 4px 12px rgba(0,0,0,.08)"}}><div style={{fontSize:11,color:C.tt,marginBottom:2}}>{d.name}</div><div style={{fontSize:14,fontWeight:700,color:d.fill||C.ac}}>{d.count}문항</div></div>);};
+const TruncTick=({x,y,payload,fill,maxLen=5})=>{const t=payload?.value||"";const d=t.length>maxLen?t.slice(0,maxLen)+"…":t;return(<text x={x} y={y+10} textAnchor="middle" fontSize={9} fill={fill}>{d}</text>);};
 
 export default function StudentDetail({ student, initialTab, onBack, menuBtn }) {
   const{user}=useAuth();
@@ -50,6 +51,8 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
   useEffect(()=>{if(!editScore)return;const h=e=>{if(e.key==="Escape")setEditScore(null);};window.addEventListener("keydown",h);return()=>window.removeEventListener("keydown",h);},[editScore]);
   const [reasonBook,setReasonBook]=useState("");
   const [chapterBook,setChapterBook]=useState("");
+  const [isMobile,setIsMobile]=useState(false);
+  useEffect(()=>{const check=()=>setIsMobile(window.innerWidth<640);check();window.addEventListener("resize",check);return()=>window.removeEventListener("resize",check);},[]);
   const [planStrategy,setPlanStrategy]=useState("");
   const [planStrength,setPlanStrength]=useState("");
   const [planWeakness,setPlanWeakness]=useState("");
@@ -591,7 +594,7 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
           </div>
 
           {/* Stats charts */}
-          {wrongs.length>0&&(<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
+          {wrongs.length>0&&(<div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:12,marginBottom:16}}>
               <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:12,padding:"14px 12px",overflow:"hidden"}}>
                 <div style={{fontSize:12,fontWeight:600,color:C.tp,marginBottom:6}}>오답 사유별</div>
                 <div style={{display:"flex",gap:3,marginBottom:8,flexWrap:"wrap"}}>
@@ -600,7 +603,7 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
                 </div>
                 {reasonData.length>0?(<ResponsiveContainer width="100%" height={120}>
                   <BarChart data={reasonData} margin={{top:4,right:4,left:-20,bottom:0}}>
-                    <XAxis dataKey="name" tick={{fontSize:9,fill:C.tt}} axisLine={false} tickLine={false} interval={0}/>
+                    <XAxis dataKey="name" tick={<TruncTick fill={C.tt} maxLen={isMobile?4:6}/>} axisLine={false} tickLine={false} interval={0}/>
                     <YAxis tick={{fontSize:9,fill:C.tt}} axisLine={false} tickLine={false} allowDecimals={false}/>
                     <Tooltip content={<ReasonTooltip/>}/>
                     <Bar dataKey="count" radius={[4,4,0,0]} barSize={14}>
@@ -616,7 +619,7 @@ export default function StudentDetail({ student, initialTab, onBack, menuBtn }) 
                 </div>
                 {chapterData.length>0?(<ResponsiveContainer width="100%" height={120}>
                   <BarChart data={chapterData} margin={{top:4,right:4,left:-20,bottom:0}}>
-                    <XAxis dataKey="name" tick={{fontSize:9,fill:C.tt}} axisLine={false} tickLine={false} interval={0}/>
+                    <XAxis dataKey="name" tick={<TruncTick fill={C.tt} maxLen={isMobile?4:6}/>} axisLine={false} tickLine={false} interval={0}/>
                     <YAxis tick={{fontSize:9,fill:C.tt}} axisLine={false} tickLine={false} allowDecimals={false}/>
                     <Tooltip content={<ReasonTooltip/>}/>
                     <Bar dataKey="count" radius={[4,4,0,0]} barSize={14}>
