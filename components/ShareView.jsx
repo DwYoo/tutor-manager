@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, Fragment } from 'react';
+import { useState, useEffect, useRef, useCallback, Fragment } from 'react';
 import { supabase } from '@/lib/supabase';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
 import { C, SC } from '@/components/Colors';
@@ -32,6 +32,7 @@ export default function ShareView({ token }) {
   const [calMonth, setCalMonth] = useState(new Date());
   const [perms, setPerms] = useState({homework_edit:false,homework_view:true,scores_view:true,lessons_view:true,wrong_view:true,files_view:true,reports_view:true,plans_view:true});
   const [hwSaving, setHwSaving] = useState(null);
+  const hwTimers = useRef({});
 
   useEffect(() => {
     if (!token) return;
@@ -91,19 +92,22 @@ export default function ShareView({ token }) {
     })();
   }, [token]);
 
-  const updateHwCompletion = async (hwId, pct) => {
-    setHwSaving(hwId);
-    try {
-      const { data: res } = await supabase.rpc('update_shared_homework', { p_token: token, p_homework_id: hwId, p_completion_pct: pct });
-      if (res?.error) { setHwSaving(null); return; }
-      // Update local state
-      setLessons(prev => prev.map(l => ({
-        ...l,
-        homework: (l.homework || []).map(h => h.id === hwId ? { ...h, completion_pct: pct } : h)
-      })));
-    } catch { /* ignore */ }
-    setHwSaving(null);
-  };
+  const updateHwCompletion = useCallback((hwId, pct) => {
+    // Optimistic: update local state immediately for smooth UX
+    setLessons(prev => prev.map(l => ({
+      ...l,
+      homework: (l.homework || []).map(h => h.id === hwId ? { ...h, completion_pct: pct } : h)
+    })));
+    // Debounce the server call — only fire after 400ms of no changes
+    clearTimeout(hwTimers.current[hwId]);
+    hwTimers.current[hwId] = setTimeout(async () => {
+      setHwSaving(hwId);
+      try {
+        await supabase.rpc('update_shared_homework', { p_token: token, p_homework_id: hwId, p_completion_pct: pct });
+      } catch { /* ignore */ }
+      setHwSaving(null);
+    }, 400);
+  }, [token]);
 
   if (loading) return (
     <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -360,11 +364,12 @@ export default function ShareView({ token }) {
                                 <span style={{ fontSize: 12, fontWeight: 700, color: hpc, background: hbg, padding: "2px 8px", borderRadius: 6 }}>{saving ? "..." : hpct + "%"}</span>
                               </div>
                               {perms.homework_edit ? (
-                                <div onMouseDown={e => { e.preventDefault(); const bar = e.currentTarget; const calc = ev => { const r = bar.getBoundingClientRect(); const v = Math.max(0, Math.min(100, Math.round(((ev.clientX || ev.touches?.[0]?.clientX || 0) - r.left) / r.width * 20) * 5)); updateHwCompletion(h.id, v); }; calc(e); const mv = ev => calc(ev); const up = () => { window.removeEventListener("mousemove", mv); window.removeEventListener("mouseup", up); window.removeEventListener("touchmove", mv); window.removeEventListener("touchend", up); }; window.addEventListener("mousemove", mv); window.addEventListener("mouseup", up); window.addEventListener("touchmove", mv); window.addEventListener("touchend", up); }}
+                                <div onMouseDown={e => { e.preventDefault(); const bar = e.currentTarget; const calc = ev => { const r = bar.getBoundingClientRect(); const v = Math.max(0, Math.min(100, Math.round((ev.clientX - r.left) / r.width * 20) * 5)); updateHwCompletion(h.id, v); }; calc(e); const mv = ev => calc(ev); const up = () => { window.removeEventListener("mousemove", mv); window.removeEventListener("mouseup", up); }; window.addEventListener("mousemove", mv); window.addEventListener("mouseup", up); }}
                                   onTouchStart={e => { const bar = e.currentTarget; const calc = ev => { const r = bar.getBoundingClientRect(); const cx = ev.touches?.[0]?.clientX ?? ev.changedTouches?.[0]?.clientX ?? 0; const v = Math.max(0, Math.min(100, Math.round((cx - r.left) / r.width * 20) * 5)); updateHwCompletion(h.id, v); }; calc(e); const mv = ev => { ev.preventDefault(); calc(ev); }; const up = () => { window.removeEventListener("touchmove", mv); window.removeEventListener("touchend", up); }; window.addEventListener("touchmove", mv, { passive: false }); window.addEventListener("touchend", up); }}
-                                  style={{ width: "100%", height: 10, background: C.bl, borderRadius: 5, cursor: "pointer", position: "relative", touchAction: "none" }}>
-                                  <div style={{ height: "100%", width: hpct + "%", background: hpc, borderRadius: 5, transition: "width .1s", pointerEvents: "none" }} />
-                                  <div style={{ position: "absolute", top: "50%", left: hpct + "%", transform: "translate(-50%,-50%)", width: 18, height: 18, borderRadius: "50%", background: "#fff", border: "3px solid " + hpc, boxShadow: "0 1px 4px rgba(0,0,0,.15)", pointerEvents: "none", transition: "left .1s" }} />
+                                  style={{ width: "100%", height: 24, background: "transparent", cursor: "pointer", position: "relative", touchAction: "none", display: "flex", alignItems: "center" }}>
+                                  <div style={{ position: "absolute", left: 0, right: 0, height: 10, background: C.bl, borderRadius: 5 }} />
+                                  <div style={{ position: "absolute", left: 0, height: 10, width: hpct + "%", background: hpc, borderRadius: 5, pointerEvents: "none" }} />
+                                  <div style={{ position: "absolute", top: "50%", left: hpct + "%", transform: "translate(-50%,-50%)", width: 22, height: 22, borderRadius: "50%", background: "#fff", border: "3px solid " + hpc, boxShadow: "0 1px 4px rgba(0,0,0,.18)", pointerEvents: "none" }} />
                                 </div>
                               ) : (
                                 <div style={{ width: "100%", height: 8, background: C.bl, borderRadius: 4, overflow: "hidden" }}>
@@ -597,11 +602,12 @@ export default function ShareView({ token }) {
                       <span style={{ fontSize: 12, fontWeight: 700, color: pc, background: pb, padding: "2px 8px", borderRadius: 6, flexShrink: 0 }}>{hwSaving === h.id ? "..." : pct + "%"}</span>
                     </div>
                     {perms.homework_edit ? (
-                      <div onMouseDown={e => { e.preventDefault(); const bar = e.currentTarget; const calc = ev => { const r = bar.getBoundingClientRect(); const v = Math.max(0, Math.min(100, Math.round(((ev.clientX || ev.touches?.[0]?.clientX || 0) - r.left) / r.width * 20) * 5)); updateHwCompletion(h.id, v); }; calc(e); const mv = ev => calc(ev); const up = () => { window.removeEventListener("mousemove", mv); window.removeEventListener("mouseup", up); window.removeEventListener("touchmove", mv); window.removeEventListener("touchend", up); }; window.addEventListener("mousemove", mv); window.addEventListener("mouseup", up); window.addEventListener("touchmove", mv); window.addEventListener("touchend", up); }}
+                      <div onMouseDown={e => { e.preventDefault(); const bar = e.currentTarget; const calc = ev => { const r = bar.getBoundingClientRect(); const v = Math.max(0, Math.min(100, Math.round((ev.clientX - r.left) / r.width * 20) * 5)); updateHwCompletion(h.id, v); }; calc(e); const mv = ev => calc(ev); const up = () => { window.removeEventListener("mousemove", mv); window.removeEventListener("mouseup", up); }; window.addEventListener("mousemove", mv); window.addEventListener("mouseup", up); }}
                         onTouchStart={e => { const bar = e.currentTarget; const calc = ev => { const r = bar.getBoundingClientRect(); const cx = ev.touches?.[0]?.clientX ?? ev.changedTouches?.[0]?.clientX ?? 0; const v = Math.max(0, Math.min(100, Math.round((cx - r.left) / r.width * 20) * 5)); updateHwCompletion(h.id, v); }; calc(e); const mv = ev => { ev.preventDefault(); calc(ev); }; const up = () => { window.removeEventListener("touchmove", mv); window.removeEventListener("touchend", up); }; window.addEventListener("touchmove", mv, { passive: false }); window.addEventListener("touchend", up); }}
-                        style={{ width: "100%", height: 10, background: C.bl, borderRadius: 5, cursor: "pointer", position: "relative", touchAction: "none" }}>
-                        <div style={{ height: "100%", width: pct + "%", minWidth: pct > 0 ? 8 : 0, background: pc, borderRadius: 5, transition: "width .1s", pointerEvents: "none" }} />
-                        <div style={{ position: "absolute", top: "50%", left: pct + "%", transform: "translate(-50%,-50%)", width: 18, height: 18, borderRadius: "50%", background: "#fff", border: "3px solid " + pc, boxShadow: "0 1px 4px rgba(0,0,0,.15)", pointerEvents: "none", transition: "left .1s" }} />
+                        style={{ width: "100%", height: 24, background: "transparent", cursor: "pointer", position: "relative", touchAction: "none", display: "flex", alignItems: "center" }}>
+                        <div style={{ position: "absolute", left: 0, right: 0, height: 10, background: C.bl, borderRadius: 5 }} />
+                        <div style={{ position: "absolute", left: 0, height: 10, width: pct + "%", minWidth: pct > 0 ? 8 : 0, background: pc, borderRadius: 5, pointerEvents: "none" }} />
+                        <div style={{ position: "absolute", top: "50%", left: pct + "%", transform: "translate(-50%,-50%)", width: 22, height: 22, borderRadius: "50%", background: "#fff", border: "3px solid " + pc, boxShadow: "0 1px 4px rgba(0,0,0,.18)", pointerEvents: "none" }} />
                       </div>
                     ) : (
                       <div style={{ width: "100%", height: 8, background: C.bl, borderRadius: 4, overflow: "hidden" }}>

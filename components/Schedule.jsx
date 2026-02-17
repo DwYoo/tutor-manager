@@ -352,7 +352,7 @@ export default function Schedule({menuBtn}){
           </div>
         </div>
         <div className="sch-filter-row" style={{display:"flex",gap:8,marginTop:10,flexWrap:"wrap",alignItems:"center"}}>
-          {students.map(st=>{const c=SC[(st.color_index||0)%8];const dim=activeStu&&activeStu!==st.id;const sel=activeStu===st.id;return(<div key={st.id} onClick={()=>toggleStu(st.id)} style={{display:"flex",alignItems:"center",gap:6,padding:"3px 8px",borderRadius:6,background:dim?C.sfh:c.bg,fontSize:11,fontWeight:sel?700:500,color:dim?C.tt:c.t,cursor:"pointer",opacity:dim?.4:1,transition:"all .15s",border:sel?`1.5px solid ${c.b}`:"1.5px solid transparent",minHeight:44}}><div style={{width:7,height:7,borderRadius:"50%",background:dim?C.tt:c.b}}/>{st.name}</div>);})}
+          {students.filter(st=>!st.archived).map(st=>{const c=SC[(st.color_index||0)%8];const dim=activeStu&&activeStu!==st.id;const sel=activeStu===st.id;return(<div key={st.id} onClick={()=>toggleStu(st.id)} style={{display:"flex",alignItems:"center",gap:6,padding:"3px 8px",borderRadius:6,background:dim?C.sfh:c.bg,fontSize:11,fontWeight:sel?700:500,color:dim?C.tt:c.t,cursor:"pointer",opacity:dim?.4:1,transition:"all .15s",border:sel?`1.5px solid ${c.b}`:"1.5px solid transparent",minHeight:44}}><div style={{width:7,height:7,borderRadius:"50%",background:dim?C.tt:c.b}}/>{st.name}</div>);})}
           <span style={{fontSize:10,color:C.tt,background:C.sfh,padding:"3px 8px",borderRadius:4}}>{viewMode==='month'?'클릭: 해당 주간으로 이동':'좌클릭: 상세 · 우클릭: 메뉴 · 드래그: 이동/생성'}</span>
           {activeStu&&<button onClick={()=>setActive(null)} style={{fontSize:10,color:C.ac,background:C.al,border:`1px solid ${C.ac}`,borderRadius:5,padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",fontWeight:600,minHeight:44}}>전체 보기</button>}
           {viewMode==='week'&&<div style={{display:"flex",alignItems:"center",gap:4,marginLeft:"auto",fontSize:11,color:C.ts}}>
@@ -462,7 +462,7 @@ export default function Schedule({menuBtn}){
           {/* Mobile student filter + settings */}
           <div style={{display:"flex",alignItems:"center",padding:"4px 4px 8px",gap:6}}>
             <div style={{flex:1,display:"flex",gap:6,overflowX:"auto",WebkitOverflowScrolling:"touch",minWidth:0}}>
-              {students.map(st=>{const c=SC[(st.color_index||0)%8];const dim=activeStu&&activeStu!==st.id;const sel=activeStu===st.id;return(
+              {students.filter(st=>!st.archived).map(st=>{const c=SC[(st.color_index||0)%8];const dim=activeStu&&activeStu!==st.id;const sel=activeStu===st.id;return(
                 <button key={st.id} onClick={()=>toggleStu(st.id)} style={{display:"flex",alignItems:"center",gap:4,padding:"4px 8px",borderRadius:6,background:dim?C.sfh:c.bg,fontSize:10,fontWeight:sel?700:500,color:dim?C.tt:c.t,cursor:"pointer",opacity:dim?.4:1,border:sel?`1.5px solid ${c.b}`:"1.5px solid transparent",fontFamily:"inherit",whiteSpace:"nowrap",flexShrink:0}}><div style={{width:6,height:6,borderRadius:"50%",background:dim?C.tt:c.b}}/>{st.name}</button>);
               })}
               {activeStu&&<button onClick={()=>setActive(null)} style={{fontSize:10,color:C.ac,background:C.al,border:`1px solid ${C.ac}`,borderRadius:5,padding:"3px 8px",cursor:"pointer",fontFamily:"inherit",fontWeight:600,whiteSpace:"nowrap",flexShrink:0}}>전체</button>}
