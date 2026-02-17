@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/components/AuthProvider'
 import Login from '@/components/Login'
 import Dashboard from '@/components/Dashboard'
@@ -17,6 +17,8 @@ const NAV = [
   { id: 'tuition', l: '수업료 관리' },
 ]
 
+const VALID_PAGES = new Set(['dashboard', 'schedule', 'students', 'tuition', 'student-detail'])
+
 const NAV_ICONS = {
   dashboard: (a) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={a?2:1.5} strokeLinecap="round"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg>,
   schedule: (a) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={a?2:1.5} strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
@@ -24,12 +26,50 @@ const NAV_ICONS = {
   tuition: (a) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={a?2:1.5} strokeLinecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>,
 };
 
+/** Read page id from URL hash */
+function getHashPage() {
+  if (typeof window === 'undefined') return 'dashboard'
+  const h = window.location.hash.replace('#', '')
+  return VALID_PAGES.has(h) ? h : 'dashboard'
+}
+
 export default function Home() {
   const { user, signOut } = useAuth()
-  const [page, setPage] = useState('dashboard')
+  const [page, setPageState] = useState(() => getHashPage())
   const [sideOpen, setSideOpen] = useState(false)
   const [detailStudent, setDetailStudent] = useState(null)
   const [detailTab, setDetailTab] = useState(null)
+
+  /** Sync page state → URL hash */
+  const setPage = useCallback((id) => {
+    setPageState(id)
+    const newHash = '#' + id
+    if (window.location.hash !== newHash) {
+      window.history.pushState(null, '', newHash)
+    }
+  }, [])
+
+  /** Listen to browser back/forward (popstate) */
+  useEffect(() => {
+    const onPop = () => {
+      const h = getHashPage()
+      setPageState(h)
+      // When navigating back from student-detail, clear detail state
+      if (h !== 'student-detail') {
+        setDetailStudent(null)
+        setDetailTab(null)
+      }
+    }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [])
+
+  /** Set initial hash if empty */
+  useEffect(() => {
+    if (user && !window.location.hash) {
+      window.history.replaceState(null, '', '#dashboard')
+    }
+  }, [user])
 
   // Not logged in → show Login
   if (!user) return <Login />
@@ -77,7 +117,7 @@ export default function Home() {
       {sideOpen && (
         <>
           <div style={{ position: 'fixed', inset: 0, zIndex: 40, background: 'rgba(0,0,0,.3)' }} onClick={() => setSideOpen(false)} />
-          <div style={{ position: 'fixed', left: 0, top: 0, zIndex: 50, boxShadow: '4px 0 24px rgba(0,0,0,.1)' }}>
+          <div style={{ position: 'fixed', left: 0, top: 0, bottom: 0, zIndex: 50, boxShadow: '4px 0 24px rgba(0,0,0,.1)' }}>
             <Sidebar
               nav={NAV} page={page}
               onNav={(id) => { setPage(id); setDetailStudent(null); setSideOpen(false) }}
