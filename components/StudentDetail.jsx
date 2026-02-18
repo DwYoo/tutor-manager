@@ -106,10 +106,16 @@ export default function StudentDetail({ student, initialTab }) {
   const [editTbForm,setEditTbForm]=useState({title:"",publisher:"",subject:""});
   const [newChapterMap,setNewChapterMap]=useState({});
   const [editNewChapter,setEditNewChapter]=useState("");
+  const [notes,setNotes]=useState([]);
+  const [showNewNote,setShowNewNote]=useState(false);
+  const [noteTitle,setNoteTitle]=useState("");
+  const [noteBody,setNoteBody]=useState("");
+  const [pinnedNotes,setPinnedNotes]=useState(()=>{try{const v=localStorage.getItem("pinned_notes_"+student.id);return v?JSON.parse(v):[];}catch{return[];}});
+  useEffect(()=>{try{localStorage.setItem("pinned_notes_"+student.id,JSON.stringify(pinnedNotes));}catch{}},[pinnedNotes,student.id]);
 
   // Tabs: 리포트를 수업 안 "기록" 서브탭으로, 계획 제거, 분석에서 리포트 제거
   const mainTabs=[
-    {id:"class",l:"수업",subs:[{id:"timeline",l:"타임라인"},{id:"calendar",l:"수업 일정"}]},
+    {id:"class",l:"수업",subs:[{id:"timeline",l:"타임라인"},{id:"calendar",l:"수업 일정"},{id:"memo",l:"메모"}]},
     {id:"study",l:"학습 관리",subs:[{id:"homework",l:"숙제"},{id:"wrong",l:"오답 관리"},{id:"textbook",l:"교재"}]},
     {id:"analysis",l:"학습 분석",subs:[{id:"plan",l:"오버뷰"},{id:"scores",l:"성적"}]},
     {id:"archive",l:"자료실",subs:[{id:"files",l:"자료"}]}
@@ -132,8 +138,9 @@ export default function StudentDetail({ student, initialTab }) {
     if(a.error||b.error||c.error||d.error||e.error){toast?.('데이터를 불러오지 못했습니다','error');setFetchError(true);}
     setLessons(a.data||[]);setScores(b.data||[]);setWrongs(c.data||[]);setTextbooks(tb.data||[]);
     const allReps=d.data||[];
-    setReports(allReps.filter(r=>r.type!=='plan'));
+    setReports(allReps.filter(r=>r.type!=='plan'&&r.type!=='note'));
     setPlanComments(allReps.filter(r=>r.type==='plan'));
+    setNotes(allReps.filter(r=>r.type==='note'));
     setStudyPlans(e.data||[]);
     // Load plan fields from student
     setPlanStrategy(s.plan_strategy||"");
@@ -196,6 +203,10 @@ export default function StudentDetail({ student, initialTab }) {
   const bulkDelWrong=async()=>{const ids=[...wSelected];if(!ids.length)return;const{error}=await supabase.from('wrong_answers').delete().in('id',ids);if(error){toast?.('일괄 삭제에 실패했습니다','error');return;}setWrongs(p=>p.filter(w=>!wSelected.has(w.id)));setWSelected(new Set());setWBulkMode(false);toast?.(`${ids.length}건 삭제됨`);};
   const wTimers=useRef({});
   const updWrong=(id,key,val)=>{setWrongs(p=>p.map(w=>w.id===id?{...w,[key]:val}:w));const tk=id+key;clearTimeout(wTimers.current[tk]);wTimers.current[tk]=setTimeout(async()=>{await supabase.from('wrong_answers').update({[key]:val}).eq('id',id);},500);};
+  const addNote=async()=>{if(!noteBody.trim())return;const{data,error}=await supabase.from('reports').insert({student_id:s.id,title:noteTitle.trim()||fd(new Date()),body:noteBody,is_shared:false,type:'note',date:fd(new Date()),user_id:user.id}).select().single();if(error){toast?.('메모 저장에 실패했습니다','error');return;}if(data){setNotes(p=>[data,...p]);setNoteTitle("");setNoteBody("");setShowNewNote(false);toast?.('메모가 저장되었습니다');}};
+  const delNote=async(id)=>{if(!confirm('메모를 삭제하시겠습니까?'))return;const{error}=await supabase.from('reports').delete().eq('id',id);if(error){toast?.('삭제에 실패했습니다','error');return;}setNotes(p=>p.filter(n=>n.id!==id));setPinnedNotes(p=>p.filter(pid=>pid!==id));toast?.('메모가 삭제되었습니다');};
+  const togglePin=(id)=>{setPinnedNotes(p=>p.includes(id)?p.filter(pid=>pid!==id):[...p,id]);};
+
   const addRp=async()=>{if(!nT.trim())return;const{data,error}=await supabase.from('reports').insert({student_id:s.id,title:nT,body:nB,is_shared:!nS,date:fd(new Date()),user_id:user.id}).select().single();if(error){toast?.('레포트 저장에 실패했습니다','error');return;}if(data){setReports(p=>[data,...p]);setNT("");setNB("");setNS(false);setShowNew(false);toast?.('레포트가 등록되었습니다');}};
   const addScore=async()=>{if(!scoreForm.score&&!scoreForm.grade)return;const ins={student_id:s.id,date:scoreForm.date,label:scoreForm.label,user_id:user.id};if(scoreForm.score)ins.score=parseInt(scoreForm.score);if(scoreForm.grade)ins.grade=parseInt(scoreForm.grade);const hadGrade=!!scoreForm.grade;let{data,error}=await supabase.from('scores').insert(ins).select().single();if(error&&hadGrade){const{grade,...insNoGrade}=ins;({data,error}=await supabase.from('scores').insert(insNoGrade).select().single());if(!error)toast?.('등급(grade) 컬럼이 아직 지원되지 않아 등급 없이 저장되었습니다','info');}if(error){toast?.('성적 추가에 실패했습니다','error');return;}if(data){if(hadGrade&&!data.grade)data.grade=parseInt(scoreForm.grade);setScores(p=>[...p,data]);setScoreForm({date:"",score:"",label:"",grade:""});setShowAddScore(false);toast?.('성적이 추가되었습니다');}};
   const openEditScore=(sc)=>{setEditScore(sc);setEditScoreForm({date:sc.date||"",score:sc.score!=null?String(sc.score):"",label:sc.label||"",grade:sc.grade!=null?String(sc.grade):""});};
@@ -525,6 +536,44 @@ export default function StudentDetail({ student, initialTab }) {
             })()}
           </div>);
         })()}
+
+        {/* MEMO (메모) */}
+        {subTab==="memo"&&(()=>{
+          const sorted=[...notes].sort((a,b)=>{const ap=pinnedNotes.includes(a.id)?0:1,bp=pinnedNotes.includes(b.id)?0:1;if(ap!==bp)return ap-bp;return(b.date||"").localeCompare(a.date||"");});
+          return(<div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+            <h3 style={{fontSize:16,fontWeight:700,color:C.tp}}>메모</h3>
+            <button onClick={()=>setShowNewNote(!showNewNote)} style={{background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"8px 16px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>+ 새 메모</button>
+          </div>
+          {showNewNote&&(<div style={{background:C.sf,border:"2px solid "+C.ac,borderRadius:14,padding:20,marginBottom:16}}>
+            <div style={{marginBottom:10}}><label style={ls}>제목 <span style={{fontWeight:400,color:C.tt}}>(선택)</span></label><input value={noteTitle} onChange={e=>setNoteTitle(e.target.value)} style={is} placeholder="예: 학부모 요청사항, 학생 성향 메모"/></div>
+            <div style={{marginBottom:10}}><label style={ls}>내용</label><textarea value={noteBody} onChange={e=>setNoteBody(e.target.value)} style={{...is,height:100,resize:"vertical",lineHeight:1.6}} placeholder="학생 관련 메모를 자유롭게 기록하세요..."/></div>
+            <div style={{display:"flex",justifyContent:"flex-end",gap:8}}>
+              <button onClick={()=>{setShowNewNote(false);setNoteTitle("");setNoteBody("");}} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:8,padding:"8px 14px",fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>취소</button>
+              <button onClick={addNote} style={{background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"8px 16px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>저장</button>
+            </div>
+          </div>)}
+          {sorted.length===0?(<div style={{textAlign:"center",padding:40,color:C.tt,background:C.sf,border:"1px solid "+C.bd,borderRadius:14}}><div style={{fontSize:14}}>메모가 없습니다</div><div style={{fontSize:12,marginTop:4,color:C.tt}}>학생 성향, 주의사항, 학부모 요청 등을 기록해보세요</div></div>):(
+            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+              {sorted.map(n=>{const pinned=pinnedNotes.includes(n.id);return(
+                <div key={n.id} style={{background:C.sf,border:"1px solid "+(pinned?C.ac:C.bd),borderRadius:14,padding:18,borderLeft:pinned?"3px solid "+C.ac:"none"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,flex:1,minWidth:0}}>
+                      <button onClick={()=>togglePin(n.id)} title={pinned?"고정 해제":"고정"} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,padding:0,flexShrink:0,opacity:pinned?1:.4}}>{pinned?"📌":"📌"}</button>
+                      <span style={{fontSize:14,fontWeight:600,color:C.tp,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{n.title||"메모"}</span>
+                      {pinned&&<span style={{background:C.as,color:C.ac,padding:"1px 6px",borderRadius:4,fontSize:9,fontWeight:600,flexShrink:0}}>고정</span>}
+                    </div>
+                    <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+                      <span style={{fontSize:12,color:C.tt}}>{n.date}</span>
+                      <button onClick={()=>delNote(n.id)} style={{background:"none",border:"none",fontSize:10,color:C.tt,cursor:"pointer",fontFamily:"inherit",padding:0,opacity:.6}}>삭제</button>
+                    </div>
+                  </div>
+                  <div style={{fontSize:13,color:C.ts,lineHeight:1.7,whiteSpace:"pre-wrap"}}>{n.body}</div>
+                </div>
+              );})}
+            </div>
+          )}
+        </div>);})()}
 
         {/* NOTES (기록) - 리포트 타임라인 */}
         {subTab==="notes"&&(<div>
