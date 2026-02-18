@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
+import { useToast } from '@/components/Toast';
 import { C, SC } from '@/components/Colors';
 import { p2, m2s, bk, insertViaExec } from '@/lib/utils';
 const ls={display:"block",fontSize:12,fontWeight:500,color:C.tt,marginBottom:6};
@@ -12,6 +13,7 @@ const IcLock=()=><svg width="13" height="13" viewBox="0 0 24 24" fill="none" str
 
 export default function LessonDetailModal({ les, student, textbooks = [], onUpdate, onClose }) {
   const { user } = useAuth();
+  const toast = useToast();
   const col = SC[(student?.color_index ?? 0) % 8];
   const sh = les.sh ?? les.start_hour ?? 0, sm = les.sm ?? les.start_min ?? 0, dur = les.dur ?? les.duration ?? 0;
   const sub = les.sub ?? les.subject ?? "", rep = les.rep ?? les.is_recurring ?? false;
@@ -47,9 +49,10 @@ export default function LessonDetailModal({ les, student, textbooks = [], onUpda
     for (const file of fileList) {
       const ext = file.name.split('.').pop().toLowerCase();
       const ftype = ["pdf"].includes(ext) ? "pdf" : ["jpg","jpeg","png","gif","webp"].includes(ext) ? "img" : "file";
-      const path = `students/${student.id}/${Date.now()}_${file.name}`;
+      const safeExt = (file.name.split('.').pop() || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const path = `students/${student.id}/${crypto.randomUUID()}${safeExt ? '.' + safeExt : ''}`;
       const { error: upErr } = await supabase.storage.from('files').upload(path, file);
-      if (upErr) continue;
+      if (upErr) { toast?.(`${file.name} 업로드 실패`, 'error'); continue; }
       const { data: urlData } = supabase.storage.from('files').getPublicUrl(path);
       const { data, error } = await supabase.from('files').insert({ student_id: student.id, lesson_id: les.id, file_name: file.name, file_type: ftype, file_url: urlData.publicUrl, user_id: user.id }).select().single();
       if (!error && data) { setFiles(p => [...p, data]); markDirty(); }
@@ -59,7 +62,14 @@ export default function LessonDetailModal({ les, student, textbooks = [], onUpda
   const handleFileDrop = async (e) => { e.preventDefault(); setFileDrag(false); await handleFileUpload(e.dataTransfer?.files); };
   const handleFileInput = async (e) => { await handleFileUpload(e.target.files); e.target.value = ''; };
   const delFile = async (id) => {
-    await supabase.from('files').delete().eq('id', id);
+    const file = files.find(f => f.id === id);
+    if (file?.file_url) {
+      const urlPath = new URL(file.file_url).pathname;
+      const storagePath = urlPath.split('/object/public/files/')[1];
+      if (storagePath) await supabase.storage.from('files').remove([decodeURIComponent(storagePath)]);
+    }
+    const { error } = await supabase.from('files').delete().eq('id', id);
+    if (error) return;
     setFiles(p => p.filter(f => f.id !== id)); markDirty();
   };
   const doSave = async () => { if (saving) return; setSaving(true); try { await onUpdate(les.id, { top: topic, content, feedback, tMemo, hw, planPrivate, planShared, files }); setDirty(false); onClose(); } catch(e) { /* error handled by parent toast */ } finally { setSaving(false); } };
@@ -81,7 +91,7 @@ export default function LessonDetailModal({ les, student, textbooks = [], onUpda
               </div>
               <input value={topic} onChange={e => { setTopic(e.target.value); markDirty(); }} style={{ border: "none", outline: "none", fontSize: 14, fontWeight: 500, color: C.tp, background: "transparent", padding: "2px 0", width: "100%", borderBottom: "1px dashed " + C.bd, fontFamily: "inherit" }} placeholder="수업 주제 입력..." />
             </div>
-            <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: C.tt, display: "flex", marginLeft: 12, flexShrink: 0 }}><IcX /></button>
+            <button aria-label="닫기" onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: C.tt, display: "flex", marginLeft: 12, flexShrink: 0 }}><IcX /></button>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 13, color: C.ts, marginBottom: 16 }}>
             <span>{m2s(sh * 60 + sm)} ~ {m2s(em)} ({dur}분)</span>

@@ -1,7 +1,7 @@
 export const C = {
   bg: "#FAFAF9", sf: "#FFFFFF", sfh: "#F5F5F4", bd: "#E7E5E4",
   bl: "#F0EFED", pr: "#1A1A1A", ac: "#2563EB", al: "#DBEAFE",
-  as: "#EFF6FF", tp: "#1A1A1A", ts: "#78716C", tt: "#A8A29E",
+  as: "#EFF6FF", tp: "#1A1A1A", ts: "#78716C", tt: "#78716C",
   su: "#16A34A", sb: "#F0FDF4", dn: "#DC2626", db: "#FEF2F2",
   wn: "#F59E0B", wb: "#FFFBEB",
   lo: "#EA580C", lob: "#FFF7ED"

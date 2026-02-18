@@ -12,11 +12,16 @@ export default function StudentDetailPage() {
   const searchParams = useSearchParams();
   const [student, setStudent] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(null);
 
   useEffect(() => {
     if (!user || !params.id) return;
     supabase.from('students').select('*').eq('id', params.id).single()
-      .then(({ data }) => { setStudent(data); setLoading(false); });
+      .then(({ data, error }) => {
+        if (error) setFetchError(error.message);
+        else setStudent(data);
+        setLoading(false);
+      });
   }, [user, params.id]);
 
   if (loading) return (
@@ -24,9 +29,9 @@ export default function StudentDetailPage() {
       <div style={{ color: C.tt, fontSize: 14 }}>로딩 중...</div>
     </div>
   );
-  if (!student) return (
+  if (fetchError || !student) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
-      <div style={{ color: C.tt, fontSize: 14 }}>학생을 찾을 수 없습니다</div>
+      <div style={{ color: C.tt, fontSize: 14 }}>{fetchError ? '학생 정보를 불러올 수 없습니다' : '학생을 찾을 수 없습니다'}</div>
     </div>
   );
 

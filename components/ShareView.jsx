@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, useCallback, Fragment } from 'react';
 import { supabase } from '@/lib/supabase';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
 import { C, SC } from '@/components/Colors';
-import { p2, m2s } from '@/lib/utils';
+import { p2, m2s, fd, lessonOnDate } from '@/lib/utils';
 import { exportStudentReportPDF, generateMonthlySummary } from '@/lib/export';
 const REASON_COLORS=["#2563EB","#DC2626","#F59E0B","#16A34A","#8B5CF6","#EC4899","#06B6D4","#F97316"];
 const ScoreTooltip=({active,payload})=>{if(!active||!payload?.length)return null;const d=payload[0].payload;return(<div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:10,padding:"10px 14px",boxShadow:"0 4px 12px rgba(0,0,0,.08)"}}><div style={{fontSize:12,color:C.tt,marginBottom:4}}>{d.label||d.date}</div><div style={{fontSize:16,fontWeight:700,color:C.ac}}>{d.score}점</div></div>);};
@@ -341,10 +341,6 @@ export default function ShareView({ token }) {
                           <div style={{ fontSize: 11, fontWeight: 600, color: C.tt, marginBottom: 4 }}>피드백</div>
                           <div style={{ fontSize: 13, color: C.tp, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{l.feedback}</div>
                         </div>}
-                        {l.private_memo && <div style={{ marginTop: 12 }}>
-                          <div style={{ fontSize: 11, fontWeight: 600, color: C.tt, marginBottom: 4 }}>메모</div>
-                          <div style={{ fontSize: 13, color: C.ts, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{l.private_memo}</div>
-                        </div>}
                         {l.plan_shared && <div style={{ marginTop: 12 }}>
                           <div style={{ fontSize: 11, fontWeight: 600, color: C.tt, marginBottom: 4 }}>수업 계획</div>
                           <div style={{ fontSize: 13, color: C.tp, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{l.plan_shared}</div>
@@ -381,7 +377,7 @@ export default function ShareView({ token }) {
                           })}
                           </div>
                         </div>}
-                        {(!l.content && !l.feedback && !l.private_memo && hw.length === 0) && (
+                        {(!l.content && !l.feedback && hw.length === 0) && (
                           <div style={{ padding: "12px 0", fontSize: 13, color: C.tt }}>상세 기록이 없습니다</div>
                         )}
                       </div>
@@ -409,16 +405,7 @@ export default function ShareView({ token }) {
                 const ds = `${year}-${p2(month + 1)}-${p2(i)}`;
                 const dt = new Date(year, month, i);
                 const dw = dt.getDay() === 0 ? 7 : dt.getDay();
-                const dayLessons = lessons.filter(l => {
-                  if (l.is_recurring && l.recurring_exceptions && l.recurring_exceptions.includes(ds)) return false;
-                  if (l.date === ds) return true;
-                  if (l.is_recurring && l.recurring_day === dw) {
-                    if (ds < l.date) return false;
-                    if (l.recurring_end_date && ds >= l.recurring_end_date) return false;
-                    return true;
-                  }
-                  return false;
-                });
+                const dayLessons = lessons.filter(l => lessonOnDate(l, dt));
                 cells.push({ d: i, lessons: dayLessons, ds });
               }
               const rem = 42 - cells.length;

@@ -125,7 +125,6 @@ export default function Dashboard(){
         completed+=dayLessons.length;
       }
     }
-    // per-student breakdown
     const perStudent=activeStudents.slice(0,8).map(st=>{
       let sch=0,comp=0;
       for(let d=1;d<=dim;d++){

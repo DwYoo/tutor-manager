@@ -34,6 +34,7 @@ export default function AppShell({ children }) {
 
   const menuBtn = (
     <button
+      aria-label="메뉴 열기"
       onClick={() => setSideOpen(true)}
       style={{
         width: 44, height: 44, borderRadius: 10, border: '2px solid #E7E5E4',
@@ -98,7 +99,7 @@ export default function AppShell({ children }) {
         </div>
 
         {/* Mobile bottom navigation */}
-        <div className="mobile-nav" style={{
+        <nav aria-label="메인 내비게이션" className="mobile-nav" style={{
           position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 30,
           background: '#FFFFFF', borderTop: '1px solid #E7E5E4',
           display: 'none', justifyContent: 'space-around', alignItems: 'center',
@@ -107,14 +108,14 @@ export default function AppShell({ children }) {
           {NAV.map(n => {
             const active = page === n.id;
             return (
-              <button key={n.id} onClick={() => navigate(n.id)}
+              <button key={n.id} aria-label={n.l} onClick={() => navigate(n.id)}
                 style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, border: 'none', background: 'none', cursor: 'pointer', padding: '6px 12px', color: active ? '#2563EB' : '#A8A29E', fontFamily: 'inherit', minWidth: 56 }}>
                 {NAV_ICONS[n.id]?.(active)}
                 <span style={{ fontSize: 10, fontWeight: active ? 600 : 400 }}>{n.l}</span>
               </button>
             );
           })}
-        </div>
+        </nav>
       </div>
     </ShellCtx.Provider>
   );

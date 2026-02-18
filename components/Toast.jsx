@@ -31,7 +31,7 @@ export function ToastProvider({ children }) {
       <div style={{ position: 'fixed', bottom: 'max(72px, calc(env(safe-area-inset-bottom) + 68px))', left: 16, right: 16, zIndex: 9999, display: 'flex', flexDirection: 'column-reverse', gap: 8, pointerEvents: 'none' }} className="toast-container">
         <style>{`@media(min-width:1024px){.toast-container{left:auto!important;right:24px!important;bottom:24px!important;max-width:380px;}}`}</style>
         {toasts.map(t => (
-          <div key={t.id} onClick={() => remove(t.id)} style={{
+          <div key={t.id} role="alert" aria-live="polite" onClick={() => remove(t.id)} style={{
             pointerEvents: 'auto', cursor: 'pointer',
             padding: '12px 18px', borderRadius: 10, width: '100%',
             background: t.type === 'error' ? '#FEF2F2' : t.type === 'info' ? '#EFF6FF' : '#F0FDF4',
