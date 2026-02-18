@@ -45,6 +45,7 @@ export default function StudentDetail({ student, initialTab }) {
   const [wForm,setWForm]=useState({book:"",chapter:"",problem_num:"",reason:"",note:""});
   const [wFilter,setWFilter]=useState("");const [wPage,setWPage]=useState(0);const [wSearch,setWSearch]=useState("");const [wBulkMode,setWBulkMode]=useState(false);const [wSelected,setWSelected]=useState(new Set());
   const [wExpanded,setWExpanded]=useState(()=>{try{const s=localStorage.getItem("wExp_"+student.id);return s?JSON.parse(s):{};}catch{return{};}});
+  const [editingChapter,setEditingChapter]=useState(null);
   useEffect(()=>{try{localStorage.setItem("wExp_"+student.id,JSON.stringify(wExpanded));}catch{}},[wExpanded,student.id]);
   const [hwFilter,setHwFilter]=useState(new Set());
   const PER_PAGE=20;
@@ -282,6 +283,7 @@ export default function StudentDetail({ student, initialTab }) {
   const saveEditTb=async()=>{if(!editTb||!editTbForm.title.trim())return;const{error}=await supabase.from('textbooks').update({title:editTbForm.title.trim(),publisher:editTbForm.publisher.trim(),subject:editTbForm.subject.trim()}).eq('id',editTb.id);if(error){toast?.('교재 수정에 실패했습니다','error');return;}setTextbooks(p=>p.map(t=>t.id===editTb.id?{...t,title:editTbForm.title.trim(),publisher:editTbForm.publisher.trim(),subject:editTbForm.subject.trim()}:t));setEditTb(null);toast?.('교재가 수정되었습니다');};
   const addChapter=async(tbId,name)=>{if(!name.trim())return;const tb=textbooks.find(t=>t.id===tbId);if(!tb)return;const chs=[...(tb.chapters||[]),name.trim()];const{error}=await supabase.from('textbooks').update({chapters:chs}).eq('id',tbId);if(error){toast?.('단원 추가에 실패했습니다','error');return;}setTextbooks(p=>p.map(t=>t.id===tbId?{...t,chapters:chs}:t));};
   const delChapter=async(tbId,idx)=>{const tb=textbooks.find(t=>t.id===tbId);if(!tb)return;const chs=[...(tb.chapters||[])];chs.splice(idx,1);const{error}=await supabase.from('textbooks').update({chapters:chs}).eq('id',tbId);if(error){toast?.('단원 삭제에 실패했습니다','error');return;}setTextbooks(p=>p.map(t=>t.id===tbId?{...t,chapters:chs}:t));};
+  const renameChapter=async(book,oldCh,newCh)=>{if(!newCh.trim()||newCh.trim()===oldCh){setEditingChapter(null);return;}const newName=newCh.trim();const{error:wErr}=await supabase.from('wrong_answers').update({chapter:newName}).eq('student_id',s.id).eq('book',book).eq('chapter',oldCh);if(wErr){toast?.('단원명 수정에 실패했습니다','error');return;}setWrongs(p=>p.map(w=>w.book===book&&w.chapter===oldCh?{...w,chapter:newName}:w));const tb=textbooks.find(t=>t.title===book);if(tb){const chs=(tb.chapters||[]).map(ch=>ch===oldCh?newName:ch);await supabase.from('textbooks').update({chapters:chs}).eq('id',tb.id);setTextbooks(p=>p.map(t=>t.id===tb.id?{...t,chapters:chs}:t));}setEditingChapter(null);toast?.('단원명이 수정되었습니다');};
   const updLesDetail=async(id,data)=>{
     const u={};if(data.top!==undefined)u.topic=data.top;if(data.content!==undefined)u.content=data.content;if(data.feedback!==undefined)u.feedback=data.feedback;if(data.tMemo!==undefined)u.private_memo=data.tMemo;if(data.planShared!==undefined)u.plan_shared=data.planShared;if(data.planPrivate!==undefined)u.plan_private=data.planPrivate;
     if(Object.keys(u).length){const{error}=await supabase.from('lessons').update(u).eq('id',id);if(error){toast?.('수업 정보 저장에 실패했습니다','error');return;}}
@@ -703,7 +705,7 @@ export default function StudentDetail({ student, initialTab }) {
 
           {/* Wrong answers list */}
           {wrongs.length===0?(<div style={{textAlign:"center",padding:40,color:C.tt,background:C.sf,border:"1px solid "+C.bd,borderRadius:14}}><div style={{fontSize:14}}>오답 기록이 없습니다</div></div>):
-          !wFilter?([...wBooks,...(wrongs.some(w=>!w.book)?[""]:[] )].map(book=>{const bk=book||"__no_book__";const items=[...wrongs.filter(w=>book?w.book===book:!w.book)].sort((a,b)=>{const ac=a.chapter||"",bc=b.chapter||"";if(ac!==bc)return ac.localeCompare(bc,undefined,{numeric:true});const an=parseInt(a.problem_num)||0,bn=parseInt(b.problem_num)||0;return an-bn;});const exp=wExpanded[bk]!==false;return(
+          !wFilter?(()=>{const src=filteredW;const srcBooks=[...new Set(src.map(w=>w.book).filter(Boolean))];if(src.length===0&&wSearch)return <div style={{textAlign:"center",padding:24,color:C.tt,fontSize:13}}>검색 결과가 없습니다</div>;return [...srcBooks,...(src.some(w=>!w.book)?[""]:[] )].map(book=>{const bk=book||"__no_book__";const items=[...src.filter(w=>book?w.book===book:!w.book)];const exp=wExpanded[bk]!==false;return(
             <div key={bk} className="table-scroll" style={{marginBottom:12}}>
               <div onClick={()=>setWExpanded(p=>({...p,[bk]:!exp}))} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",background:C.sfh,borderRadius:10,cursor:"pointer",marginBottom:exp?8:0}}>
                 <span style={{fontSize:13,fontWeight:600,color:book?C.tp:C.tt}}>{book||"교재명 미지정"} <span style={{fontWeight:400,color:C.tt}}>({items.length})</span></span>
@@ -712,13 +714,16 @@ export default function StudentDetail({ student, initialTab }) {
               {exp&&(()=>{const uCh=[];const seen=new Set();items.forEach(w=>{const ch=w.chapter||"";if(!seen.has(ch)){seen.add(ch);uCh.push(ch);}});const cols=5;return <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
                 <thead><tr>{["",wBulkMode?"":"번호","사유","메모",""].map((h,i)=>(<th key={i} style={{padding:"8px 10px",textAlign:"left",color:C.tt,fontWeight:500,borderBottom:"1px solid "+C.bd,width:i===0?28:i===4?48:"auto"}}>{h}</th>))}</tr></thead>
                 <tbody>{uCh.map(ch=>{const ck=bk+"::"+(ch||"__no_ch__");const chExp=wExpanded[ck]!==false;const chItems=items.filter(w=>(w.chapter||"")===ch);const cc=chapterColorMap[ch]||null;const chResolved=chItems.filter(w=>w.resolved).length;return(<Fragment key={ck}>
-                  <tr onClick={()=>setWExpanded(p=>({...p,[ck]:!chExp}))} style={{cursor:"pointer"}}>
+                  <tr onClick={()=>{if(!editingChapter||editingChapter.book!==book||editingChapter.chapter!==ch)setWExpanded(p=>({...p,[ck]:!chExp}));}} style={{cursor:"pointer"}}>
                     <td colSpan={cols} style={{padding:"7px 8px",background:C.sf,borderBottom:"1px solid "+C.bd}}>
                       <div style={{display:"flex",alignItems:"center",gap:6}}>
                         {cc&&<span style={{display:"inline-block",width:7,height:7,borderRadius:"50%",background:cc,flexShrink:0}}/>}
+                        {editingChapter&&editingChapter.book===book&&editingChapter.chapter===ch?(<><input value={editingChapter.value} onClick={e=>e.stopPropagation()} onChange={e=>setEditingChapter(p=>({...p,value:e.target.value}))} onKeyDown={e=>{if(e.key==="Enter"){e.stopPropagation();renameChapter(book,ch,editingChapter.value);}if(e.key==="Escape"){e.stopPropagation();setEditingChapter(null);}}} autoFocus style={{border:"1px solid "+C.ac,outline:"none",background:C.sf,fontSize:12,fontWeight:500,color:C.ts,fontFamily:"inherit",borderRadius:6,padding:"2px 8px",width:140}}/><button onClick={e=>{e.stopPropagation();renameChapter(book,ch,editingChapter.value);}} style={{background:C.ac,color:"#fff",border:"none",borderRadius:5,padding:"2px 8px",fontSize:10,cursor:"pointer",fontFamily:"inherit"}}>확인</button><button onClick={e=>{e.stopPropagation();setEditingChapter(null);}} style={{background:C.sfh,color:C.tt,border:"1px solid "+C.bd,borderRadius:5,padding:"2px 8px",fontSize:10,cursor:"pointer",fontFamily:"inherit"}}>취소</button></>):(<>
                         <span style={{fontSize:12,fontWeight:500,color:ch?C.ts:C.tt}}>{ch||"단원 미지정"}</span>
                         <span style={{fontSize:10,color:C.tt}}>({chItems.length})</span>
                         {chResolved>0&&<span style={{fontSize:9,color:C.su,background:C.sb,padding:"1px 6px",borderRadius:4}}>{chResolved}해결</span>}
+                        {!isParent&&ch&&<button onClick={e=>{e.stopPropagation();setEditingChapter({book,chapter:ch,value:ch});}} style={{background:"none",border:"none",color:C.ac,cursor:"pointer",fontSize:10,fontFamily:"inherit",padding:"0 4px"}}>수정</button>}
+                        </>)}
                         <span style={{fontSize:10,color:C.tt,marginLeft:"auto"}}>{chExp?"▲":"▼"}</span>
                       </div>
                     </td>
@@ -732,18 +737,21 @@ export default function StudentDetail({ student, initialTab }) {
                 </tr>);})}
                 </Fragment>);})}</tbody>
               </table>;})()}
-            </div>);})):(
+            </div>);});})():(
             <div className="table-scroll">
               {(()=>{const fItems=filteredW;const uCh=[];const seen=new Set();fItems.forEach(w=>{const ch=w.chapter||"";if(!seen.has(ch)){seen.add(ch);uCh.push(ch);}});const fk=wFilter||"__filtered__";const cols=5;return fItems.length===0?<div style={{textAlign:"center",padding:24,color:C.tt,fontSize:13}}>오답 기록이 없습니다</div>:<table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
                 <thead><tr>{["",wBulkMode?"":"번호","사유","메모",""].map((h,i)=>(<th key={i} style={{padding:"8px 10px",textAlign:"left",color:C.tt,fontWeight:500,borderBottom:"1px solid "+C.bd,width:i===0?28:i===4?48:"auto"}}>{h}</th>))}</tr></thead>
                 <tbody>{uCh.map(ch=>{const ck=fk+"::"+(ch||"__no_ch__");const chExp=wExpanded[ck]!==false;const chItems=fItems.filter(w=>(w.chapter||"")===ch);const cc=chapterColorMap[ch]||null;const chResolved=chItems.filter(w=>w.resolved).length;return(<Fragment key={ck}>
-                  <tr onClick={()=>setWExpanded(p=>({...p,[ck]:!chExp}))} style={{cursor:"pointer"}}>
+                  <tr onClick={()=>{if(!editingChapter||editingChapter.book!==wFilter||editingChapter.chapter!==ch)setWExpanded(p=>({...p,[ck]:!chExp}));}} style={{cursor:"pointer"}}>
                     <td colSpan={cols} style={{padding:"7px 8px",background:C.sf,borderBottom:"1px solid "+C.bd}}>
                       <div style={{display:"flex",alignItems:"center",gap:6}}>
                         {cc&&<span style={{display:"inline-block",width:7,height:7,borderRadius:"50%",background:cc,flexShrink:0}}/>}
+                        {editingChapter&&editingChapter.book===wFilter&&editingChapter.chapter===ch?(<><input value={editingChapter.value} onClick={e=>e.stopPropagation()} onChange={e=>setEditingChapter(p=>({...p,value:e.target.value}))} onKeyDown={e=>{if(e.key==="Enter"){e.stopPropagation();renameChapter(wFilter,ch,editingChapter.value);}if(e.key==="Escape"){e.stopPropagation();setEditingChapter(null);}}} autoFocus style={{border:"1px solid "+C.ac,outline:"none",background:C.sf,fontSize:12,fontWeight:500,color:C.ts,fontFamily:"inherit",borderRadius:6,padding:"2px 8px",width:140}}/><button onClick={e=>{e.stopPropagation();renameChapter(wFilter,ch,editingChapter.value);}} style={{background:C.ac,color:"#fff",border:"none",borderRadius:5,padding:"2px 8px",fontSize:10,cursor:"pointer",fontFamily:"inherit"}}>확인</button><button onClick={e=>{e.stopPropagation();setEditingChapter(null);}} style={{background:C.sfh,color:C.tt,border:"1px solid "+C.bd,borderRadius:5,padding:"2px 8px",fontSize:10,cursor:"pointer",fontFamily:"inherit"}}>취소</button></>):(<>
                         <span style={{fontSize:12,fontWeight:500,color:ch?C.ts:C.tt}}>{ch||"단원 미지정"}</span>
                         <span style={{fontSize:10,color:C.tt}}>({chItems.length})</span>
                         {chResolved>0&&<span style={{fontSize:9,color:C.su,background:C.sb,padding:"1px 6px",borderRadius:4}}>{chResolved}해결</span>}
+                        {!isParent&&ch&&<button onClick={e=>{e.stopPropagation();setEditingChapter({book:wFilter,chapter:ch,value:ch});}} style={{background:"none",border:"none",color:C.ac,cursor:"pointer",fontSize:10,fontFamily:"inherit",padding:"0 4px"}}>수정</button>}
+                        </>)}
                         <span style={{fontSize:10,color:C.tt,marginLeft:"auto"}}>{chExp?"▲":"▼"}</span>
                       </div>
                     </td>
