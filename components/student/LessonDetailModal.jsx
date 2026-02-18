@@ -11,6 +11,77 @@ const is={width:"100%",padding:"9px 12px",borderRadius:8,border:`1px solid ${C.b
 const IcX=()=><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
 const IcLock=()=><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>;
 
+const TPL_KEY = 'lesson-templates';
+const loadTpls = () => { try { return JSON.parse(localStorage.getItem(TPL_KEY)) || []; } catch { return []; } };
+const saveTpls = (t) => { try { localStorage.setItem(TPL_KEY, JSON.stringify(t)); } catch {} };
+
+function TplBar({ field, value, onApply }) {
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [name, setName] = useState('');
+  const [tpls, setTpls] = useState(() => loadTpls().filter(t => t.field === field));
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const h = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', h); return () => document.removeEventListener('mousedown', h);
+  }, [open]);
+  const doSave = () => {
+    if (!name.trim() || !value.trim()) return;
+    const all = loadTpls();
+    all.push({ id: Date.now(), field, name: name.trim(), text: value });
+    saveTpls(all);
+    setTpls(all.filter(t => t.field === field));
+    setName(''); setSaving(false);
+  };
+  const doDelete = (id) => {
+    const all = loadTpls().filter(t => t.id !== id);
+    saveTpls(all);
+    setTpls(all.filter(t => t.field === field));
+  };
+  return (
+    <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
+      <button onClick={() => setOpen(!open)} style={{ background: 'none', border: '1px solid ' + C.bd, borderRadius: 6, padding: '3px 10px', fontSize: 11, color: C.ts, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4 }}>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        템플릿{tpls.length > 0 ? ` (${tpls.length})` : ''}
+      </button>
+      {open && (
+        <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, background: C.sf, border: '1px solid ' + C.bd, borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,.12)', minWidth: 220, zIndex: 50, overflow: 'hidden' }}>
+          {tpls.length > 0 && (
+            <div style={{ maxHeight: 180, overflowY: 'auto' }}>
+              {tpls.map(t => (
+                <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderBottom: '1px solid ' + C.bl, cursor: 'pointer' }}
+                  onMouseEnter={e => e.currentTarget.style.background = C.sfh} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                  <div onClick={() => { onApply(t.text); setOpen(false); }} style={{ flex: 1, fontSize: 12, color: C.tp, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.name}</div>
+                  <button onClick={e => { e.stopPropagation(); doDelete(t.id); }} style={{ background: 'none', border: 'none', color: C.tt, fontSize: 10, cursor: 'pointer', padding: 2, flexShrink: 0, opacity: 0.6 }}>✕</button>
+                </div>
+              ))}
+            </div>
+          )}
+          {tpls.length === 0 && !saving && (
+            <div style={{ padding: '12px', fontSize: 12, color: C.tt, textAlign: 'center' }}>저장된 템플릿이 없습니다</div>
+          )}
+          {saving ? (
+            <div style={{ padding: '8px 12px', borderTop: tpls.length > 0 ? '1px solid ' + C.bl : 'none' }}>
+              <input value={name} onChange={e => setName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') doSave(); if (e.key === 'Escape') setSaving(false); }}
+                style={{ ...is, fontSize: 12, padding: '6px 10px', marginBottom: 6 }} placeholder="템플릿 이름..." autoFocus />
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button onClick={() => setSaving(false)} style={{ flex: 1, background: C.sfh, border: '1px solid ' + C.bd, borderRadius: 6, padding: '5px', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', color: C.ts }}>취소</button>
+                <button onClick={doSave} style={{ flex: 1, background: C.pr, border: 'none', borderRadius: 6, padding: '5px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', color: '#fff' }}>저장</button>
+              </div>
+            </div>
+          ) : (
+            <button onClick={() => { if (!value.trim()) return; setSaving(true); }}
+              style={{ width: '100%', padding: '8px 12px', background: 'none', border: 'none', borderTop: '1px solid ' + C.bl, fontSize: 11, color: value.trim() ? C.ac : C.tt, cursor: value.trim() ? 'pointer' : 'default', fontFamily: 'inherit', textAlign: 'left', fontWeight: 500 }}>
+              + 현재 내용을 템플릿으로 저장
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function LessonDetailModal({ les, student, textbooks = [], onUpdate, onClose }) {
   const { user } = useAuth();
   const toast = useToast();
@@ -119,7 +190,10 @@ export default function LessonDetailModal({ les, student, textbooks = [], onUpda
                   {textbooks.map(tb=>(<button key={tb.id} onClick={()=>{const ta=contentRef.current;if(!ta)return;const pos=ta.selectionStart||content.length;const txt=`[${tb.title}] `;insertViaExec(ta,txt,pos,pos);setContent(ta.value);markDirty();}} style={{padding:"4px 10px",borderRadius:6,border:"1px solid "+C.bd,background:C.sf,color:C.ts,fontSize:11,fontWeight:500,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:4}}>📚 {tb.title}</button>))}
                 </div>
               </div>)}
-              <label style={ls}>수업 내용</label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <label style={{ ...ls, marginBottom: 0 }}>수업 내용</label>
+                <TplBar field="content" value={content} onApply={v => { setContent(v); markDirty(); }} />
+              </div>
               <textarea ref={contentRef} className="ldm-textarea" value={content} onChange={e => { setContent(e.target.value); markDirty(); }} onKeyDown={e => bk(e, content, setContent, markDirty)} style={{ ...is, minHeight: 200, resize: "vertical", lineHeight: 1.6 }} placeholder="오늘 수업에서 다룬 내용..." />
             </div>
           )}
@@ -133,7 +207,10 @@ export default function LessonDetailModal({ les, student, textbooks = [], onUpda
                 </div>
               </div>)}
               <div>
-                <label style={ls}>피드백 <span style={{ color: C.ac, fontWeight: 600 }}>(공유용)</span></label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <label style={{ ...ls, marginBottom: 0 }}>피드백 <span style={{ color: C.ac, fontWeight: 600 }}>(공유용)</span></label>
+                  <TplBar field="feedback" value={feedback} onApply={v => { setFeedback(v); markDirty(); }} />
+                </div>
                 <textarea ref={feedbackRef} className="ldm-textarea" value={feedback} onChange={e => { setFeedback(e.target.value); markDirty(); }} onKeyDown={e => bk(e, feedback, setFeedback, markDirty)} style={{ ...is, minHeight: 120, resize: "vertical", lineHeight: 1.6 }} placeholder="학생 이해도, 태도, 개선점..." />
               </div>
               <div>
@@ -263,7 +340,10 @@ export default function LessonDetailModal({ les, student, textbooks = [], onUpda
                 </div>
               </div>)}
               <div>
-                <label style={{ ...ls, color: C.ac, fontWeight: 600 }}>수업 계획 <span style={{ fontWeight: 400 }}>(공유용)</span></label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <label style={{ ...ls, marginBottom: 0, color: C.ac, fontWeight: 600 }}>수업 계획 <span style={{ fontWeight: 400 }}>(공유용)</span></label>
+                  <TplBar field="plan" value={planShared} onApply={v => { setPlanShared(v); markDirty(); }} />
+                </div>
                 <textarea ref={planSharedRef} className="ldm-textarea" value={planShared} onChange={e => { setPlanShared(e.target.value); markDirty(); }} onKeyDown={e => bk(e, planShared, setPlanShared, markDirty)} style={{ ...is, minHeight: 100, resize: "vertical", lineHeight: 1.6 }} placeholder="수업 목표, 진도, 준비물..." />
               </div>
               <div>
