@@ -196,10 +196,10 @@ export default function StudentDetail({ student, initialTab }) {
   const wTimers=useRef({});
   const updWrong=(id,key,val)=>{setWrongs(p=>p.map(w=>w.id===id?{...w,[key]:val}:w));const tk=id+key;clearTimeout(wTimers.current[tk]);wTimers.current[tk]=setTimeout(async()=>{await supabase.from('wrong_answers').update({[key]:val}).eq('id',id);},500);};
   const addRp=async()=>{if(!nT.trim())return;const{data,error}=await supabase.from('reports').insert({student_id:s.id,title:nT,body:nB,is_shared:!nS,date:fd(new Date()),user_id:user.id}).select().single();if(error){toast?.('레포트 저장에 실패했습니다','error');return;}if(data){setReports(p=>[data,...p]);setNT("");setNB("");setNS(false);setShowNew(false);toast?.('레포트가 등록되었습니다');}};
-  const addScore=async()=>{if(!scoreForm.score&&!scoreForm.grade)return;const ins={student_id:s.id,date:scoreForm.date,label:scoreForm.label,user_id:user.id};if(scoreForm.score)ins.score=parseInt(scoreForm.score);if(scoreForm.grade)ins.grade=parseInt(scoreForm.grade);let{data,error}=await supabase.from('scores').insert(ins).select().single();if(error&&scoreForm.grade){const{grade,...insNoGrade}=ins;({data,error}=await supabase.from('scores').insert(insNoGrade).select().single());}if(error){toast?.('성적 추가에 실패했습니다','error');return;}if(data){if(scoreForm.grade&&!data.grade)data.grade=parseInt(scoreForm.grade);setScores(p=>[...p,data]);setScoreForm({date:"",score:"",label:"",grade:""});setShowAddScore(false);toast?.('성적이 추가되었습니다');}};
+  const addScore=async()=>{if(!scoreForm.score&&!scoreForm.grade)return;const ins={student_id:s.id,date:scoreForm.date,label:scoreForm.label,user_id:user.id};if(scoreForm.score)ins.score=parseInt(scoreForm.score);if(scoreForm.grade)ins.grade=parseInt(scoreForm.grade);const hadGrade=!!scoreForm.grade;let{data,error}=await supabase.from('scores').insert(ins).select().single();if(error&&hadGrade){const{grade,...insNoGrade}=ins;({data,error}=await supabase.from('scores').insert(insNoGrade).select().single());if(!error)toast?.('등급(grade) 컬럼이 아직 지원되지 않아 등급 없이 저장되었습니다','info');}if(error){toast?.('성적 추가에 실패했습니다','error');return;}if(data){if(hadGrade&&!data.grade)data.grade=parseInt(scoreForm.grade);setScores(p=>[...p,data]);setScoreForm({date:"",score:"",label:"",grade:""});setShowAddScore(false);toast?.('성적이 추가되었습니다');}};
   const openEditScore=(sc)=>{setEditScore(sc);setEditScoreForm({date:sc.date||"",score:sc.score!=null?String(sc.score):"",label:sc.label||"",grade:sc.grade!=null?String(sc.grade):""});};
-  const saveEditScore=async()=>{if(!editScore||(!editScoreForm.score&&!editScoreForm.grade))return;const upd={date:editScoreForm.date,label:editScoreForm.label,score:editScoreForm.score?parseInt(editScoreForm.score):null,grade:editScoreForm.grade?parseInt(editScoreForm.grade):null};let{error}=await supabase.from('scores').update(upd).eq('id',editScore.id);if(error&&upd.grade!==undefined){const{grade,...updNoGrade}=upd;({error}=await supabase.from('scores').update(updNoGrade).eq('id',editScore.id));}if(error){toast?.('성적 수정에 실패했습니다','error');return;}setScores(p=>p.map(x=>x.id===editScore.id?{...x,...upd}:x));setEditScore(null);toast?.('성적이 수정되었습니다');};
-  const delScore=async(id)=>{await supabase.from('scores').delete().eq('id',id);setScores(p=>p.filter(x=>x.id!==id));setEditScore(null);};
+  const saveEditScore=async()=>{if(!editScore||(!editScoreForm.score&&!editScoreForm.grade))return;const upd={date:editScoreForm.date,label:editScoreForm.label,score:editScoreForm.score?parseInt(editScoreForm.score):null,grade:editScoreForm.grade?parseInt(editScoreForm.grade):null};const hadGrade=upd.grade!=null;let{error}=await supabase.from('scores').update(upd).eq('id',editScore.id);if(error&&hadGrade){const{grade,...updNoGrade}=upd;({error}=await supabase.from('scores').update(updNoGrade).eq('id',editScore.id));if(!error)toast?.('등급(grade) 컬럼이 아직 지원되지 않아 등급 없이 저장되었습니다','info');}if(error){toast?.('성적 수정에 실패했습니다','error');return;}setScores(p=>p.map(x=>x.id===editScore.id?{...x,...upd}:x));setEditScore(null);toast?.('성적이 수정되었습니다');};
+  const delScore=async(id)=>{const{error}=await supabase.from('scores').delete().eq('id',id);if(error){toast?.('성적 삭제에 실패했습니다','error');return;}setScores(p=>p.filter(x=>x.id!==id));setEditScore(null);};
   const saveScoreGoal=async(val)=>{const v=val===""?null:parseInt(val);setScoreGoal(val);await supabase.from('students').update({score_goal:v}).eq('id',s.id);};
   const savePlanFields=async()=>{
     setPlanSaving(true);setPlanSaved(false);
@@ -253,7 +253,8 @@ export default function StudentDetail({ student, initialTab }) {
     for(const file of files){
       const ext=file.name.split('.').pop().toLowerCase();
       const ftype=["pdf"].includes(ext)?"pdf":["jpg","jpeg","png","gif","webp"].includes(ext)?"img":"file";
-      const path=`students/${s.id}/${Date.now()}_${file.name}`;
+      const safeExt=(ext||'').replace(/[^a-z0-9]/g,'');
+      const path=`students/${s.id}/${crypto.randomUUID()}${safeExt?'.'+safeExt:''}`;
       const{error:upErr}=await supabase.storage.from('files').upload(path,file);
       if(upErr){toast?.(`${file.name} 업로드 실패`,'error');continue;}
       const{data:urlData}=supabase.storage.from('files').getPublicUrl(path);
@@ -262,7 +263,7 @@ export default function StudentDetail({ student, initialTab }) {
     }
     setUploading(false);
   };
-  const delFile=async(id)=>{const{error}=await supabase.from('files').delete().eq('id',id);if(error){toast?.('파일 삭제에 실패했습니다','error');return;}setStandaloneFiles(p=>p.filter(f=>f.id!==id));};
+  const delFile=async(id)=>{const file=standaloneFiles.find(f=>f.id===id);if(file?.file_url){try{const urlPath=new URL(file.file_url).pathname;const storagePath=urlPath.split('/object/public/files/')[1];if(storagePath)await supabase.storage.from('files').remove([decodeURIComponent(storagePath)]);}catch{}}const{error}=await supabase.from('files').delete().eq('id',id);if(error){toast?.('파일 삭제에 실패했습니다','error');return;}setStandaloneFiles(p=>p.filter(f=>f.id!==id));};
   const copyShareLink=async()=>{
     let tk=shareToken;
     if(!tk){tk=crypto.randomUUID();const{error}=await supabase.from('students').update({share_token:tk}).eq('id',s.id);if(error){toast?.('공유 링크 생성에 실패했습니다','error');return;}setShareToken(tk);}
