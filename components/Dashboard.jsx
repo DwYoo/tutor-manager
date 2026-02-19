@@ -36,7 +36,7 @@ export default function Dashboard(){
       const[sRes,lRes,tRes,scRes,tbRes]=await Promise.all([
         supabase.from('students').select('id,name,subject,grade,school,color_index,archived,sort_order,fee_per_class,fee_status,created_at').order('created_at'),
         supabase.from('lessons').select('id,student_id,date,start_hour,start_min,duration,subject,topic,status,content,feedback,is_recurring,recurring_day,recurring_end_date,recurring_exceptions,homework(id,title,completion_pct,lesson_id)').order('date'),
-        supabase.from('tuition').select('student_id,month,amount,status'),
+        supabase.from('tuition').select('student_id,month,amount,status,fee_override,fee_manual,classes_override,tuition_fee_override,carryover'),
         supabase.from('scores').select('id,student_id,score,grade,date,label').order('date'),
         supabase.from('textbooks').select('id,student_id,title').order('created_at',{ascending:false}).then(r=>r,()=>({data:[],error:null})),
       ]);
@@ -91,7 +91,7 @@ export default function Dashboard(){
 
   const countMonthLessons=(sid)=>{const dim=new Date(year,month,0).getDate();let cnt=0;for(let d=1;d<=dim;d++){const dt=new Date(year,month-1,d);cnt+=lessons.filter(l=>l.student_id===sid&&l.status!=='cancelled'&&lessonOnDate(l,dt)).length;}return cnt;};
   const autoStatus=(amt,due)=>amt>=due?"paid":amt>0?"partial":"unpaid";
-  const monthRecs=activeStudents.map(s=>{const rec=tuitions.find(t=>t.student_id===s.id&&t.month===curMonth);const lessonCnt=countMonthLessons(s.id);const autoFee=(s.fee_per_class||0)*lessonCnt;const carryover=rec?.carryover||0;const autoTotalDue=autoFee+carryover;const totalDue=(rec&&rec.fee_override!=null)?rec.fee_override:autoTotalDue;const paidAmount=rec?.amount||0;const status=autoStatus(paidAmount,totalDue);return{student:s,totalDue,paidAmount,status};});
+  const monthRecs=activeStudents.map(s=>{const rec=tuitions.find(t=>t.student_id===s.id&&t.month===curMonth);const autoLessonCnt=countMonthLessons(s.id);const lessonCnt=(rec&&rec.classes_override!=null)?rec.classes_override:autoLessonCnt;const autoFee=(s.fee_per_class||0)*lessonCnt;const tuitionFeeManual=rec?.tuition_fee_override!=null;const displayFee=tuitionFeeManual?rec.tuition_fee_override:autoFee;const carryover=rec?.carryover||0;const autoTotalDue=displayFee+carryover;const totalDueManual=!!(rec&&rec.fee_manual&&rec.fee_override!=null);const totalDue=totalDueManual?rec.fee_override:autoTotalDue;const paidAmount=rec?.amount||0;const status=autoStatus(paidAmount,totalDue);return{student:s,totalDue,paidAmount,status};});
   const totalFee=monthRecs.reduce((a,r)=>a+r.totalDue,0);
   const unpaidAmount=monthRecs.reduce((a,r)=>r.status!=="paid"?a+Math.max(0,r.totalDue-r.paidAmount):a,0);
 
