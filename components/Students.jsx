@@ -7,6 +7,7 @@ import { useToast } from '@/components/Toast';
 import { C, SC, STATUS } from '@/components/Colors';
 import { p2, fd, DK, lessonOnDate } from '@/lib/utils';
 import { useShell } from '@/components/AppShell';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 const ls={display:"block",fontSize:12,fontWeight:500,color:C.tt,marginBottom:6};
 const is={width:"100%",padding:"9px 12px",borderRadius:8,border:`1px solid ${C.bd}`,fontSize:14,color:C.tp,background:C.sf,outline:"none",fontFamily:"inherit"};
 const IcP=()=><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
@@ -20,6 +21,7 @@ export default function Students(){
   const tog=menuBtn;
   const{user}=useAuth();
   const toast=useToast();
+  const confirm=useConfirm();
   const[students,setStudents]=useState([]);
   const[lessons,setLessons]=useState([]);
   const[showArchived,setShowArchived]=useState(false);
@@ -59,7 +61,7 @@ export default function Students(){
     setShowAdd(false);setEditStu(null);setSaving(false);
   };
 
-  const deleteStudent=async(id,e)=>{e.stopPropagation();if(!confirm('정말 삭제하시겠습니까?'))return;markBusy(id);const{error}=await supabase.from('students').delete().eq('id',id);unBusy(id);if(error){toast?.('삭제에 실패했습니다','error');return;}toast?.('학생이 삭제되었습니다');fetchStudents();};
+  const deleteStudent=async(id,e)=>{e.stopPropagation();if(!await confirm('정말 삭제하시겠습니까?',{danger:true,confirmText:'삭제',description:'학생의 모든 데이터가 삭제됩니다.'}))return;markBusy(id);const{error}=await supabase.from('students').delete().eq('id',id);unBusy(id);if(error){toast?.('삭제에 실패했습니다','error');return;}toast?.('학생이 삭제되었습니다');fetchStudents();};
   const archiveStudent=async(id,e)=>{e.stopPropagation();markBusy(id);const{error}=await supabase.from('students').update({archived:true}).eq('id',id);unBusy(id);if(error){toast?.('보관 처리에 실패했습니다','error');return;}toast?.('보관함으로 이동했습니다');fetchStudents();};
   const restoreStudent=async(id,e)=>{e.stopPropagation();markBusy(id);const{error}=await supabase.from('students').update({archived:false}).eq('id',id);unBusy(id);if(error){toast?.('복원에 실패했습니다','error');return;}toast?.('학생이 복원되었습니다');fetchStudents();};
 

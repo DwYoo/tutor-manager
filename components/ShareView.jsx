@@ -42,8 +42,10 @@ export default function ShareView({ token }) {
       if (rpcErr) {
         // RPC 함수가 아직 배포되지 않은 경우 기존 방식으로 fallback
         console.warn('RPC fallback: get_shared_student_data not available, using direct queries');
-        const { data: stu, error: e } = await supabase.from('students').select('*').eq('share_token', token).maybeSingle();
+        const { data: stu, error: e } = await supabase.from('students').select('id,name,subject,grade,school,color_index,share_token,share_permissions,share_token_expires_at,plan_strategy,plan_strength,plan_weakness,plan_opportunity,plan_threat,score_goal').eq('share_token', token).maybeSingle();
         if (e || !stu) { setError('not_found'); setLoading(false); return; }
+        // Check token expiry
+        if (stu.share_token_expires_at && new Date(stu.share_token_expires_at) < new Date()) { setError('not_found'); setLoading(false); return; }
         setS(stu);
         if (stu.share_permissions) setPerms(p => ({ ...p, ...stu.share_permissions }));
         let a, b, c, d, f, g, tb;
@@ -59,7 +61,8 @@ export default function ShareView({ token }) {
           ]);
         } catch { setError('fetch_error'); setLoading(false); return; }
         if (a.error || b.error || c.error || d.error || f.error || g.error) { setError('fetch_error'); setLoading(false); return; }
-        setLessons(a.data || []);
+        // Strip private fields from lessons to prevent tutor-only notes from leaking
+        setLessons((a.data || []).map(l => { const { private_memo, plan_private, ...safe } = l; return safe; }));
         setScores(b.data || []);
         setWrongs(c.data || []);
         const allReps = d.data || [];

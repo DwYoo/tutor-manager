@@ -7,6 +7,10 @@ import { C, STATUS } from '@/components/Colors';
 import { p2, lessonOnDate } from '@/lib/utils';
 import { exportTuitionCSV } from '@/lib/export';
 import { useShell } from '@/components/AppShell';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
+import { escapeHtml } from '@/lib/sanitize';
+import { validateFiles, RECEIPT_MIMES } from '@/lib/fileValidation';
+import { useLessonCount } from '@/hooks/useLessonCount';
 const IcL=()=>(<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>);
 const IcR=()=>(<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>);
 const CustomTooltip=({active,payload})=>{if(!active||!payload?.length)return null;const d=payload[0].payload;return(<div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:10,padding:"10px 14px",boxShadow:"0 4px 12px rgba(0,0,0,.08)"}}><div style={{fontSize:12,color:C.tt,marginBottom:4}}>{d.month}</div><div style={{fontSize:16,fontWeight:700,color:C.ac}}>₩{payload[0].value.toLocaleString()}</div></div>);};
@@ -15,6 +19,7 @@ export default function Tuition(){
   const{menuBtn}=useShell();
   const tog=menuBtn;
   const{user}=useAuth();
+  const confirm=useConfirm();
   const now=new Date();
   const[curMonth,setCurMonth]=useState(now.getFullYear()+"-"+p2(now.getMonth()+1));
   const[students,setStudents]=useState([]);
@@ -110,9 +115,9 @@ export default function Tuition(){
     setLoading(true);setFetchError(false);
     try{
       const[sRes,tRes,lRes,rfRes]=await Promise.all([
-        supabase.from('students').select('*').order('created_at'),
+        supabase.from('students').select('id,name,subject,grade,school,color_index,archived,sort_order,fee_per_class,fee_status,birth_date,created_at').order('created_at'),
         supabase.from('tuition').select('*'),
-        supabase.from('lessons').select('*'),
+        supabase.from('lessons').select('id,student_id,date,start_hour,start_min,duration,status,is_recurring,recurring_day,recurring_end_date,recurring_exceptions'),
         supabase.from('receipt_files').select('*').order('created_at',{ascending:false}),
       ]);
       if(sRes.error||tRes.error||lRes.error||rfRes.error){setFetchError(true);setLoading(false);return;}
@@ -122,17 +127,17 @@ export default function Tuition(){
   },[]);
   useEffect(()=>{fetchData();},[fetchData]);
 
-  /* Count lessons for student in month */
+  /* Count lessons for student in month — memoized via useLessonCount hook */
+  const countLessonsHook=useLessonCount(lessons,year,month);
   const countLessons=(sid,yr,mo)=>{
+    // If the requested year/month matches current view, use the memoized hook
+    if(yr===year&&mo===month)return countLessonsHook(sid);
+    // Fallback for different months (rare - only for carryover checks)
     const dim=new Date(yr,mo,0).getDate();
     let cnt=0;
     for(let d=1;d<=dim;d++){
       const dt=new Date(yr,mo-1,d);
-      cnt+=lessons.filter(l=>
-        l.student_id===sid&&
-        l.status!=='cancelled'&&
-        lessonOnDate(l,dt)
-      ).length;
+      cnt+=lessons.filter(l=>l.student_id===sid&&l.status!=='cancelled'&&lessonOnDate(l,dt)).length;
     }
     return cnt;
   };
@@ -331,24 +336,25 @@ export default function Tuition(){
     // 생년월일 6자리 변환 (YYYY-MM-DD → YYMMDD)
     const bd6=(()=>{const b=f.birthDate||'';const m=b.match(/^(\d{4})-(\d{2})-(\d{2})$/);if(m)return m[1].slice(2)+m[2]+m[3];return b.replace(/-/g,'').slice(-6);})();
     const cs='border:1px solid #000;padding:5px 7px;font-size:10px;';
+    const h=escapeHtml; // shorthand for escapeHtml
     const makeR=(title)=>`<div style="width:88mm;display:flex;flex-direction:column;justify-content:space-between;height:100%;">
 <div>
-<div style="border:3px double #000;padding:7px 10px;text-align:center;font-size:14px;font-weight:bold;letter-spacing:3px;margin-bottom:10px;">${title}</div>
+<div style="border:3px double #000;padding:7px 10px;text-align:center;font-size:14px;font-weight:bold;letter-spacing:3px;margin-bottom:10px;">${h(title)}</div>
 <table style="width:100%;border-collapse:collapse;" cellpadding="0">
-<tr><td style="${cs}" colspan="2">일련번호 : ${f.serialNo||''}</td><td style="${cs}" colspan="2">연월(분기) : ${f.period||''}</td></tr>
-<tr><td style="${cs}text-align:center;font-weight:bold;width:32px;" rowspan="2">납부자</td><td style="${cs}">등록번호 : ${f.regNo||''}</td><td style="${cs}" colspan="2">성명 : ${f.name||''}</td></tr>
-<tr><td style="${cs}">생년월일 : ${bd6}</td><td style="${cs}" colspan="2">교습과목 : ${f.subject||''}</td></tr>
+<tr><td style="${cs}" colspan="2">일련번호 : ${h(f.serialNo)}</td><td style="${cs}" colspan="2">연월(분기) : ${h(f.period)}</td></tr>
+<tr><td style="${cs}text-align:center;font-weight:bold;width:32px;" rowspan="2">납부자</td><td style="${cs}">등록번호 : ${h(f.regNo)}</td><td style="${cs}" colspan="2">성명 : ${h(f.name)}</td></tr>
+<tr><td style="${cs}">생년월일 : ${h(bd6)}</td><td style="${cs}" colspan="2">교습과목 : ${h(f.subject)}</td></tr>
 <tr><td style="${cs}text-align:center;font-weight:bold;width:32px;" rowspan="4">납부<br>명세</td><td style="${cs}text-align:center;vertical-align:middle;width:72px;" rowspan="2">교습비</td><td style="${cs}text-align:center;font-weight:bold;" colspan="2">기타경비</td></tr>
 <tr><td style="${cs}text-align:center;font-weight:bold;">항목</td><td style="${cs}text-align:center;font-weight:bold;">금액</td></tr>
-<tr><td style="${cs}text-align:center;vertical-align:middle;font-weight:bold;" rowspan="2">${tFee>0?tFee.toLocaleString()+'원':''}</td><td style="${cs}">${f.etcLabel1||''}</td><td style="${cs}">${e1>0?e1.toLocaleString()+'원':''}</td></tr>
-<tr><td style="${cs}">${f.etcLabel2||''}</td><td style="${cs}">${e2>0?e2.toLocaleString()+'원':''}</td></tr>
-<tr><td style="${cs}text-align:center;font-weight:bold;">합계</td><td style="${cs}text-align:center;font-weight:bold;" colspan="3">${total>0?total.toLocaleString()+'원':''}</td></tr>
+<tr><td style="${cs}text-align:center;vertical-align:middle;font-weight:bold;" rowspan="2">${tFee>0?h(tFee.toLocaleString()+'원'):''}</td><td style="${cs}">${h(f.etcLabel1)}</td><td style="${cs}">${e1>0?h(e1.toLocaleString()+'원'):''}</td></tr>
+<tr><td style="${cs}">${h(f.etcLabel2)}</td><td style="${cs}">${e2>0?h(e2.toLocaleString()+'원'):''}</td></tr>
+<tr><td style="${cs}text-align:center;font-weight:bold;">합계</td><td style="${cs}text-align:center;font-weight:bold;" colspan="3">${total>0?h(total.toLocaleString()+'원'):''}</td></tr>
 </table>
 <p style="text-align:center;margin:16px 0 4px;font-size:11px;font-weight:bold;">위와 같이 영수하였음을 증명합니다.</p>
 <p style="font-size:8px;color:#555;margin:3px 0 12px;">※ 본 서식 외 교육감이 지정한 영수증을 사용할 수 있습니다.</p>
-<p style="text-align:right;margin:16px 4px 0;font-size:11px;">${f.issueYear||''}년 &nbsp;&nbsp; ${f.issueMonth||''}월 &nbsp;&nbsp; ${f.issueDay||''}일</p>
+<p style="text-align:right;margin:16px 4px 0;font-size:11px;">${h(f.issueYear)}년 &nbsp;&nbsp; ${h(f.issueMonth)}월 &nbsp;&nbsp; ${h(f.issueDay)}일</p>
 <table style="width:100%;margin-top:20px;font-size:11px;border-collapse:collapse;">
-<tr><td style="vertical-align:bottom;padding:4px 0;">학원설립·운영자<br>또는 교습자</td><td style="text-align:right;vertical-align:bottom;padding:4px 0;"><span style="font-size:13px;font-weight:bold;letter-spacing:2px;">${f.tutorName||''}</span>&nbsp;&nbsp;${sealImg?`<img src="${sealImg}" style="height:44px;width:44px;object-fit:contain;vertical-align:middle;"/>`:' (서명 또는 인)'}</td></tr>
+<tr><td style="vertical-align:bottom;padding:4px 0;">학원설립·운영자<br>또는 교습자</td><td style="text-align:right;vertical-align:bottom;padding:4px 0;"><span style="font-size:13px;font-weight:bold;letter-spacing:2px;">${h(f.tutorName)}</span>&nbsp;&nbsp;${sealImg?`<img src="${h(sealImg)}" style="height:44px;width:44px;object-fit:contain;vertical-align:middle;"/>`:' (서명 또는 인)'}</td></tr>
 </table>
 </div>
 <div style="text-align:right;font-size:7px;color:#999;margin-top:auto;padding-top:8px;">210mm×297mm[일반용지 70g/㎡(재활용품)]</div>
@@ -389,7 +395,7 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
   };
   const uploadRcptFile=async(e)=>{await uploadRcptFiles(e.target.files);e.target.value='';};
   const deleteRcptFile=async(f)=>{
-    if(!confirm(`"${f.file_name}" 파일을 삭제하시겠습니까?`))return;
+    if(!await confirm(`"${f.file_name}" 파일을 삭제하시겠습니까?`,{danger:true,confirmText:'삭제'}))return;
     await supabase.storage.from('receipts').remove([f.file_path]);
     await supabase.from('receipt_files').delete().eq('id',f.id);
     setRcptFiles(p=>p.filter(x=>x.id!==f.id));
@@ -545,7 +551,7 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
             onDragOver={e=>{e.preventDefault();e.stopPropagation();setRcptDragOver(true);}}
             onDragEnter={e=>{e.preventDefault();e.stopPropagation();setRcptDragOver(true);}}
             onDragLeave={e=>{e.preventDefault();e.stopPropagation();if(!e.currentTarget.contains(e.relatedTarget))setRcptDragOver(false);}}
-            onDrop={e=>{e.preventDefault();e.stopPropagation();setRcptDragOver(false);const dt=e.dataTransfer;if(dt?.files?.length){const allowed=['.pdf','.jpg','.jpeg','.png'];const valid=[...dt.files].filter(f=>allowed.some(ext=>f.name.toLowerCase().endsWith(ext)));if(valid.length)uploadRcptFiles(valid);else toast?.('PDF, JPG, PNG 파일만 업로드 가능합니다','error');}}}>
+            onDrop={e=>{e.preventDefault();e.stopPropagation();setRcptDragOver(false);const dt=e.dataTransfer;if(dt?.files?.length){const{validFiles,errors}=validateFiles([...dt.files],{allowedMimes:RECEIPT_MIMES});if(validFiles.length)uploadRcptFiles(validFiles);if(errors.length)toast?.(errors[0],'error');if(!validFiles.length&&!errors.length)toast?.('PDF, JPG, PNG 파일만 업로드 가능합니다','error');}}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
               <div style={{fontSize:13,fontWeight:600,color:C.tp}}>영수증 보관함</div>
               <label style={{background:C.as,color:C.ac,border:"1px solid "+C.ac,borderRadius:6,padding:"4px 10px",fontSize:10,fontWeight:600,cursor:rcptUploading?"not-allowed":"pointer",fontFamily:"inherit",opacity:rcptUploading?.5:1}}>

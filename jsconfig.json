@@ -2,6 +2,10 @@
   "compilerOptions": {
     "paths": {
       "@/*": ["./*"]
-    }
-  }
+    },
+    "checkJs": false,
+    "allowJs": true
+  },
+  "include": ["**/*.js", "**/*.jsx", "**/*.ts", "**/*.tsx"],
+  "exclude": ["node_modules"]
 }
