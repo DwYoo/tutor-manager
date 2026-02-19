@@ -10,6 +10,7 @@ import { useShell } from '@/components/AppShell';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { escapeHtml } from '@/lib/sanitize';
 import { validateFiles, RECEIPT_MIMES } from '@/lib/fileValidation';
+import { useLessonCount } from '@/hooks/useLessonCount';
 const IcL=()=>(<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>);
 const IcR=()=>(<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>);
 const CustomTooltip=({active,payload})=>{if(!active||!payload?.length)return null;const d=payload[0].payload;return(<div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:10,padding:"10px 14px",boxShadow:"0 4px 12px rgba(0,0,0,.08)"}}><div style={{fontSize:12,color:C.tt,marginBottom:4}}>{d.month}</div><div style={{fontSize:16,fontWeight:700,color:C.ac}}>₩{payload[0].value.toLocaleString()}</div></div>);};
@@ -114,9 +115,9 @@ export default function Tuition(){
     setLoading(true);setFetchError(false);
     try{
       const[sRes,tRes,lRes,rfRes]=await Promise.all([
-        supabase.from('students').select('*').order('created_at'),
+        supabase.from('students').select('id,name,subject,grade,school,color_index,archived,sort_order,fee_per_class,fee_status,birth_date,created_at').order('created_at'),
         supabase.from('tuition').select('*'),
-        supabase.from('lessons').select('*'),
+        supabase.from('lessons').select('id,student_id,date,start_hour,start_min,duration,status,is_recurring,recurring_day,recurring_end_date,recurring_exceptions'),
         supabase.from('receipt_files').select('*').order('created_at',{ascending:false}),
       ]);
       if(sRes.error||tRes.error||lRes.error||rfRes.error){setFetchError(true);setLoading(false);return;}
@@ -126,17 +127,17 @@ export default function Tuition(){
   },[]);
   useEffect(()=>{fetchData();},[fetchData]);
 
-  /* Count lessons for student in month */
+  /* Count lessons for student in month — memoized via useLessonCount hook */
+  const countLessonsHook=useLessonCount(lessons,year,month);
   const countLessons=(sid,yr,mo)=>{
+    // If the requested year/month matches current view, use the memoized hook
+    if(yr===year&&mo===month)return countLessonsHook(sid);
+    // Fallback for different months (rare - only for carryover checks)
     const dim=new Date(yr,mo,0).getDate();
     let cnt=0;
     for(let d=1;d<=dim;d++){
       const dt=new Date(yr,mo-1,d);
-      cnt+=lessons.filter(l=>
-        l.student_id===sid&&
-        l.status!=='cancelled'&&
-        lessonOnDate(l,dt)
-      ).length;
+      cnt+=lessons.filter(l=>l.student_id===sid&&l.status!=='cancelled'&&lessonOnDate(l,dt)).length;
     }
     return cnt;
   };

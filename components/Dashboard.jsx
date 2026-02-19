@@ -34,11 +34,11 @@ export default function Dashboard(){
     setLoading(true);setFetchError(false);
     try{
       const[sRes,lRes,tRes,scRes,tbRes]=await Promise.all([
-        supabase.from('students').select('*').order('created_at'),
-        supabase.from('lessons').select('*, homework(*)').order('date'),
-        supabase.from('tuition').select('*'),
-        supabase.from('scores').select('*').order('date'),
-        supabase.from('textbooks').select('*').order('created_at',{ascending:false}).then(r=>r,()=>({data:[],error:null})),
+        supabase.from('students').select('id,name,subject,grade,school,color_index,archived,sort_order,fee_per_class,fee_status,created_at').order('created_at'),
+        supabase.from('lessons').select('id,student_id,date,start_hour,start_min,duration,subject,topic,status,content,feedback,is_recurring,recurring_day,recurring_end_date,recurring_exceptions,homework(id,title,completion_pct,lesson_id)').order('date'),
+        supabase.from('tuition').select('student_id,month,amount,status'),
+        supabase.from('scores').select('id,student_id,score,grade,date,label').order('date'),
+        supabase.from('textbooks').select('id,student_id,title').order('created_at',{ascending:false}).then(r=>r,()=>({data:[],error:null})),
       ]);
       if(sRes.error||lRes.error||tRes.error||scRes.error){setFetchError(true);setLoading(false);return;}
       setStudents(sRes.data||[]);setLessons(lRes.data||[]);setTuitions(tRes.data||[]);setScores(scRes.data||[]);setTextbooks(tbRes.data||[]);

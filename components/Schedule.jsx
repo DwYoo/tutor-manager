@@ -130,9 +130,9 @@ export default function Schedule(){
     setLoading(true);setFetchError(false);
     try{
       const[sRes,lRes,tbRes]=await Promise.all([
-        supabase.from('students').select('*').order('created_at'),
-        supabase.from('lessons').select('*, homework(*), files(*)').order('date'),
-        supabase.from('textbooks').select('*').order('created_at',{ascending:false}).then(r=>r,()=>({data:[],error:null})),
+        supabase.from('students').select('id,name,subject,grade,school,color_index,archived,sort_order,created_at').order('created_at'),
+        supabase.from('lessons').select('id,student_id,date,start_hour,start_min,duration,subject,topic,status,content,feedback,private_memo,plan_shared,plan_private,is_recurring,recurring_day,recurring_end_date,recurring_exceptions,user_id,homework(id,title,completion_pct,lesson_id),files(id,file_name,file_type,file_url,lesson_id)').order('date'),
+        supabase.from('textbooks').select('id,student_id,title').order('created_at',{ascending:false}).then(r=>r,()=>({data:[],error:null})),
       ]);
       if(sRes.error||lRes.error){setFetchError(true);setLoading(false);return;}
       setStudents(sRes.data||[]);
@@ -290,9 +290,10 @@ export default function Schedule(){
     const viewDate=fd(vd);
     dragRef.current={t:"m",id:l.id,off,r};let lastPos=null;
     const origPos={date:l.date,start_hour:l.start_hour,start_min:l.start_min,recurring_day:l.recurring_day};
-    const mv=ev=>{movedRef.current=true;const gy=ev.clientY-r.top+g.scrollTop,gx=ev.clientX-r.left;const raw=y2m(gy)-off,sn=s5(raw);const nh=Math.floor(sn/60),nm=sn%60;const di=x2d(gx,r),nd=fd(wk[di]),dw=wk[di].getDay();
+    let rafId=null;
+    const mv=ev=>{movedRef.current=true;if(rafId)return;rafId=requestAnimationFrame(()=>{rafId=null;const gy=ev.clientY-r.top+g.scrollTop,gx=ev.clientX-r.left;const raw=y2m(gy)-off,sn=s5(raw);const nh=Math.floor(sn/60),nm=sn%60;const di=x2d(gx,r),nd=fd(wk[di]),dw=wk[di].getDay();
       lastPos={start_hour:Math.max(0,Math.min(23,nh)),start_min:Math.max(0,nm),date:nd,recurring_day:l.is_recurring?(dw===0?7:dw):l.recurring_day};
-      setLessons(p=>p.map(x=>x.id===l.id?{...x,...lastPos}:x));};
+      setLessons(p=>p.map(x=>x.id===l.id?{...x,...lastPos}:x));});};
     const up=async()=>{const did=movedRef.current;dragRef.current=null;window.removeEventListener("mousemove",mv);window.removeEventListener("mouseup",up);
       if(!did){
         const lesData=lessons.find(x=>x.id===l.id);if(lesData){if(!lesData.student_id){setEL({...lesData,student_id:null});setMO(true);}else{await openDetail(lesData,viewDate);}}
@@ -313,7 +314,8 @@ export default function Schedule(){
   const onGD=(e,di)=>{
     if(dragRef.current)return;const g=gridRef.current;if(!g)return;const r=g.getBoundingClientRect(),hOff=e.currentTarget.getBoundingClientRect().top-r.top+g.scrollTop,y=e.clientY-r.top+g.scrollTop-hOff;
     const anc=s5(y2m(y));movedRef.current=false;dragRef.current={t:"c",di,anc,hOff};setDC({di,s:anc,e:anc+SMN});
-    const mv=ev=>{movedRef.current=true;const dc=dragRef.current;if(!dc||dc.t!=="c")return;const gy=ev.clientY-r.top+g.scrollTop-dc.hOff,cm=s5(y2m(gy));setDC({di:dc.di,s:Math.min(dc.anc,cm),e:Math.max(dc.anc,cm)+SMN});};
+    let rafId2=null;
+    const mv=ev=>{movedRef.current=true;if(rafId2)return;rafId2=requestAnimationFrame(()=>{rafId2=null;const dc=dragRef.current;if(!dc||dc.t!=="c")return;const gy=ev.clientY-r.top+g.scrollTop-dc.hOff,cm=s5(y2m(gy));setDC({di:dc.di,s:Math.min(dc.anc,cm),e:Math.max(dc.anc,cm)+SMN});});};
     const up=()=>{const dc=dragRef.current;dragRef.current=null;window.removeEventListener("mousemove",mv);window.removeEventListener("mouseup",up);
       setDC(prev=>{const st=prev||{s:dc?.anc||0,e:(dc?.anc||0)+SMN};if(st.e-st.s>=SMN){const h=Math.floor(st.s/60),m=st.s%60,dur=st.e-st.s;setEL({date:fd(wk[dc.di]),start_hour:h,start_min:m,duration:dur,subject:"수학",topic:"",is_recurring:false});setMO(true);}return null;});
     };
