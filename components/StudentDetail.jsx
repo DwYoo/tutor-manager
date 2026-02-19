@@ -11,6 +11,8 @@ import { p2, fd, m2s, bk } from '@/lib/utils';
 import { syncHomework } from '@/lib/homework';
 import { exportStudentReportPDF } from '@/lib/export';
 import { useShell } from '@/components/AppShell';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
+import { validateFile } from '@/lib/fileValidation';
 const REASON_COLORS=["#2563EB","#DC2626","#F59E0B","#16A34A","#8B5CF6","#EC4899","#06B6D4","#F97316"];
 const ls={display:"block",fontSize:12,fontWeight:500,color:C.tt,marginBottom:6};
 const is={width:"100%",padding:"9px 12px",borderRadius:8,border:"1px solid "+C.bd,fontSize:14,color:C.tp,background:C.sf,outline:"none",fontFamily:"inherit"};
@@ -24,6 +26,7 @@ export default function StudentDetail({ student, initialTab }) {
   const{menuBtn}=useShell();
   const{user}=useAuth();
   const toast=useToast();
+  const confirm=useConfirm();
   const s = student;
   if (!s) return null;
   const tog = menuBtn;
@@ -247,11 +250,13 @@ export default function StudentDetail({ student, initialTab }) {
     if(error){toast?.('학습 계획 수정에 실패했습니다','error');return;}
     setStudyPlans(p=>p.map(sp=>sp.id===id?{...sp,title:editStudyPlanTitle,body:editStudyPlanBody,is_shared:!editStudyPlanShared}:sp));setEditingStudyPlan(null);setEditStudyPlanTitle("");setEditStudyPlanBody("");
   };
-  const delStudyPlan=async(id)=>{if(!confirm('학습 계획을 삭제하시겠습니까?'))return;const{error}=await supabase.from('study_plans').delete().eq('id',id);if(error){toast?.('삭제에 실패했습니다','error');return;}setStudyPlans(p=>p.filter(sp=>sp.id!==id));toast?.('학습 계획이 삭제되었습니다');};
-  const delPlanComment=async(id)=>{if(!confirm('학습 리포트를 삭제하시겠습니까?'))return;const{error}=await supabase.from('reports').delete().eq('id',id);if(error){toast?.('삭제에 실패했습니다','error');return;}setPlanComments(p=>p.filter(c=>c.id!==id));toast?.('학습 리포트가 삭제되었습니다');};
-  const delReport=async(id)=>{if(!confirm('레포트를 삭제하시겠습니까?'))return;const{error}=await supabase.from('reports').delete().eq('id',id);if(error){toast?.('삭제에 실패했습니다','error');return;}setReports(p=>p.filter(r=>r.id!==id));toast?.('레포트가 삭제되었습니다');};
+  const delStudyPlan=async(id)=>{if(!await confirm('학습 계획을 삭제하시겠습니까?',{danger:true,confirmText:'삭제'}))return;const{error}=await supabase.from('study_plans').delete().eq('id',id);if(error){toast?.('삭제에 실패했습니다','error');return;}setStudyPlans(p=>p.filter(sp=>sp.id!==id));toast?.('학습 계획이 삭제되었습니다');};
+  const delPlanComment=async(id)=>{if(!await confirm('학습 리포트를 삭제하시겠습니까?',{danger:true,confirmText:'삭제'}))return;const{error}=await supabase.from('reports').delete().eq('id',id);if(error){toast?.('삭제에 실패했습니다','error');return;}setPlanComments(p=>p.filter(c=>c.id!==id));toast?.('학습 리포트가 삭제되었습니다');};
+  const delReport=async(id)=>{if(!await confirm('레포트를 삭제하시겠습니까?',{danger:true,confirmText:'삭제'}))return;const{error}=await supabase.from('reports').delete().eq('id',id);if(error){toast?.('삭제에 실패했습니다','error');return;}setReports(p=>p.filter(r=>r.id!==id));toast?.('레포트가 삭제되었습니다');};
   const handleFileDrop=async(e)=>{e.preventDefault();setFileDrag(false);const files=e.dataTransfer?e.dataTransfer.files:e.target.files;if(!files||!files.length)return;setUploading(true);
     for(const file of files){
+      const vResult=validateFile(file);
+      if(!vResult.valid){toast?.(`${file.name}: ${vResult.error}`,'error');continue;}
       const ext=file.name.split('.').pop().toLowerCase();
       const ftype=["pdf"].includes(ext)?"pdf":["jpg","jpeg","png","gif","webp"].includes(ext)?"img":"file";
       const safeExt=(ext||'').replace(/[^a-z0-9]/g,'');
@@ -267,9 +272,30 @@ export default function StudentDetail({ student, initialTab }) {
   const delFile=async(id)=>{const file=standaloneFiles.find(f=>f.id===id);if(file?.file_url){try{const urlPath=new URL(file.file_url).pathname;const storagePath=urlPath.split('/object/public/files/')[1];if(storagePath)await supabase.storage.from('files').remove([decodeURIComponent(storagePath)]);}catch{}}const{error}=await supabase.from('files').delete().eq('id',id);if(error){toast?.('파일 삭제에 실패했습니다','error');return;}setStandaloneFiles(p=>p.filter(f=>f.id!==id));};
   const copyShareLink=async()=>{
     let tk=shareToken;
-    if(!tk){tk=crypto.randomUUID();const{error}=await supabase.from('students').update({share_token:tk}).eq('id',s.id);if(error){toast?.('공유 링크 생성에 실패했습니다','error');return;}setShareToken(tk);}
+    if(!tk){
+      tk=crypto.randomUUID();
+      const expiresAt=new Date();expiresAt.setDate(expiresAt.getDate()+30); // 30일 만료
+      const{error}=await supabase.from('students').update({share_token:tk,share_token_expires_at:expiresAt.toISOString()}).eq('id',s.id);
+      if(error){toast?.('공유 링크 생성에 실패했습니다','error');return;}
+      setShareToken(tk);
+    }
     const url=window.location.origin+"/share/"+tk;
     try{await navigator.clipboard.writeText(url);setShareCopied(true);setTimeout(()=>setShareCopied(false),2000);}catch{prompt("링크를 복사하세요:",url);}
+  };
+  const revokeShareLink=async()=>{
+    if(!await confirm('공유 링크를 폐기하시겠습니까?',{description:'기존 링크로는 더 이상 접근할 수 없습니다.',danger:true,confirmText:'폐기'}))return;
+    const{error}=await supabase.from('students').update({share_token:null,share_token_expires_at:null}).eq('id',s.id);
+    if(error){toast?.('링크 폐기에 실패했습니다','error');return;}
+    setShareToken(null);toast?.('공유 링크가 폐기되었습니다');
+  };
+  const renewShareLink=async()=>{
+    const tk=crypto.randomUUID();
+    const expiresAt=new Date();expiresAt.setDate(expiresAt.getDate()+30);
+    const{error}=await supabase.from('students').update({share_token:tk,share_token_expires_at:expiresAt.toISOString()}).eq('id',s.id);
+    if(error){toast?.('링크 갱신에 실패했습니다','error');return;}
+    setShareToken(tk);
+    const url=window.location.origin+"/share/"+tk;
+    try{await navigator.clipboard.writeText(url);toast?.('새 링크가 생성되어 복사되었습니다');}catch{toast?.('새 링크가 생성되었습니다');}
   };
   const saveSharePerms=async(perms)=>{
     setPermSaving(true);
@@ -351,7 +377,14 @@ export default function StudentDetail({ student, initialTab }) {
                 </label>
               </div>
             ))}
-            <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
+            {/* Token management */}
+            {shareToken&&(
+              <div style={{display:"flex",gap:8,marginTop:12,paddingTop:12,borderTop:"1px solid "+C.bd}}>
+                <button onClick={()=>{setShowSharePerms(false);renewShareLink();}} style={{background:C.as,color:C.ac,border:"1px solid "+C.ac,borderRadius:8,padding:"6px 12px",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit",flex:1}}>링크 갱신</button>
+                <button onClick={()=>{setShowSharePerms(false);revokeShareLink();}} style={{background:C.db,color:C.dn,border:"1px solid #FECACA",borderRadius:8,padding:"6px 12px",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit",flex:1}}>링크 폐기</button>
+              </div>
+            )}
+            <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:12}}>
               <button onClick={()=>setShowSharePerms(false)} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:8,padding:"8px 16px",fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>취소</button>
               <button disabled={permSaving} onClick={()=>saveSharePerms(sharePerms)} style={{background:permSaving?"#999":C.pr,color:"#fff",border:"none",borderRadius:8,padding:"8px 16px",fontSize:12,fontWeight:600,cursor:permSaving?"not-allowed":"pointer",fontFamily:"inherit"}}>{permSaving?"저장 중...":"저장"}</button>
             </div>

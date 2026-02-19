@@ -1,6 +1,7 @@
 import './globals.css'
 import AuthProvider from '@/components/AuthProvider'
 import { ToastProvider } from '@/components/Toast'
+import { ConfirmProvider } from '@/components/ui/ConfirmDialog'
 import ErrorBoundary from '@/components/ErrorBoundary'
 
 export const metadata = {
@@ -26,7 +27,7 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body>
-        <ErrorBoundary><AuthProvider><ToastProvider>{children}</ToastProvider></AuthProvider></ErrorBoundary>
+        <ErrorBoundary><AuthProvider><ToastProvider><ConfirmProvider>{children}</ConfirmProvider></ToastProvider></AuthProvider></ErrorBoundary>
       </body>
     </html>
   )

@@ -8,6 +8,7 @@ import { C, SC } from '@/components/Colors';
 import { p2, fd, m2s, DKS as DK, gwd, s5, sdy, lessonOnDate } from '@/lib/utils';
 import { syncHomework } from '@/lib/homework';
 import { useShell } from '@/components/AppShell';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 const LSTATUS={scheduled:{l:"예정",c:"#78716C",bg:"#F5F5F4"},in_progress:{l:"진행중",c:"#EA580C",bg:"#FFF7ED"},completed:{l:"완료",c:"#16A34A",bg:"#F0FDF4"},cancelled:{l:"취소",c:"#DC2626",bg:"#FEF2F2"},makeup:{l:"보강",c:"#2563EB",bg:"#DBEAFE"}};
 const ls={display:"block",fontSize:12,fontWeight:500,color:C.tt,marginBottom:6};
 const is={width:"100%",padding:"9px 12px",borderRadius:8,border:`1px solid ${C.bd}`,fontSize:14,color:C.tp,background:C.sf,outline:"none",fontFamily:"inherit"};
@@ -95,6 +96,7 @@ export default function Schedule(){
   const tog=menuBtn;
   const{user}=useAuth();
   const toast=useToast();
+  const confirm=useConfirm();
   const[cur,setCur]=useState(new Date());
   const[viewMode,setVM]=useState(()=>{try{const v=localStorage.getItem('sch_viewMode');return v||'week';}catch{return 'week';}});
   const[lessons,setLessons]=useState([]);
@@ -211,7 +213,7 @@ export default function Schedule(){
   const save=async(f)=>{
     const isPers=!f.student_id;
     if(!isPers){const cf=checkConflict(f.date,f.start_hour,f.start_min,f.duration,eLes?.id);
-    if(cf){const sn=getStu(cf.student_id);if(!confirm((sn?.name||'다른 수업')+'과 시간이 겹칩니다. 계속하시겠습니까?'))return;}}
+    if(cf){const sn=getStu(cf.student_id);if(!await confirm((sn?.name||'다른 수업')+'과 시간이 겹칩니다. 계속하시겠습니까?'))return;}}
     const st=isPers?null:getStu(f.student_id);
     if(eLes?.id){
       // Update
