@@ -455,7 +455,7 @@ export default function Schedule(){
         <div onTouchStart={onTS} onTouchEnd={onTE}>
           {/* Day selector pills */}
           <div style={{display:"flex",gap:4,padding:"8px 4px",overflowX:"auto",WebkitOverflowScrolling:"touch",position:"sticky",top:0,zIndex:15,background:C.bg}}>
-            {wk.map((d,i)=>{const it=sdy(d,today);const sel=i===mobileDay;const cnt=gL(d).filter(l=>effSt(l,fd(d))!=='cancelled'&&(!activeStu||l.student_id===activeStu)).length;
+            {wk.map((d,i)=>{const it=sdy(d,today);const sel=i===mobileDay;const cnt=gL(d).filter(l=>l.student_id&&effSt(l,fd(d))!=='cancelled'&&(!activeStu||l.student_id===activeStu)).length;
               return(
               <button key={i} onClick={()=>{setSlide(i>mobileDay?'r':'l');setAnim(k=>k+1);setMobileDay(i);}} style={{flex:1,minWidth:44,padding:"8px 4px",borderRadius:12,border:sel?`2px solid ${C.ac}`:`1px solid ${it?C.ac:C.bd}`,background:sel?C.as:it?"rgba(37,99,235,.05)":C.sf,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:2,fontFamily:"inherit",transition:"all .15s"}}>
                 <span style={{fontSize:11,fontWeight:sel?700:500,color:sel?C.ac:it?C.ac:C.tt}}>{DK[i]}</span>
