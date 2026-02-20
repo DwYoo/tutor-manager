@@ -456,7 +456,7 @@ export default function StudentDetail({ student, initialTab }) {
                 const isFirstDone=isDone&&(i===0||!isLessonDone(tlLessons[i-1]));
                 const hw=l.homework||[],hwDone=hw.filter(h=>(h.completion_pct||0)>=100).length,hwTotal=hw.length;
                 const em=l.start_hour*60+l.start_min+l.duration;
-                const hasSections=l.content||l.feedback||hwTotal>0||(l.plan_shared&&!isDone);
+                const hasSections=l.content||l.feedback||hwTotal>0||(l.plan_shared&&isUp);
                 return(
                   <div key={l.id} style={{position:"relative",marginBottom:16}}>
                     <div style={{position:"absolute",left:-28+3,top:18,width:10,height:10,borderRadius:"50%",background:isIP?"#EA580C":isFirstDone?col.b:isUp?C.sf:C.bd,border:isUp&&!isIP?"2px solid "+C.bd:"2px solid "+C.sf,zIndex:1,boxShadow:isIP?"0 0 8px rgba(234,88,12,.5)":"none"}}/>
@@ -496,7 +496,7 @@ export default function StudentDetail({ student, initialTab }) {
                             );})}
                           </div>
                         </div>)}
-                        {l.plan_shared&&!isDone&&(<div style={{background:C.wb,borderRadius:10,padding:"10px 14px"}}>
+                        {l.plan_shared&&isUp&&(<div style={{background:C.wb,borderRadius:10,padding:"10px 14px"}}>
                           <div style={{fontSize:11,fontWeight:600,color:C.wn,marginBottom:4}}>수업 계획</div>
                           <div style={{fontSize:13,color:C.ts,lineHeight:1.5,whiteSpace:"pre-wrap",display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{l.plan_shared}</div>
                         </div>)}
