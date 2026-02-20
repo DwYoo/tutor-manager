@@ -22,7 +22,6 @@ export default function ShareView({ token }) {
   const [error, setError] = useState(null);
   const [tab, setTab] = useState("lessons");
   const [subTab, setSubTab] = useState("history");
-  const [expandedLesson, setExpandedLesson] = useState(null);
   const [showHwDetail, setShowHwDetail] = useState(false);
   const [hwFilters, setHwFilters] = useState(new Set());
   const [showWrongList, setShowWrongList] = useState(false);
@@ -296,85 +295,89 @@ export default function ShareView({ token }) {
         {/* === 수업 탭 === */}
         {tab === "lessons" && (<div>
           {/* 수업 이력 서브탭 */}
-          {subTab === "history" && (<div>
-            {pastLessons.length === 0 ? (
-              <Empty text="수업 기록이 없습니다" />
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {pastLessons.map(l => {
-                const sh = l.start_hour, sm = l.start_min, dur = l.duration;
-                const em = sh * 60 + sm + dur;
-                const hw = l.homework || [];
-                const open = expandedLesson === l.id;
-                return (
-                  <div key={l.id} style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 14, overflow: "hidden" }}>
-                    <div onClick={() => setExpandedLesson(open ? null : l.id)} style={{ padding: "14px 16px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <div>
-                        <div style={{ fontSize: 14, fontWeight: 600, color: C.tp }}>{l.date}</div>
-                        <div style={{ fontSize: 12, color: C.ts, marginTop: 2 }}>{m2s(sh * 60 + sm)}~{m2s(em)} · {l.subject}{l.topic ? " · " + l.topic : ""}</div>
-                      </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        {hw.length > 0 && <span style={{ fontSize: 11, color: C.ac, background: C.as, padding: "2px 8px", borderRadius: 5 }}>숙제 {hw.length}</span>}
-                        <span style={{ fontSize: 16, color: C.tt, transform: open ? "rotate(180deg)" : "rotate(0deg)", transition: "transform .2s" }}>▾</span>
-                      </div>
-                    </div>
-                    {open && (
-                      <div style={{ padding: "0 16px 16px", borderTop: "1px solid " + C.bl }}>
-                        {l.content && <div style={{ marginTop: 12 }}>
-                          <div style={{ fontSize: 11, fontWeight: 600, color: C.tt, marginBottom: 4 }}>수업 내용</div>
-                          <div style={{ fontSize: 13, color: C.tp, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{l.content}</div>
-                        </div>}
-                        {l.feedback && <div style={{ marginTop: 12 }}>
-                          <div style={{ fontSize: 11, fontWeight: 600, color: C.tt, marginBottom: 4 }}>피드백</div>
-                          <div style={{ fontSize: 13, color: C.tp, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{l.feedback}</div>
-                        </div>}
-                        {l.plan_shared && <div style={{ marginTop: 12 }}>
-                          <div style={{ fontSize: 11, fontWeight: 600, color: C.tt, marginBottom: 4 }}>수업 계획</div>
-                          <div style={{ fontSize: 13, color: C.tp, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{l.plan_shared}</div>
-                        </div>}
-                        {hw.length > 0 && <div style={{ marginTop: 12 }}>
-                          <div style={{ fontSize: 11, fontWeight: 600, color: C.tt, marginBottom: 8 }}>숙제</div>
-                          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                          {hw.map(h => {
-                            const hpct = h.completion_pct || 0;
-                            const hpc = hpct >= 100 ? C.su : hpct > 30 ? C.wn : hpct > 0 ? "#EA580C" : C.dn;
-                            const hbg = hpct >= 100 ? C.sb : hpct > 30 ? C.wb : hpct > 0 ? "#FFF7ED" : C.db;
-                            const saving = hwSaving === h.id;
-                            return (
-                            <div key={h.id} style={{ border: "1px solid " + C.bd, borderRadius: 12, padding: "12px 14px" }}>
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                                <span style={{ fontSize: 13, fontWeight: 600, color: C.tp }}>{h.title}</span>
-                                <span style={{ fontSize: 12, fontWeight: 700, color: hpc, background: hbg, padding: "2px 8px", borderRadius: 6 }}>{saving ? "..." : hpct + "%"}</span>
-                              </div>
-                              {perms.homework_edit ? (
-                                <div onMouseDown={e => { e.preventDefault(); const bar = e.currentTarget; const calc = ev => { const r = bar.getBoundingClientRect(); const v = Math.max(0, Math.min(100, Math.round((ev.clientX - r.left) / r.width * 20) * 5)); updateHwCompletion(h.id, v); }; calc(e); const mv = ev => calc(ev); const up = () => { window.removeEventListener("mousemove", mv); window.removeEventListener("mouseup", up); }; window.addEventListener("mousemove", mv); window.addEventListener("mouseup", up); }}
-                                  onTouchStart={e => { const bar = e.currentTarget; const calc = ev => { const r = bar.getBoundingClientRect(); const cx = ev.touches?.[0]?.clientX ?? ev.changedTouches?.[0]?.clientX ?? 0; const v = Math.max(0, Math.min(100, Math.round((cx - r.left) / r.width * 20) * 5)); updateHwCompletion(h.id, v); }; calc(e); const mv = ev => { ev.preventDefault(); calc(ev); }; const up = () => { window.removeEventListener("touchmove", mv); window.removeEventListener("touchend", up); }; window.addEventListener("touchmove", mv, { passive: false }); window.addEventListener("touchend", up); }}
-                                  style={{ width: "100%", height: 24, background: "transparent", cursor: "pointer", position: "relative", touchAction: "none", display: "flex", alignItems: "center" }}>
-                                  <div style={{ position: "absolute", left: 0, right: 0, height: 10, background: C.bl, borderRadius: 5 }} />
-                                  <div style={{ position: "absolute", left: 0, height: 10, width: hpct + "%", background: hpc, borderRadius: 5, pointerEvents: "none" }} />
-                                  <div style={{ position: "absolute", top: "50%", left: hpct + "%", transform: "translate(-50%,-50%)", width: 22, height: 22, borderRadius: "50%", background: "#fff", border: "3px solid " + hpc, boxShadow: "0 1px 4px rgba(0,0,0,.18)", pointerEvents: "none" }} />
-                                </div>
-                              ) : (
-                                <div style={{ width: "100%", height: 8, background: C.bl, borderRadius: 4, overflow: "hidden" }}>
-                                  <div style={{ height: "100%", width: hpct + "%", background: hpc, borderRadius: 4 }} />
-                                </div>
-                              )}
-                            </div>
-                            );
-                          })}
-                          </div>
-                        </div>}
-                        {(!l.content && !l.feedback && hw.length === 0) && (
-                          <div style={{ padding: "12px 0", fontSize: 13, color: C.tt }}>상세 기록이 없습니다</div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-                })}
+          {subTab === "history" && (() => {
+            const now = new Date();
+            const isLessonDone = (l) => { const end = new Date(l.date + "T00:00:00"); end.setHours(l.start_hour, l.start_min + l.duration, 0, 0); return now >= end; };
+            const isLessonInProgress = (l) => { const st = new Date(l.date + "T00:00:00"); st.setHours(l.start_hour, l.start_min, 0, 0); const end = new Date(l.date + "T00:00:00"); end.setHours(l.start_hour, l.start_min + l.duration, 0, 0); return now >= st && now < end; };
+            const getLessonStatus = (l) => { const st = l.status || 'scheduled'; if (st !== 'scheduled') return st; if (isLessonInProgress(l)) return 'in_progress'; if (isLessonDone(l)) return 'completed'; return 'scheduled'; };
+            const isDoneOrCompleted = (l) => isLessonDone(l) || l.status === 'completed';
+            const doneLessons = lessons.filter(l => isDoneOrCompleted(l) && l.status !== 'cancelled').sort((a, b) => { if (a.date !== b.date) return b.date.localeCompare(a.date); return (b.start_hour * 60 + b.start_min) - (a.start_hour * 60 + a.start_min); });
+            const upcomingLessons = lessons.filter(l => !isDoneOrCompleted(l) && l.status !== 'cancelled').sort((a, b) => { if (a.date !== b.date) return a.date.localeCompare(b.date); return (a.start_hour * 60 + a.start_min) - (b.start_hour * 60 + b.start_min); });
+            const topCount = (upcomingLessons.length > 0 && isLessonInProgress(upcomingLessons[0])) ? 2 : 1;
+            const topLessons = upcomingLessons.slice(0, topCount);
+            const tlLessons = [...topLessons, ...doneLessons];
+            const doneCount = doneLessons.length;
+            return (<div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp }}>수업 타임라인</h3>
+                <span style={{ fontSize: 12, color: C.tt }}>총 {doneCount}회</span>
               </div>
-            )}
-          </div>)}
+              {tlLessons.length === 0 ? (
+                <div style={{ textAlign: "center", padding: 40, color: C.tt, background: C.sf, border: "1px solid " + C.bd, borderRadius: 14 }}>
+                  <div style={{ fontSize: 14 }}>수업 기록이 없습니다</div>
+                </div>
+              ) : (
+                <div style={{ position: "relative", paddingLeft: 28 }}>
+                  <div style={{ position: "absolute", left: 7, top: 16, bottom: 16, width: 2, background: C.bl }} />
+                  {tlLessons.map((l, i) => {
+                    const isDone = isLessonDone(l);
+                    const lSt = getLessonStatus(l);
+                    const isIP = lSt === 'in_progress';
+                    const isUp = lSt === 'scheduled';
+                    const isFirstDone = isDone && (i === 0 || !isLessonDone(tlLessons[i - 1]));
+                    const hw = l.homework || [], hwDoneC = hw.filter(h => (h.completion_pct || 0) >= 100).length, hwTotal = hw.length;
+                    const em = l.start_hour * 60 + l.start_min + l.duration;
+                    const hasSections = l.content || l.feedback || hwTotal > 0 || (l.plan_shared && !isDone);
+                    return (
+                      <div key={l.id} style={{ position: "relative", marginBottom: 16 }}>
+                        <div style={{ position: "absolute", left: -28 + 3, top: 18, width: 10, height: 10, borderRadius: "50%", background: isIP ? "#EA580C" : isFirstDone ? col.b : isUp ? C.sf : C.bd, border: isUp && !isIP ? "2px solid " + C.bd : "2px solid " + C.sf, zIndex: 1, boxShadow: isIP ? "0 0 8px rgba(234,88,12,.5)" : "none" }} />
+                        <div style={{ background: isIP ? "#FFF7ED" : isUp ? C.as : C.sf, border: "1px solid " + (isIP ? "#FDBA74" : isUp ? C.al : C.bd), borderRadius: 14, overflow: "hidden", borderLeft: "3px solid " + (isIP ? "#EA580C" : isUp ? C.ac : col.b) }}>
+                          <div style={{ padding: "16px 20px " + (hasSections ? "12px" : "16px") }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: 12, color: C.tt, marginBottom: 4 }}>{l.date} {p2(l.start_hour)}:{p2(l.start_min)} ~ {m2s(em)} ({l.duration}분)</div>
+                                <div style={{ fontSize: 16, fontWeight: 700, color: C.tp }}>{l.topic || l.subject || "-"}</div>
+                              </div>
+                              <div style={{ display: "flex", gap: 5, alignItems: "center", flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                                {isIP && <span style={{ background: "#FFF7ED", color: "#EA580C", padding: "3px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600 }}>진행중</span>}
+                                {isUp && <span style={{ background: C.ac, color: "#fff", padding: "3px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600 }}>예정</span>}
+                                <span style={{ background: col.bg, color: col.t, padding: "3px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600 }}>{l.subject || "-"}</span>
+                                {hwTotal > 0 && <span style={{ fontSize: 11, background: hwDoneC === hwTotal ? C.sb : C.wb, color: hwDoneC === hwTotal ? C.su : C.wn, padding: "3px 8px", borderRadius: 5, fontWeight: 600 }}>숙제 {hwDoneC}/{hwTotal}</span>}
+                                {l.content && <span style={{ fontSize: 11, background: C.sfh, color: C.ts, padding: "3px 8px", borderRadius: 5 }}>내용</span>}
+                                {l.feedback && <span style={{ fontSize: 11, background: C.as, color: C.ac, padding: "3px 8px", borderRadius: 5 }}>피드백</span>}
+                              </div>
+                            </div>
+                          </div>
+                          {hasSections && (<div style={{ padding: "0 20px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
+                            {l.content && (<div style={{ background: C.sfh, borderRadius: 10, padding: "10px 14px" }}>
+                              <div style={{ fontSize: 11, fontWeight: 600, color: C.tt, marginBottom: 4 }}>수업 내용</div>
+                              <div style={{ fontSize: 13, color: C.ts, lineHeight: 1.5, whiteSpace: "pre-wrap", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{l.content}</div>
+                            </div>)}
+                            {l.feedback && (<div style={{ background: C.as, borderRadius: 10, padding: "10px 14px" }}>
+                              <div style={{ fontSize: 11, fontWeight: 600, color: C.ac, marginBottom: 4 }}>피드백</div>
+                              <div style={{ fontSize: 13, color: C.ts, lineHeight: 1.5, whiteSpace: "pre-wrap", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{l.feedback}</div>
+                            </div>)}
+                            {hwTotal > 0 && (<div style={{ background: C.sfh, borderRadius: 10, padding: "10px 14px" }}>
+                              <div style={{ fontSize: 11, fontWeight: 600, color: C.tt, marginBottom: 6 }}>숙제</div>
+                              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                                {hw.map(h => { const pct = h.completion_pct || 0; const done = pct >= 100; return (
+                                  <span key={h.id} style={{ fontSize: 11, padding: "3px 10px", borderRadius: 6, fontWeight: 500, background: done ? C.sb : pct >= 50 ? C.wb : C.db, color: done ? C.su : pct >= 50 ? C.wn : C.dn }}>{h.title} {pct}%</span>
+                                ); })}
+                              </div>
+                            </div>)}
+                            {l.plan_shared && !isDone && (<div style={{ background: C.wb, borderRadius: 10, padding: "10px 14px" }}>
+                              <div style={{ fontSize: 11, fontWeight: 600, color: C.wn, marginBottom: 4 }}>수업 계획</div>
+                              <div style={{ fontSize: 13, color: C.ts, lineHeight: 1.5, whiteSpace: "pre-wrap", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{l.plan_shared}</div>
+                            </div>)}
+                          </div>)}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>);
+          })()}
 
           {/* 수업 일정 서브탭 */}
           {subTab === "schedule" && (<div>
