@@ -8,6 +8,7 @@ import { C, SC, STATUS } from '@/components/Colors';
 import { p2, fd, DK, lessonOnDate } from '@/lib/utils';
 import { useShell } from '@/components/AppShell';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
+import { SkeletonCard } from '@/components/ui';
 const ls={display:"block",fontSize:12,fontWeight:500,color:C.tt,marginBottom:6};
 const is={width:"100%",padding:"9px 12px",borderRadius:8,border:`1px solid ${C.bd}`,fontSize:14,color:C.tp,background:C.sf,outline:"none",fontFamily:"inherit"};
 const IcP=()=><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
@@ -79,14 +80,22 @@ export default function Students(){
   const onDR=async(e)=>{e.preventDefault();const fid=dragId,di=dropIdx;setDragId(null);setDropIdx(null);if(!fid||di==null)return;const list=[...activeStudents];const fi=list.findIndex(s=>s.id===fid);if(fi<0)return;const[mv]=list.splice(fi,1);const ai=di>fi?di-1:di;list.splice(ai,0,mv);if(list.every((s,i)=>s.id===activeStudents[i].id))return;const reordered=list.map((s,i)=>({...s,sort_order:i}));setStudents(prev=>[...reordered,...prev.filter(s=>!!s.archived)]);try{const updates=reordered.map((s,i)=>supabase.from('students').update({sort_order:i}).eq('id',s.id));const results=await Promise.all(updates);const failed=results.some(r=>r.error);if(failed){toast?.('순서 저장에 실패했습니다','error');fetchStudents();}else{toast?.('순서가 저장되었습니다');}}catch{toast?.('순서 저장에 실패했습니다','error');fetchStudents();}};
   const onDE=()=>{setDragId(null);setDropIdx(null);};
 
-  if(loading)return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:C.tt,fontSize:14}}>불러오는 중...</div></div>);
+  if(loading)return(
+  <div style={{maxWidth:900,margin:"0 auto",padding:"24px 16px"}}>
+    <div style={{display:"flex",gap:12,marginBottom:20}}>
+      <div style={{flex:1,height:40,borderRadius:10,background:"linear-gradient(90deg, #F5F5F4 25%, #F0EFED 50%, #F5F5F4 75%)",backgroundSize:"200% 100%",animation:"shimmer 1.5s infinite"}}/>
+    </div>
+    <div style={{display:"flex",flexDirection:"column",gap:12}}>
+      <SkeletonCard lines={2}/>
+      <SkeletonCard lines={2}/>
+      <SkeletonCard lines={2}/>
+    </div>
+  </div>
+);
   if(fetchError&&!students.length)return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:12}}><div style={{fontSize:14,color:C.dn}}>데이터를 불러오지 못했습니다</div><button onClick={()=>{setLoading(true);fetchStudents();}} style={{padding:"8px 20px",borderRadius:8,border:`1px solid ${C.bd}`,background:C.sf,color:C.tp,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>다시 시도</button></div>);
 
   return(
     <div className="stu-container" style={{padding:28}}>
-      <style>{`.hcard{transition:all .12s;}.hcard:hover{background:${C.sfh}!important;}
-        @media(max-width:768px){.stu-container{padding:16px!important;}.stu-grid{grid-template-columns:1fr!important;}.stu-search{width:100%!important;}.hcard{padding:14px!important;min-height:120px;}}`}</style>
-
       {/* Header */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24,flexWrap:"wrap",gap:12}}>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
@@ -97,7 +106,7 @@ export default function Students(){
         </div>
         <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",flex:1,minWidth:0,justifyContent:"flex-end"}}>
           {!showArchived&&archivedStudents.length>0&&<button onClick={()=>setShowArchived(true)} style={{display:"flex",alignItems:"center",gap:5,background:C.sfh,color:C.ts,border:`1px solid ${C.bd}`,borderRadius:8,padding:"8px 12px",fontSize:12,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}><IcA/> 보관함 ({archivedStudents.length})</button>}
-          <input value={search} onChange={e=>setSearch(e.target.value)} className="stu-search" style={{padding:"8px 14px",borderRadius:8,border:`1px solid ${C.bd}`,fontSize:13,color:C.tp,outline:"none",width:200,flex:1,minWidth:0,fontFamily:"inherit"}} placeholder="검색..."/>
+          <div style={{position:'relative',flex:1,minWidth:0,width:200}}><input value={search} onChange={e=>setSearch(e.target.value)} className="stu-search" style={{padding:"8px 14px",borderRadius:8,border:`1px solid ${C.bd}`,fontSize:13,color:C.tp,outline:"none",width:"100%",fontFamily:"inherit"}} placeholder="검색..."/>{search && <button onClick={()=>setSearch('')} aria-label="검색 초기화" style={{position:'absolute',right:8,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',color:'#A8A29E',fontSize:16,padding:4,display:'flex'}}>✕</button>}</div>
           {!showArchived&&<button onClick={openAdd} style={{display:"flex",alignItems:"center",gap:4,background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"8px 16px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}><IcP/> 학생 추가</button>}
         </div>
       </div>
@@ -133,10 +142,10 @@ export default function Students(){
               </div>
               <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:8,paddingTop:8,borderTop:`1px solid ${C.bl}`}}>
                 {s.archived
-                  ?<button onClick={e=>restoreStudent(s.id,e)} style={{background:"none",border:"none",cursor:"pointer",color:C.ac,fontSize:11,fontWeight:600,fontFamily:"inherit"}}>복원</button>
-                  :<><button onClick={e=>openEdit(s,e)} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,fontSize:11,fontFamily:"inherit"}}>수정</button><button onClick={e=>archiveStudent(s.id,e)} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,fontSize:11,fontFamily:"inherit"}}>보관</button></>
+                  ?<button onClick={e=>restoreStudent(s.id,e)} style={{background:"none",border:"none",cursor:"pointer",color:C.ac,fontSize:12,fontWeight:600,fontFamily:"inherit",padding:"4px 8px",borderRadius:6}}>복원</button>
+                  :<><button onClick={e=>openEdit(s,e)} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,fontSize:12,fontFamily:"inherit",padding:"4px 8px",borderRadius:6}}>수정</button><button onClick={e=>archiveStudent(s.id,e)} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,fontSize:12,fontFamily:"inherit",padding:"4px 8px",borderRadius:6}}>보관</button></>
                 }
-                <button onClick={e=>deleteStudent(s.id,e)} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,fontSize:11,fontFamily:"inherit"}}>삭제</button>
+                <button onClick={e=>deleteStudent(s.id,e)} style={{background:"none",border:"none",cursor:"pointer",color:C.dn,fontSize:12,fontFamily:"inherit",padding:"4px 8px",borderRadius:6}}>삭제</button>
               </div>
             </div>
           );
@@ -161,16 +170,16 @@ export default function Students(){
             </div>
             <div style={{display:"flex",flexDirection:"column",gap:12}}>
               {[
-                {k:'name',l:'이름',ph:'학생 이름'},
+                {k:'name',l:'이름 *',ph:'학생 이름',required:true},
                 {k:'grade',l:'학년',ph:'예: 고2'},
                 {k:'birth_date',l:'생년월일',ph:'예: 2008-03-15',type:'date'},
                 {k:'subject',l:'과목',ph:'예: 수학'},
                 {k:'school',l:'학교',ph:'학교명'},
                 {k:'phone',l:'연락처',ph:'010-0000-0000'},
                 {k:'parent_phone',l:'학부모 연락처',ph:'010-0000-0000'},
-                {k:'fee',l:'월 수업료 (참고용)',ph:'예: 400000'},
-                {k:'fee_per_class',l:'수업당 단가',ph:'예: 50000'},
-              ].map(f=>(<div key={f.k}><label style={ls}>{f.l}</label><input type={f.type||'text'} value={form[f.k]} onChange={e=>setForm(p=>({...p,[f.k]:e.target.value}))} style={is} placeholder={f.ph}/></div>))}
+                {k:'fee',l:'월 수업료 (참고용)',ph:'예: 400000',type:'number',inputMode:'numeric'},
+                {k:'fee_per_class',l:'수업당 단가',ph:'예: 50000',type:'number',inputMode:'numeric'},
+              ].map(f=>(<div key={f.k}><label style={ls}>{f.l}</label><input type={f.type||'text'} value={form[f.k]} onChange={e=>setForm(p=>({...p,[f.k]:e.target.value}))} style={is} placeholder={f.ph} {...(f.required?{required:true}:{})} {...(f.inputMode?{inputMode:f.inputMode}:{})}/></div>))}
             </div>
             <div style={{display:"flex",gap:10,marginTop:20,justifyContent:"flex-end"}}>
               <button onClick={()=>{setShowAdd(false);setEditStu(null);}} style={{background:C.sfh,color:C.ts,border:`1px solid ${C.bd}`,borderRadius:8,padding:"10px 20px",fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>취소</button>

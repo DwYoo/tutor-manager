@@ -29,7 +29,6 @@ export function ToastProvider({ children }) {
     <Ctx.Provider value={toast}>
       {children}
       <div style={{ position: 'fixed', bottom: 'max(72px, calc(env(safe-area-inset-bottom) + 68px))', left: 16, right: 16, zIndex: 9999, display: 'flex', flexDirection: 'column-reverse', gap: 8, pointerEvents: 'none' }} className="toast-container">
-        <style>{`@media(min-width:1024px){.toast-container{left:auto!important;right:24px!important;bottom:24px!important;max-width:380px;}}`}</style>
         {toasts.map(t => (
           <div key={t.id} role="alert" aria-live="polite" onClick={() => remove(t.id)} style={{
             pointerEvents: 'auto', cursor: 'pointer',
@@ -40,12 +39,11 @@ export function ToastProvider({ children }) {
             fontSize: 13, fontWeight: 500, boxShadow: '0 4px 16px rgba(0,0,0,.08)',
             animation: 'toastIn .2s ease',
           }}>
-            <span style={{ marginRight: 8 }}>{t.type === 'error' ? '✕' : t.type === 'info' ? 'ℹ' : '✓'}</span>
+            <span style={{ marginRight: 8 }} aria-hidden="true">{t.type === 'error' ? '✕' : t.type === 'info' ? 'ℹ' : '✓'}</span>
             {t.msg}
           </div>
         ))}
       </div>
-      <style>{`@keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}`}</style>
     </Ctx.Provider>
   );
 }

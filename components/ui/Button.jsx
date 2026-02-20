@@ -24,11 +24,12 @@ export default function Button({
   fullWidth,
   icon,
   style: extraStyle,
+  className,
   ...rest
 }) {
   const sizes = {
-    sm: { padding: '5px 10px', fontSize: 11, minHeight: 30 },
-    md: { padding: '8px 16px', fontSize: 13, minHeight: 36 },
+    sm: { padding: '6px 12px', fontSize: 12, minHeight: 36 },
+    md: { padding: '8px 16px', fontSize: 13, minHeight: 40 },
     lg: { padding: '10px 20px', fontSize: 14, minHeight: 44 },
   };
 
@@ -43,7 +44,7 @@ export default function Button({
       background: 'transparent', color: C.ts, border: 'none',
     },
     danger: {
-      background: C.dn, color: '#fff', border: 'none',
+      background: C.db, color: C.dn, border: '1px solid #FECACA',
     },
     accent: {
       background: C.ac, color: '#fff', border: 'none',
@@ -57,7 +58,7 @@ export default function Button({
   const baseStyle = {
     ...s,
     ...v,
-    borderRadius: 8,
+    borderRadius: 10,
     fontWeight: 600,
     cursor: isDisabled ? 'not-allowed' : 'pointer',
     fontFamily: 'inherit',
@@ -65,15 +66,15 @@ export default function Button({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    transition: 'all .15s',
-    opacity: isDisabled ? 0.6 : 1,
+    transition: 'background .15s, color .15s, opacity .15s, box-shadow .15s',
+    opacity: isDisabled ? 0.5 : 1,
     width: fullWidth ? '100%' : undefined,
     whiteSpace: 'nowrap',
     ...extraStyle,
   };
 
   return (
-    <button disabled={isDisabled} style={baseStyle} {...rest}>
+    <button disabled={isDisabled} style={baseStyle} className={className} {...rest}>
       {icon && <span style={{ display: 'flex', alignItems: 'center' }}>{icon}</span>}
       {loading ? (loadingText || '처리 중...') : children}
     </button>

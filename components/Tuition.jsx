@@ -8,6 +8,8 @@ import { p2, lessonOnDate } from '@/lib/utils';
 import { exportTuitionCSV } from '@/lib/export';
 import { useShell } from '@/components/AppShell';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
+import { SkeletonCard } from '@/components/ui';
+import { useToast } from '@/components/Toast';
 import { escapeHtml } from '@/lib/sanitize';
 import { validateFiles, RECEIPT_MIMES } from '@/lib/fileValidation';
 import { useLessonCount } from '@/hooks/useLessonCount';
@@ -20,6 +22,7 @@ export default function Tuition(){
   const tog=menuBtn;
   const{user}=useAuth();
   const confirm=useConfirm();
+  const toast=useToast();
   const now=new Date();
   const[curMonth,setCurMonth]=useState(now.getFullYear()+"-"+p2(now.getMonth()+1));
   const[students,setStudents]=useState([]);
@@ -407,7 +410,15 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
   const curMonthFiles=rcptFiles.filter(f=>f.month===curMonth);
   const rcptMonths=[...new Set(rcptFiles.map(f=>f.month))].sort().reverse();
 
-  if(loading)return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:C.tt,fontSize:14}}>불러오는 중...</div></div>);
+  if(loading)return(
+  <div style={{maxWidth:1200,margin:"0 auto",padding:"24px 16px"}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+      <div style={{width:160,height:28,borderRadius:8,background:"linear-gradient(90deg, #F5F5F4 25%, #F0EFED 50%, #F5F5F4 75%)",backgroundSize:"200% 100%",animation:"shimmer 1.5s infinite"}}/>
+    </div>
+    <SkeletonCard lines={6}/>
+    <div style={{marginTop:16}}><SkeletonCard lines={4}/></div>
+  </div>
+);
   if(fetchError)return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:12}}><div style={{fontSize:14,color:C.dn}}>데이터를 불러오지 못했습니다</div><button onClick={fetchData} style={{padding:"8px 20px",borderRadius:8,border:`1px solid ${C.bd}`,background:C.sf,color:C.tp,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>다시 시도</button></div>);
 
   const eis={padding:"4px 6px",borderRadius:6,border:"1px solid "+C.bd,fontSize:12,fontFamily:"inherit"};
@@ -416,8 +427,6 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
 
   return(
     <div className="tui-container" style={{padding:28}}>
-      <style>{".tr{transition:all .1s;}.tr:hover{background:"+C.sfh+"!important;}\n.nb{transition:all .1s;cursor:pointer;border:none;background:none;display:flex;align-items:center;justify-content:center;padding:8px;border-radius:8px;color:"+C.ts+";min-width:44px;min-height:44px;}.nb:hover{background:"+C.sfh+";}\n@media(max-width:768px){.tui-container{padding:16px!important;}.tu-grid{grid-template-columns:1fr!important;}.tu-stats{grid-template-columns:repeat(2,1fr)!important;}}"}</style>
-
       {/* Header */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24,flexWrap:"wrap",gap:12}}>
         <div style={{display:"flex",alignItems:"center",gap:12}}>{tog}<h1 style={{fontSize:20,fontWeight:700,color:C.tp}}>수업료 관리</h1></div>
@@ -425,7 +434,7 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
           <button className="nb" onClick={prevM}><IcL/></button>
           <span style={{fontSize:15,fontWeight:600,color:C.tp,minWidth:110,textAlign:"center"}}>{year}년 {month}월</span>
           <button className="nb" onClick={nextM}><IcR/></button>
-          <button onClick={()=>exportTuitionCSV(monthRecs,`${year}년 ${month}월`)} style={{marginLeft:8,padding:"6px 14px",borderRadius:8,border:"1px solid "+C.bd,background:C.sf,color:C.ts,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>CSV 내보내기</button>
+          <button onClick={()=>{exportTuitionCSV(monthRecs,`${year}년 ${month}월`);toast?.('CSV 파일이 다운로드되었습니다');}} style={{marginLeft:8,padding:"6px 14px",borderRadius:8,border:"1px solid "+C.bd,background:C.sf,color:C.ts,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>CSV 내보내기</button>
         </div>
       </div>
 
@@ -452,7 +461,7 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
       <div className="tu-grid" style={{display:"grid",gridTemplateColumns:"1fr 280px",gap:20}}>
         {/* Table */}
         <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,overflow:"auto"}}>
-          {hiddenCount>0&&<div style={{padding:"8px 14px",display:"flex",alignItems:"center",gap:8,borderBottom:"1px solid "+C.bl,background:C.sfh}}><span style={{fontSize:11,color:C.tt}}>{hiddenCount}명 숨김</span><button onClick={()=>setShowHidden(!showHidden)} style={{fontSize:10,color:C.ac,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",textDecoration:"underline",padding:0}}>{showHidden?"숨김 적용":"모두 표시"}</button></div>}
+          {hiddenCount>0&&<div style={{padding:"8px 14px",display:"flex",alignItems:"center",gap:8,borderBottom:"1px solid "+C.bl,background:C.sfh}}><span style={{fontSize:11,color:C.tt}}>{hiddenCount}명 숨김</span><button onClick={()=>setShowHidden(!showHidden)} style={{fontSize:11,color:C.ac,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",textDecoration:"underline",padding:0}}>{showHidden?"숨김 적용":"모두 표시"}</button></div>}
           <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
             <thead><tr style={{borderBottom:"1px solid "+C.bd}}>
               {["학생","회당단가","횟수","수업료","이월","청구액","납부","상태","입금일","현금영수증","메모",""].map((h,i)=>(<th key={i} style={{padding:"12px",paddingLeft:i===0?"30px":"12px",textAlign:h==="현금영수증"?"center":"left",fontSize:11,fontWeight:600,color:C.tt,background:C.sfh,whiteSpace:"nowrap"}}>{h}</th>))}
@@ -464,22 +473,22 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
                 const isEditing=editId===(rec.id||s.id);
                 return(
                   <tr key={s.id} className="tr" style={{borderBottom:"1px solid "+C.bl,opacity:curHidden.includes(s.id)?0.45:1}}>
-                    <td style={{padding:"10px 12px",fontWeight:600,color:C.tp}}><div style={{display:"flex",alignItems:"center",gap:5}}>{!isEditing&&<button onClick={()=>toggleHideStudent(s.id)} style={{width:16,height:16,background:"none",border:"none",cursor:"pointer",padding:0,flexShrink:0,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:15,lineHeight:1,fontWeight:300,fontFamily:"system-ui,sans-serif",color:curHidden.includes(s.id)?"#93C5FD":"#FCA5A5",opacity:0.7,transition:"opacity .15s",borderRadius:4}} title={curHidden.includes(s.id)?"다시 표시":"숨기기"}>{curHidden.includes(s.id)?"+":"−"}</button>}<span style={{color:r.isArchived?C.ts:C.tp}}>{s.name}</span>{r.isArchived&&<span style={{fontSize:8,color:C.tt,background:C.sfh,padding:"1px 4px",borderRadius:3}}>보관</span>}</div></td>
+                    <td style={{padding:"10px 12px",fontWeight:600,color:C.tp}}><div style={{display:"flex",alignItems:"center",gap:5}}>{!isEditing&&<button onClick={()=>toggleHideStudent(s.id)} style={{width:16,height:16,background:"none",border:"none",cursor:"pointer",padding:0,flexShrink:0,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:15,lineHeight:1,fontWeight:300,fontFamily:"system-ui,sans-serif",color:curHidden.includes(s.id)?"#93C5FD":"#FCA5A5",opacity:0.7,transition:"opacity .15s",borderRadius:4}} title={curHidden.includes(s.id)?"학생 표시":"학생 숨기기"} aria-label={curHidden.includes(s.id)?"학생 표시":"학생 숨기기"}>{curHidden.includes(s.id)?"+":"−"}</button>}<span style={{color:r.isArchived?C.ts:C.tp}}>{s.name}</span>{r.isArchived&&<span style={{fontSize:11,color:C.tt,background:C.sfh,padding:"1px 4px",borderRadius:3}}>보관</span>}</div></td>
                     <td style={{padding:"10px 12px",color:C.ts}}>
                       {isEditing?<input type="number" value={editForm.fee_per_class} onChange={e=>{const fpc=e.target.value;const cls=editForm.classesOverride!==""?parseInt(editForm.classesOverride)||0:r.autoLessonCnt;const newFee=(parseInt(fpc)||0)*cls;const carry=parseInt(editForm.carryover)||0;const newTotal=newFee+carry;const a=parseInt(editForm.amount)||0;setEditForm(p=>({...p,fee_per_class:fpc,tuitionFee:newFee,totalDue:newTotal,status:autoStatus(a,newTotal)}));}} style={{...eis,width:80}}/>:
                       <>₩{(s.fee_per_class||0).toLocaleString()}</>}
                     </td>
                     <td style={{padding:"10px 12px"}}>
-                      {isEditing?<div style={{display:"flex",alignItems:"center",gap:4}}><input type="number" value={editForm.classesOverride!==""?editForm.classesOverride:r.autoLessonCnt} onChange={e=>{const cv=e.target.value;const cls=parseInt(cv)||0;const fpc=parseInt(editForm.fee_per_class)||0;const newFee=fpc*cls;const carry=parseInt(editForm.carryover)||0;const newTotal=newFee+carry;const a=parseInt(editForm.amount)||0;setEditForm(p=>({...p,classesOverride:cv,tuitionFee:newFee,totalDue:newTotal,status:autoStatus(a,newTotal)}));}} style={{...eis,width:50}}/><span style={{fontSize:10}}>회</span></div>:
-                      <div style={{display:"flex",alignItems:"center",gap:4,whiteSpace:"nowrap"}}><span style={{fontWeight:600}}>{r.lessonCnt}회</span>{r.classesOverridden?<button onClick={()=>toggleClassesMode(s.id)} style={{fontSize:8,color:"#e67e22",cursor:"pointer",background:"none",padding:"1px 4px",borderRadius:3,border:"1px solid #e67e22",fontWeight:600,fontFamily:"inherit",whiteSpace:"nowrap",lineHeight:"normal"}}>수동</button>:<span style={{fontSize:8,color:C.ac,background:C.as,padding:"1px 4px",borderRadius:3,fontWeight:600,whiteSpace:"nowrap",lineHeight:"normal"}}>자동</span>}</div>}
+                      {isEditing?<div style={{display:"flex",alignItems:"center",gap:4}}><input type="number" value={editForm.classesOverride!==""?editForm.classesOverride:r.autoLessonCnt} onChange={e=>{const cv=e.target.value;const cls=parseInt(cv)||0;const fpc=parseInt(editForm.fee_per_class)||0;const newFee=fpc*cls;const carry=parseInt(editForm.carryover)||0;const newTotal=newFee+carry;const a=parseInt(editForm.amount)||0;setEditForm(p=>({...p,classesOverride:cv,tuitionFee:newFee,totalDue:newTotal,status:autoStatus(a,newTotal)}));}} style={{...eis,width:50}}/><span style={{fontSize:11}}>회</span></div>:
+                      <div style={{display:"flex",alignItems:"center",gap:4,whiteSpace:"nowrap"}}><span style={{fontWeight:600}}>{r.lessonCnt}회</span>{r.classesOverridden?<button onClick={()=>toggleClassesMode(s.id)} style={{fontSize:11,color:"#e67e22",cursor:"pointer",background:"none",padding:"1px 4px",borderRadius:3,border:"1px solid #e67e22",fontWeight:600,fontFamily:"inherit",whiteSpace:"nowrap",lineHeight:"normal"}}>수동</button>:<span style={{fontSize:11,color:C.ac,background:C.as,padding:"1px 4px",borderRadius:3,fontWeight:600,whiteSpace:"nowrap",lineHeight:"normal"}}>자동</span>}</div>}
                     </td>
                     <td style={{padding:"10px 12px",fontWeight:500,color:C.tp}}>
                       {isEditing?<input type="number" value={editForm.tuitionFee} onChange={e=>{const tf=e.target.value;const carry=parseInt(editForm.carryover)||0;setEditForm(p=>({...p,tuitionFee:tf,totalDue:(parseInt(tf)||0)+carry}));}} style={{...eis,width:90}}/>:
-                      <div style={{display:"flex",alignItems:"center",gap:4,whiteSpace:"nowrap"}}><span style={{fontWeight:500}}>₩{r.displayFee.toLocaleString()}</span>{r.tuitionFeeManual?<button onClick={()=>toggleTuitionFeeMode(s.id)} style={{fontSize:8,color:"#e67e22",cursor:"pointer",background:"none",padding:"1px 4px",borderRadius:3,border:"1px solid #e67e22",fontWeight:600,fontFamily:"inherit",whiteSpace:"nowrap",lineHeight:"normal"}} title="클릭하면 자동계산으로 전환">수동</button>:<span style={{fontSize:8,color:C.ac,background:C.as,padding:"1px 4px",borderRadius:3,fontWeight:600,whiteSpace:"nowrap",lineHeight:"normal"}}>자동</span>}</div>}
+                      <div style={{display:"flex",alignItems:"center",gap:4,whiteSpace:"nowrap"}}><span style={{fontWeight:500}}>₩{r.displayFee.toLocaleString()}</span>{r.tuitionFeeManual?<button onClick={()=>toggleTuitionFeeMode(s.id)} style={{fontSize:11,color:"#e67e22",cursor:"pointer",background:"none",padding:"1px 4px",borderRadius:3,border:"1px solid #e67e22",fontWeight:600,fontFamily:"inherit",whiteSpace:"nowrap",lineHeight:"normal"}} title="클릭하면 자동계산으로 전환">수동</button>:<span style={{fontSize:11,color:C.ac,background:C.as,padding:"1px 4px",borderRadius:3,fontWeight:600,whiteSpace:"nowrap",lineHeight:"normal"}}>자동</span>}</div>}
                     </td>
                     <td style={{padding:"10px 12px"}}>
                       {isEditing?<input type="number" value={editForm.carryover} onChange={e=>setEditForm(p=>({...p,carryover:e.target.value}))} style={{...eis,width:80}}/>:
-                      r.carryover!==0?<><span style={{color:r.carryover>0?C.dn:C.ac,fontWeight:600}}>{r.carryover>0?"+":"−"}₩{Math.abs(r.carryover).toLocaleString()}</span><div style={{fontSize:9,color:r.carryover>0?C.dn:C.ac}}>{r.carryover>0?"미납이월":"선납"}</div></>:<span style={{color:C.tt}}>-</span>}
+                      r.carryover!==0?<><span style={{color:r.carryover>0?C.dn:C.ac,fontWeight:600}}>{r.carryover>0?"+":"−"}₩{Math.abs(r.carryover).toLocaleString()}</span><div style={{fontSize:11,color:r.carryover>0?C.dn:C.ac}}>{r.carryover>0?"미납이월":"선납"}</div></>:<span style={{color:C.tt}}>-</span>}
                     </td>
                     <td style={{padding:"10px 12px"}}>
                       {isEditing?(
@@ -487,7 +496,7 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
                       ):(
                         <div style={{display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap"}}>
                           <span style={{fontWeight:700,color:C.tp}}>₩{r.totalDue.toLocaleString()}</span>
-                          {r.totalDueManual?<button onClick={()=>toggleTotalDueMode(s.id)} style={{fontSize:9,color:"#e67e22",cursor:"pointer",background:"none",padding:"2px 6px",borderRadius:4,border:"1px solid #e67e22",fontWeight:600,fontFamily:"inherit",whiteSpace:"nowrap",lineHeight:"normal"}} title="클릭하면 자동계산으로 전환">수동</button>:r.hasSavedTotalDueOverride?<button onClick={()=>toggleTotalDueMode(s.id)} style={{fontSize:9,color:C.ac,cursor:"pointer",background:C.as,padding:"2px 6px",borderRadius:4,border:"none",fontWeight:600,fontFamily:"inherit",whiteSpace:"nowrap",lineHeight:"normal"}} title="클릭하면 이전 수동값으로 전환">자동</button>:<span style={{fontSize:9,color:C.ac,background:C.as,padding:"2px 6px",borderRadius:4,fontWeight:600,whiteSpace:"nowrap",lineHeight:"normal"}}>자동</span>}
+                          {r.totalDueManual?<button onClick={()=>toggleTotalDueMode(s.id)} style={{fontSize:11,color:"#e67e22",cursor:"pointer",background:"none",padding:"2px 6px",borderRadius:4,border:"1px solid #e67e22",fontWeight:600,fontFamily:"inherit",whiteSpace:"nowrap",lineHeight:"normal"}} title="클릭하면 자동계산으로 전환">수동</button>:r.hasSavedTotalDueOverride?<button onClick={()=>toggleTotalDueMode(s.id)} style={{fontSize:11,color:C.ac,cursor:"pointer",background:C.as,padding:"2px 6px",borderRadius:4,border:"none",fontWeight:600,fontFamily:"inherit",whiteSpace:"nowrap",lineHeight:"normal"}} title="클릭하면 이전 수동값으로 전환">자동</button>:<span style={{fontSize:11,color:C.ac,background:C.as,padding:"2px 6px",borderRadius:4,fontWeight:600,whiteSpace:"nowrap",lineHeight:"normal"}}>자동</span>}
                         </div>
                       )}
                     </td>
@@ -509,15 +518,15 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
                     </td>
                     <td style={{padding:"10px 12px"}}>
                       {isEditing?<input value={editForm.memo} onChange={e=>setEditForm(p=>({...p,memo:e.target.value}))} style={{...eis,width:80,fontSize:11}} placeholder="메모"/>:
-                      rec.memo?<span onClick={()=>{setMemoPopup({name:s.name,studentId:s.id});setMemoText(rec.memo);}} style={{fontSize:10,color:C.tt,background:C.sfh,padding:"2px 6px",borderRadius:4,cursor:"pointer"}}>💬</span>:null}
+                      rec.memo?<span onClick={()=>{setMemoPopup({name:s.name,studentId:s.id});setMemoText(rec.memo);}} style={{fontSize:11,color:C.tt,background:C.sfh,padding:"2px 6px",borderRadius:4,cursor:"pointer"}}>💬</span>:null}
                     </td>
                     <td style={{padding:"10px 12px"}}>
                       {isEditing?(
                         <div style={{display:"flex",gap:4}}>
-                          <button disabled={saving} onClick={()=>saveEdit(s.id,r.autoLessonCnt)} style={{background:saving?"#999":C.pr,color:"#fff",border:"none",borderRadius:6,padding:"4px 10px",fontSize:10,fontWeight:600,cursor:saving?"not-allowed":"pointer",fontFamily:"inherit"}}>{saving?"저장 중...":"저장"}</button>
-                          <button onClick={cancelEdit} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:6,padding:"4px 8px",fontSize:10,cursor:"pointer",fontFamily:"inherit"}}>취소</button>
+                          <button disabled={saving} onClick={()=>saveEdit(s.id,r.autoLessonCnt)} style={{background:saving?"#999":C.pr,color:"#fff",border:"none",borderRadius:6,padding:"4px 10px",fontSize:11,fontWeight:600,cursor:saving?"not-allowed":"pointer",fontFamily:"inherit"}}>{saving?"저장 중...":"저장"}</button>
+                          <button onClick={cancelEdit} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:6,padding:"4px 8px",fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>취소</button>
                         </div>
-                      ):(<div style={{display:"flex",gap:10,alignItems:"center"}}><button onClick={()=>startEdit(r)} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,fontSize:11,fontFamily:"inherit"}}>수정</button><button onClick={()=>openReceipt(r,idx)} style={{background:C.as,border:"1px solid "+C.ac,borderRadius:5,cursor:"pointer",color:C.ac,fontSize:10,fontWeight:600,padding:"3px 8px",fontFamily:"inherit"}}>영수증</button></div>)}
+                      ):(<div style={{display:"flex",gap:10,alignItems:"center"}}><button onClick={()=>startEdit(r)} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,fontSize:11,fontFamily:"inherit"}}>수정</button><button onClick={()=>openReceipt(r,idx)} style={{background:C.as,border:"1px solid "+C.ac,borderRadius:5,cursor:"pointer",color:C.ac,fontSize:11,fontWeight:600,padding:"3px 8px",fontFamily:"inherit"}}>영수증</button></div>)}
                     </td>
                   </tr>
                 );
@@ -530,7 +539,7 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
         {/* Right sidebar */}
         <div style={{display:"flex",flexDirection:"column",gap:14}}>
           <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:18}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}><div style={{fontSize:13,fontWeight:600,color:C.tp}}>월별 수입</div><div style={{fontSize:10,color:C.tt}}>단위: 만원</div></div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}><div style={{fontSize:13,fontWeight:600,color:C.tp}}>월별 수입</div><div style={{fontSize:11,color:C.tt}}>단위: 만원</div></div>
             <div style={{overflow:"hidden"}}><ResponsiveContainer width="100%" height={160}><BarChart data={monthlyChart} margin={{top:5,right:5,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke={C.bl} vertical={false}/><XAxis dataKey="month" tick={{fontSize:10,fill:C.tt}} axisLine={false} tickLine={false}/><YAxis tick={{fontSize:10,fill:C.tt}} axisLine={false} tickLine={false} tickFormatter={v=>Math.round(v/10000)}/><Tooltip content={<CustomTooltip/>}/><Bar dataKey="income" fill={C.ac} radius={[5,5,0,0]} barSize={20}/></BarChart></ResponsiveContainer></div>
           </div>
           <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:18}}>
@@ -539,7 +548,7 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
               const st=STATUS.find(x=>x.id===r.status)||STATUS[2];
               const owed=Math.max(0,r.totalDue-r.paidAmount);
               return(<div key={r.student.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid "+C.bl}}>
-                <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:12,fontWeight:600,color:C.tp}}>{r.student.name}</span><span style={{background:st.bg,color:st.c,padding:"1px 5px",borderRadius:4,fontSize:9,fontWeight:600}}>{st.l}</span></div>
+                <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:12,fontWeight:600,color:C.tp}}>{r.student.name}</span><span style={{background:st.bg,color:st.c,padding:"1px 5px",borderRadius:4,fontSize:11,fontWeight:600}}>{st.l}</span></div>
                 <span style={{fontSize:12,fontWeight:600,color:st.c}}>₩{owed.toLocaleString()}</span>
               </div>);
             })}
@@ -554,7 +563,7 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
             onDrop={e=>{e.preventDefault();e.stopPropagation();setRcptDragOver(false);const dt=e.dataTransfer;if(dt?.files?.length){const{validFiles,errors}=validateFiles([...dt.files],{allowedMimes:RECEIPT_MIMES});if(validFiles.length)uploadRcptFiles(validFiles);if(errors.length)toast?.(errors[0],'error');if(!validFiles.length&&!errors.length)toast?.('PDF, JPG, PNG 파일만 업로드 가능합니다','error');}}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
               <div style={{fontSize:13,fontWeight:600,color:C.tp}}>영수증 보관함</div>
-              <label style={{background:C.as,color:C.ac,border:"1px solid "+C.ac,borderRadius:6,padding:"4px 10px",fontSize:10,fontWeight:600,cursor:rcptUploading?"not-allowed":"pointer",fontFamily:"inherit",opacity:rcptUploading?.5:1}}>
+              <label style={{background:C.as,color:C.ac,border:"1px solid "+C.ac,borderRadius:6,padding:"4px 10px",fontSize:11,fontWeight:600,cursor:rcptUploading?"not-allowed":"pointer",fontFamily:"inherit",opacity:rcptUploading?.5:1}}>
                 {rcptUploading?"업로드 중...":"+"}
                 <input type="file" accept=".pdf,.jpg,.jpeg,.png" multiple onChange={uploadRcptFile} style={{display:"none"}} disabled={rcptUploading}/>
               </label>
@@ -567,7 +576,7 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
                 <div key={f.id} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 8px",background:C.sfh,borderRadius:8,fontSize:11}}>
                   <span style={{color:C.ac,fontSize:14,flexShrink:0}}>{f.mime_type?.includes('pdf')?'\uD83D\uDCC4':'\uD83D\uDDBC\uFE0F'}</span>
                   <span onClick={()=>downloadRcptFile(f)} style={{flex:1,color:C.tp,cursor:"pointer",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={f.file_name}>{f.file_name}</span>
-                  <span style={{color:C.tt,fontSize:9,flexShrink:0}}>{f.file_size?Math.round(f.file_size/1024)+'KB':''}</span>
+                  <span style={{color:C.tt,fontSize:11,flexShrink:0}}>{f.file_size?Math.round(f.file_size/1024)+'KB':''}</span>
                   <button onClick={()=>deleteRcptFile(f)} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,fontSize:12,padding:0,fontFamily:"inherit"}}>✕</button>
                 </div>
               ))}
@@ -668,7 +677,7 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
               {sealLoading?<div style={{fontSize:11,color:C.tt}}>인감 불러오는 중...</div>:sealImg?<div style={{display:"flex",alignItems:"center",gap:10}}>
                 <img src={sealImg} style={{width:48,height:48,objectFit:"contain",border:"1px solid "+C.bd,borderRadius:6,padding:2,background:"#fff"}} alt="인감"/>
                 <button onClick={()=>{setSealImg('');try{localStorage.removeItem('rcpt-seal');}catch{}if(user?.id){supabase.storage.from('receipts').remove([`${user.id}/seal/current.png`]).catch(()=>{});}}} style={{background:"none",border:"1px solid "+C.bd,borderRadius:6,padding:"4px 10px",fontSize:11,cursor:"pointer",color:C.ts,fontFamily:"inherit"}}>삭제</button>
-                <span style={{fontSize:10,color:C.tt}}>자동 적용 중</span>
+                <span style={{fontSize:11,color:C.tt}}>자동 적용 중</span>
               </div>:showSignPad?<div>
                 <canvas ref={el=>{signCanvasRef.current=el;if(el&&!el._init){el._init=true;const ctx=el.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,el.width,el.height);ctx.strokeStyle='#000';ctx.lineWidth=2;ctx.lineCap='round';ctx.lineJoin='round';
                   const getPos=(e)=>{const r=el.getBoundingClientRect();const t=e.touches?e.touches[0]:e;return{x:t.clientX-r.left,y:t.clientY-r.top};};
@@ -689,7 +698,7 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
                   이미지 등록
                   <input type="file" accept="image/*" style={{display:"none"}} onChange={e=>{const file=e.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>{const d=ev.target?.result;if(d){setSealImg(d);try{localStorage.setItem('rcpt-seal',d);}catch{}uploadSealToStorage(d);}};reader.readAsDataURL(file);e.target.value='';}}/>
                 </label>
-                <span style={{fontSize:10,color:C.tt}}>한 번 등록하면 자동 적용</span>
+                <span style={{fontSize:11,color:C.tt}}>한 번 등록하면 자동 적용</span>
               </div>}
             </div>
             <div style={{display:"flex",justifyContent:"flex-end",gap:10}}>

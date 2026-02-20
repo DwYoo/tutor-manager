@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import LessonDetailModal from './student/LessonDetailModal'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
+import { SkeletonCard } from '@/components/ui'
 import { C, SC } from '@/components/Colors'
 import { p2, fd, DK, DKS, gwd, lessonOnDate } from '@/lib/utils'
 import { syncHomework } from '@/lib/homework'
@@ -175,15 +176,15 @@ export default function Dashboard(){
             </div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:10}}>
               <div onClick={e=>{e.stopPropagation();if(last)setDLes(mkLes(last));}} style={{background:C.bg,borderRadius:8,padding:"10px 12px",cursor:last?"pointer":"default"}}>
-                <div style={{fontSize:10,color:C.tt,marginBottom:4}}>지난 수업</div>
+                <div style={{fontSize:11,color:C.tt,marginBottom:4}}>지난 수업</div>
                 <div style={{fontSize:12,fontWeight:600,color:C.tp}}>{last?.topic||last?.subject||"기록 없음"}</div>
               </div>
               <div onClick={e=>{e.stopPropagation();router.push('/students/'+ns.id+'?mainTab=study&subTab=homework');}} style={{background:C.bg,borderRadius:8,padding:"10px 12px",cursor:"pointer"}}>
-                <div style={{fontSize:10,color:C.tt,marginBottom:4}}>내준 숙제</div>
+                <div style={{fontSize:11,color:C.tt,marginBottom:4}}>내준 숙제</div>
                 <div style={{fontSize:12,fontWeight:600,color:hwTotal===0?C.tt:C.tp}}>{hwTotal===0?"없음":`${hwTotal}건`}</div>
               </div>
               <div onClick={e=>{e.stopPropagation();router.push('/students/'+ns.id+'?mainTab=analysis&subTab=scores');}} style={{background:C.bg,borderRadius:8,padding:"10px 12px",cursor:"pointer"}}>
-                <div style={{fontSize:10,color:C.tt,marginBottom:4}}>최근 성적</div>
+                <div style={{fontSize:11,color:C.tt,marginBottom:4}}>최근 성적</div>
                 <div style={{fontSize:12,fontWeight:600,color:scoreTrend==="up"?C.su:scoreTrend==="down"?C.dn:C.tp}}>
                   {lastScore?`${lastScore.score}점 ${scoreTrend==="up"?"↑":scoreTrend==="down"?"↓":"→"}`:"기록 없음"}
                 </div>
@@ -194,7 +195,11 @@ export default function Dashboard(){
         )}
       </div>);
     case 'upcoming':
-      if(upcomingDays.length===0)return null;
+      if(upcomingDays.length===0)return(
+      <div style={{background:C.sf,border:`1px solid ${C.bd}`,borderRadius:14,padding:20}}>
+        <h3 style={{fontSize:15,fontWeight:600,color:C.tp,marginBottom:16}}>다가오는 수업</h3>
+        <div style={{textAlign:"center",padding:"20px 0",color:"#A8A29E",fontSize:13}}>표시할 항목이 없습니다</div>
+      </div>);
       return(
       <div style={{background:C.sf,border:`1px solid ${C.bd}`,borderRadius:14,padding:20}}>
         <h3 style={{fontSize:15,fontWeight:600,color:C.tp,marginBottom:16}}>다가오는 수업</h3>
@@ -215,25 +220,33 @@ export default function Dashboard(){
         </div>
       </div>);
     case 'unrecorded':
-      if(unrecorded.length===0)return null;
+      if(unrecorded.length===0)return(
+      <div style={{background:C.sf,border:`1px solid ${C.bd}`,borderRadius:14,padding:20}}>
+        <h3 style={{fontSize:15,fontWeight:600,color:C.tp,marginBottom:12}}>기록 미완료</h3>
+        <div style={{textAlign:"center",padding:"20px 0",color:"#A8A29E",fontSize:13}}>표시할 항목이 없습니다</div>
+      </div>);
       return(
       <div style={{background:C.sf,border:`1px solid ${C.bd}`,borderRadius:14,padding:20}}>
         <h3 style={{fontSize:15,fontWeight:600,color:C.tp,marginBottom:12}}>기록 미완료 <span style={{fontSize:12,fontWeight:500,color:C.wn,marginLeft:4}}>{unrecorded.length}건</span></h3>
         <div style={{display:"flex",flexDirection:"column",gap:6}}>
           {unrecorded.slice(0,5).map(l=>{const stu=getStu(l.student_id);const co=getCol(l.student_id);const ld=(l.date||"").slice(5,10).replace("-","/");return(
             <div key={l.id} onClick={()=>setDLes(mkLes(l))} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",borderRadius:8,border:`1px solid ${C.bl}`,cursor:"pointer"}} className="hcard">
-              <div style={{width:22,height:22,borderRadius:6,background:co.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:co.t}}>{(stu?.name||"?")[0]}</div>
+              <div style={{width:22,height:22,borderRadius:6,background:co.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:co.t}}>{(stu?.name||"?")[0]}</div>
               <div style={{flex:1}}>
                 <div style={{fontSize:12,fontWeight:600,color:C.tp}}>{stu?.name||"-"}</div>
-                <div style={{fontSize:10,color:C.tt}}>{ld} · {l.subject}</div>
+                <div style={{fontSize:11,color:C.tt}}>{ld} · {l.subject}</div>
               </div>
-              <span style={{fontSize:9,color:C.wn,background:C.wb,padding:"2px 6px",borderRadius:4,fontWeight:600}}>미기록</span>
+              <span style={{fontSize:11,color:C.wn,background:C.wb,padding:"2px 6px",borderRadius:4,fontWeight:600}}>미기록</span>
             </div>);})}
           {unrecorded.length>5&&<div style={{fontSize:11,color:C.tt,textAlign:"center",paddingTop:4}}>외 {unrecorded.length-5}건</div>}
         </div>
       </div>);
     case 'alerts':
-      if(studentAlerts.length===0)return null;
+      if(studentAlerts.length===0)return(
+      <div style={{background:C.sf,border:`1px solid ${C.bd}`,borderRadius:14,padding:20}}>
+        <h3 style={{fontSize:15,fontWeight:600,color:C.tp,marginBottom:12}}>주의가 필요한 학생</h3>
+        <div style={{textAlign:"center",padding:"20px 0",color:"#A8A29E",fontSize:13}}>표시할 항목이 없습니다</div>
+      </div>);
       return(
       <div style={{background:C.sf,border:`1px solid ${C.bd}`,borderRadius:14,padding:20}}>
         <h3 style={{fontSize:15,fontWeight:600,color:C.tp,marginBottom:12}}>주의가 필요한 학생</h3>
@@ -244,7 +257,7 @@ export default function Dashboard(){
               <div style={{flex:1}}>
                 <div style={{fontSize:12,fontWeight:600,color:C.tp,marginBottom:4}}>{s.name}</div>
                 <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
-                  {al.map((a,i)=><span key={i} style={{fontSize:9,color:a.color,background:a.bg,padding:"2px 6px",borderRadius:4,fontWeight:600}}>{a.label}</span>)}
+                  {al.map((a,i)=><span key={i} style={{fontSize:11,color:a.color,background:a.bg,padding:"2px 6px",borderRadius:4,fontWeight:600}}>{a.label}</span>)}
                 </div>
               </div>
             </div>);})}
@@ -299,7 +312,7 @@ export default function Dashboard(){
                 </div>
               </div>
               {recent&&<div style={{fontSize:11,color:C.ts,marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{recent.topic||recent.subject||"-"}</div>}
-              {hwInc>0&&<span style={{fontSize:9,color:C.wn,background:C.wb,padding:"2px 6px",borderRadius:4,fontWeight:600}}>미완 숙제 {hwInc}건</span>}
+              {hwInc>0&&<span style={{fontSize:11,color:C.wn,background:C.wb,padding:"2px 6px",borderRadius:4,fontWeight:600}}>미완 숙제 {hwInc}건</span>}
             </div>);})}
         </div>):(
         <div style={{textAlign:"center",padding:20,color:C.tt,fontSize:13}}>학생을 추가해보세요</div>
@@ -318,15 +331,15 @@ export default function Dashboard(){
         </div>
         <div style={{display:"flex",gap:16,marginBottom:14}}>
           <div style={{flex:1,background:C.as,borderRadius:10,padding:"10px 14px",textAlign:"center"}}>
-            <div style={{fontSize:10,color:C.ac,marginBottom:2}}>전체</div>
+            <div style={{fontSize:11,color:C.ac,marginBottom:2}}>전체</div>
             <div style={{fontSize:18,fontWeight:700,color:C.ac}}>{lessonRateData.total}</div>
           </div>
           <div style={{flex:1,background:C.sb,borderRadius:10,padding:"10px 14px",textAlign:"center"}}>
-            <div style={{fontSize:10,color:C.su,marginBottom:2}}>완료</div>
+            <div style={{fontSize:11,color:C.su,marginBottom:2}}>완료</div>
             <div style={{fontSize:18,fontWeight:700,color:C.su}}>{lessonRateData.completed}</div>
           </div>
           <div style={{flex:1,background:C.as,borderRadius:10,padding:"10px 14px",textAlign:"center"}}>
-            <div style={{fontSize:10,color:C.ac,marginBottom:2}}>예정</div>
+            <div style={{fontSize:11,color:C.ac,marginBottom:2}}>예정</div>
             <div style={{fontSize:18,fontWeight:700,color:C.ac}}>{lessonRateData.upcoming}</div>
           </div>
         </div>
@@ -335,8 +348,8 @@ export default function Dashboard(){
             <ResponsiveContainer width="100%" height={140}>
               <BarChart data={lessonRateData.perStudent} margin={{top:5,right:5,left:-20,bottom:0}}>
                 <CartesianGrid strokeDasharray="3 3" stroke={C.bl} vertical={false}/>
-                <XAxis dataKey="name" tick={{fontSize:10,fill:C.tt}} axisLine={false} tickLine={false}/>
-                <YAxis tick={{fontSize:10,fill:C.tt}} axisLine={false} tickLine={false} allowDecimals={false}/>
+                <XAxis dataKey="name" tick={{fontSize:11,fill:C.tt}} axisLine={false} tickLine={false}/>
+                <YAxis tick={{fontSize:11,fill:C.tt}} axisLine={false} tickLine={false} allowDecimals={false}/>
                 <Tooltip content={<RateTooltip/>}/>
                 <Bar dataKey="scheduled" fill={C.al} radius={[4,4,0,0]} barSize={14} name="예정"/>
                 <Bar dataKey="completed" fill={C.su} radius={[4,4,0,0]} barSize={14} name="완료"/>
@@ -396,14 +409,25 @@ export default function Dashboard(){
     );
   };
 
-  if(loading)return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:C.tt,fontSize:14}}>불러오는 중...</div></div>);
+  if(loading)return(
+  <div style={{maxWidth:1200,margin:"0 auto",padding:"24px 16px"}}>
+    <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:24}}>
+      <div style={{width:180,height:28,borderRadius:8,background:"linear-gradient(90deg, #F5F5F4 25%, #F0EFED 50%, #F5F5F4 75%)",backgroundSize:"200% 100%",animation:"shimmer 1.5s infinite"}}/>
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(280px, 1fr))",gap:16}}>
+      <SkeletonCard lines={4}/>
+      <SkeletonCard lines={3}/>
+      <SkeletonCard lines={4}/>
+      <SkeletonCard lines={2}/>
+      <SkeletonCard lines={3}/>
+      <SkeletonCard lines={2}/>
+    </div>
+  </div>
+);
   if(fetchError)return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:12}}><div style={{fontSize:14,color:C.dn}}>데이터를 불러오지 못했습니다</div><button onClick={fetchData} style={{padding:"8px 20px",borderRadius:8,border:`1px solid ${C.bd}`,background:C.sf,color:C.tp,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>다시 시도</button></div>);
 
   return(
     <div className="main-pad dash-container" style={{padding:28}}>
-      <style>{`.hcard{transition:all .12s;cursor:pointer;}.hcard:hover{background:${C.sfh}!important;}
-        @media(max-width:768px){.dash-main{grid-template-columns:1fr!important;}.main-pad{padding:16px!important;}.dash-container{padding:16px!important;}}`}</style>
-
       {/* Header */}
       <div style={{marginBottom:24,display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
         {tog}

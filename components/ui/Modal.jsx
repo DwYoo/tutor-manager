@@ -1,9 +1,10 @@
 'use client';
 import { useEffect, useRef, useCallback } from 'react';
 import { C } from '@/components/Colors';
+import { IcClose } from '@/components/Icons';
 
 /**
- * Accessible Modal component with focus trapping and aria attributes.
+ * Accessible Modal component with focus trapping, scroll lock, and focus restoration.
  *
  * @param {boolean} open - Whether the modal is visible
  * @param {Function} onClose - Called when the modal should close
@@ -24,6 +25,18 @@ export default function Modal({
   style: extraStyle,
 }) {
   const contentRef = useRef(null);
+  const triggerRef = useRef(null);
+
+  // Capture the element that triggered the modal and lock body scroll
+  useEffect(() => {
+    if (open) {
+      triggerRef.current = document.activeElement;
+      document.body.classList.add('modal-open');
+    } else {
+      document.body.classList.remove('modal-open');
+    }
+    return () => document.body.classList.remove('modal-open');
+  }, [open]);
 
   // ESC key handler
   useEffect(() => {
@@ -35,19 +48,24 @@ export default function Modal({
     return () => window.removeEventListener('keydown', h);
   }, [open, onClose]);
 
-  // Focus trap
+  // Focus trap (dynamic — re-queries on each Tab press)
   useEffect(() => {
     if (!open || !contentRef.current) return;
     const el = contentRef.current;
-    const focusable = el.querySelectorAll(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+
+    const getFocusable = () => el.querySelectorAll(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
     );
+
+    const focusable = getFocusable();
     if (focusable.length > 0) focusable[0].focus();
 
     const trap = (e) => {
       if (e.key !== 'Tab') return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
+      const items = getFocusable();
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
       if (e.shiftKey) {
         if (document.activeElement === first) { e.preventDefault(); last.focus(); }
       } else {
@@ -58,11 +76,21 @@ export default function Modal({
     return () => el.removeEventListener('keydown', trap);
   }, [open]);
 
+  // Restore focus on close
+  const handleClose = useCallback(() => {
+    onClose();
+    requestAnimationFrame(() => {
+      if (triggerRef.current && typeof triggerRef.current.focus === 'function') {
+        triggerRef.current.focus();
+      }
+    });
+  }, [onClose]);
+
   if (!open) return null;
 
   return (
     <div
-      onClick={onClose}
+      onClick={handleClose}
       role="dialog"
       aria-modal="true"
       aria-labelledby={title ? 'modal-title' : undefined}
@@ -72,7 +100,7 @@ export default function Modal({
         display: 'flex',
         alignItems: bottomSheet ? 'flex-end' : 'center',
         justifyContent: 'center',
-        animation: 'fadeIn .15s ease',
+        animation: 'fadeOverlay .15s ease',
       }}
     >
       <div
@@ -89,6 +117,7 @@ export default function Modal({
           boxShadow: '0 20px 60px rgba(0,0,0,.15)',
           maxHeight: bottomSheet ? '90vh' : '85vh',
           overflowY: 'auto',
+          animation: bottomSheet ? 'bottomSheetIn .2s ease' : 'modalIn .15s ease',
           ...extraStyle,
         }}
       >
@@ -101,16 +130,16 @@ export default function Modal({
               {title}
             </h2>
             <button
-              onClick={onClose}
+              onClick={handleClose}
               aria-label="닫기"
               style={{
                 background: 'none', border: 'none', cursor: 'pointer',
-                color: C.tt, fontSize: 18, display: 'flex',
-                minHeight: 36, minWidth: 36, alignItems: 'center', justifyContent: 'center',
-                fontFamily: 'inherit',
+                color: C.tt, display: 'flex',
+                minHeight: 44, minWidth: 44, alignItems: 'center', justifyContent: 'center',
+                borderRadius: 10,
               }}
             >
-              ✕
+              <IcClose />
             </button>
           </div>
         )}

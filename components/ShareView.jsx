@@ -183,7 +183,6 @@ export default function ShareView({ token }) {
 
   return (
     <div className="share-container" style={{ minHeight: "100vh", background: C.bg }}>
-      <style>{`@media(max-width:768px){.share-container{padding:0!important;} .share-container .sv-content{padding:16px 16px 60px!important;}} @media(max-width:640px){.sv-tabs{overflow-x:auto;-webkit-overflow-scrolling:touch;} .sv-tabs button{white-space:nowrap;flex-shrink:0;} .sv-wrong-table{overflow-x:auto;-webkit-overflow-scrolling:touch;} .sv-wrong-table table{min-width:400px;}}`}</style>
       {/* Header */}
       <div style={{ background: C.sf, borderBottom: "1px solid " + C.bd, padding: "24px 0" }}>
         <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 20px" }}>
@@ -211,22 +210,22 @@ export default function ShareView({ token }) {
               <h3 style={{ fontSize: 14, fontWeight: 700, color: C.tp, marginBottom: 12 }}>{mo}월 진도 요약</h3>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(130px,1fr))", gap: 10 }}>
                 <div style={{ background: C.as, borderRadius: 10, padding: "12px 14px", textAlign: "center" }}>
-                  <div style={{ fontSize: 10, color: C.ac, marginBottom: 2 }}>총 수업</div>
+                  <div style={{ fontSize: 11, color: C.ac, marginBottom: 2 }}>총 수업</div>
                   <div style={{ fontSize: 20, fontWeight: 700, color: C.ac }}>{summary.totalClasses}회</div>
                 </div>
                 <div style={{ background: C.sb, borderRadius: 10, padding: "12px 14px", textAlign: "center" }}>
-                  <div style={{ fontSize: 10, color: C.su, marginBottom: 2 }}>기록 완료</div>
+                  <div style={{ fontSize: 11, color: C.su, marginBottom: 2 }}>기록 완료</div>
                   <div style={{ fontSize: 20, fontWeight: 700, color: C.su }}>{summary.completedLessons}회</div>
                 </div>
                 {summary.avgScore != null && (
                   <div style={{ background: "#EDE9FE", borderRadius: 10, padding: "12px 14px", textAlign: "center" }}>
-                    <div style={{ fontSize: 10, color: "#8B5CF6", marginBottom: 2 }}>평균 점수</div>
+                    <div style={{ fontSize: 11, color: "#8B5CF6", marginBottom: 2 }}>평균 점수</div>
                     <div style={{ fontSize: 20, fontWeight: 700, color: "#8B5CF6" }}>{summary.avgScore}점</div>
                   </div>
                 )}
                 {summary.hwRate != null && (
                   <div style={{ background: summary.hwRate >= 80 ? C.sb : C.wb, borderRadius: 10, padding: "12px 14px", textAlign: "center" }}>
-                    <div style={{ fontSize: 10, color: summary.hwRate >= 80 ? C.su : C.wn, marginBottom: 2 }}>숙제 완료</div>
+                    <div style={{ fontSize: 11, color: summary.hwRate >= 80 ? C.su : C.wn, marginBottom: 2 }}>숙제 완료</div>
                     <div style={{ fontSize: 20, fontWeight: 700, color: summary.hwRate >= 80 ? C.su : C.wn }}>{summary.hwRate}%</div>
                   </div>
                 )}
@@ -467,7 +466,7 @@ export default function ShareView({ token }) {
                                 <div
                                   key={l.id}
                                   style={{
-                                    fontSize: 9,
+                                    fontSize: 11,
                                     padding: "2px 4px",
                                     borderRadius: 4,
                                     fontWeight: 500,
@@ -515,7 +514,7 @@ export default function ShareView({ token }) {
                           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                             <div style={{ textAlign: "center", flexShrink: 0 }}>
                               <div style={{ fontSize: 11, color: C.tt }}>{l.date.split('-')[1]}/{l.date.split('-')[2]}</div>
-                              <div style={{ fontSize: 10, color: C.ts, marginTop: 2 }}>({dayOfWeek})</div>
+                              <div style={{ fontSize: 11, color: C.ts, marginTop: 2 }}>({dayOfWeek})</div>
                             </div>
                             <div style={{ flex: 1 }}>
                               <div style={{ fontSize: 13, fontWeight: 600, color: C.tp }}>{l.subject}{l.topic ? " · " + l.topic : ""}</div>
@@ -679,8 +678,8 @@ export default function ShareView({ token }) {
                                       <td colSpan={3} style={{ padding: "7px 8px", background: C.bl, borderBottom: "1px solid " + C.bd }}>
                                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                                           <span style={{ fontSize: 12, fontWeight: 500, color: ch ? C.ts : C.tt }}>{ch || "단원 미지정"}</span>
-                                          <span style={{ fontSize: 10, color: C.tt }}>({chItems.length})</span>
-                                          <span style={{ fontSize: 10, color: C.tt, marginLeft: "auto" }}>{chExp ? "▲" : "▼"}</span>
+                                          <span style={{ fontSize: 11, color: C.tt }}>({chItems.length})</span>
+                                          <span style={{ fontSize: 11, color: C.tt, marginLeft: "auto" }}>{chExp ? "▲" : "▼"}</span>
                                         </div>
                                       </td>
                                     </tr>
@@ -689,7 +688,7 @@ export default function ShareView({ token }) {
                                       return (
                                         <tr key={w.id} style={{ borderBottom: "1px solid " + C.bl }}>
                                           <td style={{ padding: "6px 10px", fontWeight: 600, color: C.tp, fontSize: 12 }}>{w.problem_num}</td>
-                                          <td style={{ padding: "6px 10px" }}>{w.reason && <span style={{ background: rc + "20", color: rc, padding: "2px 8px", borderRadius: 5, fontSize: 10, fontWeight: 600 }}>{w.reason}</span>}</td>
+                                          <td style={{ padding: "6px 10px" }}>{w.reason && <span style={{ background: rc + "20", color: rc, padding: "2px 8px", borderRadius: 5, fontSize: 11, fontWeight: 600 }}>{w.reason}</span>}</td>
                                           <td style={{ padding: "6px 10px", color: C.ts, fontSize: 12 }}>{w.note || "-"}</td>
                                         </tr>
                                       );
@@ -721,11 +720,11 @@ export default function ShareView({ token }) {
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                         <span style={{ fontSize: 14, fontWeight: 600, color: C.tp }}>{tb.title}</span>
-                        {tb.subject && <span style={{ fontSize: 10, background: "#EFF6FF", color: C.ac, padding: "2px 8px", borderRadius: 5, fontWeight: 600 }}>{tb.subject}</span>}
+                        {tb.subject && <span style={{ fontSize: 11, background: "#EFF6FF", color: C.ac, padding: "2px 8px", borderRadius: 5, fontWeight: 600 }}>{tb.subject}</span>}
                       </div>
                       {tb.publisher && <div style={{ fontSize: 12, color: C.ts }}>{tb.publisher}</div>}
                     </div>
-                    {wCnt > 0 && <span style={{ fontSize: 10, background: C.db, color: C.dn, padding: "2px 8px", borderRadius: 5, fontWeight: 600 }}>오답 {wCnt}</span>}
+                    {wCnt > 0 && <span style={{ fontSize: 11, background: C.db, color: C.dn, padding: "2px 8px", borderRadius: 5, fontWeight: 600 }}>오답 {wCnt}</span>}
                   </div>
                 );
               })}
