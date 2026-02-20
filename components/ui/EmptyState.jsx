@@ -1,5 +1,4 @@
 'use client';
-import { C } from '@/components/Colors';
 
 /**
  * Empty state placeholder with optional action button.
@@ -9,7 +8,7 @@ import { C } from '@/components/Colors';
  * @param {string} [description] - Secondary message
  * @param {string} [actionLabel] - Button text
  * @param {Function} [onAction] - Button click handler
- * @param {Object} [style]
+ * @param {string} [className]
  */
 export default function EmptyState({
   icon,
@@ -17,35 +16,21 @@ export default function EmptyState({
   description,
   actionLabel,
   onAction,
-  style: extraStyle,
+  className = '',
 }) {
   return (
-    <div style={{
-      textAlign: 'center',
-      padding: '40px 20px',
-      background: C.sf,
-      border: '1px solid ' + C.bd,
-      borderRadius: 14,
-      ...extraStyle,
-    }}>
-      {icon && <div style={{ fontSize: 32, marginBottom: 12 }}>{icon}</div>}
-      <div style={{ fontSize: 14, fontWeight: 600, color: C.tp, marginBottom: 4 }}>
-        {title}
-      </div>
+    <div className={`text-center py-10 px-5 bg-sf border border-bd rounded-[14px] ${className}`}>
+      {icon && <div className="text-[32px] mb-3">{icon}</div>}
+      <div className="text-sm font-semibold text-tp mb-1">{title}</div>
       {description && (
-        <div style={{ fontSize: 12, color: C.tt, lineHeight: 1.5, marginBottom: actionLabel ? 16 : 0 }}>
+        <div className={`text-xs text-tt leading-relaxed ${actionLabel ? 'mb-4' : ''}`}>
           {description}
         </div>
       )}
       {actionLabel && onAction && (
         <button
           onClick={onAction}
-          style={{
-            background: C.ac, color: '#fff', border: 'none',
-            borderRadius: 8, padding: '8px 20px',
-            fontSize: 13, fontWeight: 600,
-            cursor: 'pointer', fontFamily: 'inherit',
-          }}
+          className="bg-ac text-white border-none rounded-lg py-2 px-5 text-[13px] font-semibold cursor-pointer font-[inherit] hover:bg-ach transition-colors"
         >
           {actionLabel}
         </button>
