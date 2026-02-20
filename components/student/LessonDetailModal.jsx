@@ -5,6 +5,7 @@ import { useAuth } from '@/components/AuthProvider';
 import { useToast } from '@/components/Toast';
 import { C, SC } from '@/components/Colors';
 import { p2, m2s, bk, insertViaExec } from '@/lib/utils';
+import { validateFile } from '@/lib/fileValidation';
 const ls={display:"block",fontSize:12,fontWeight:500,color:C.tt,marginBottom:6};
 const is={width:"100%",padding:"9px 12px",borderRadius:8,border:`1px solid ${C.bd}`,fontSize:14,color:C.tp,background:C.sf,outline:"none",fontFamily:"inherit"};
 
@@ -89,6 +90,8 @@ export default function LessonDetailModal({ les, student, textbooks = [], onUpda
   const sh = les.sh ?? les.start_hour ?? 0, sm = les.sm ?? les.start_min ?? 0, dur = les.dur ?? les.duration ?? 0;
   const sub = les.sub ?? les.subject ?? "", rep = les.rep ?? les.is_recurring ?? false;
   const em = sh * 60 + sm + dur;
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => { const q = window.matchMedia('(max-width:640px)'); setIsMobile(q.matches); const h = e => setIsMobile(e.matches); q.addEventListener('change', h); return () => q.removeEventListener('change', h); }, []);
   const [tab, setTab] = useState("plan");
   const contentRef = useRef(null);
   const planSharedRef = useRef(null);
@@ -118,15 +121,18 @@ export default function LessonDetailModal({ les, student, textbooks = [], onUpda
     if (!fileList?.length || !user?.id || !student?.id) return;
     setUploading(true);
     for (const file of fileList) {
+      const vResult = validateFile(file);
+      if (!vResult.valid) { toast?.(`${file.name}: ${vResult.error}`, 'error'); continue; }
       const ext = file.name.split('.').pop().toLowerCase();
       const ftype = ["pdf"].includes(ext) ? "pdf" : ["jpg","jpeg","png","gif","webp"].includes(ext) ? "img" : "file";
       const safeExt = (file.name.split('.').pop() || '').toLowerCase().replace(/[^a-z0-9]/g, '');
       const path = `students/${student.id}/${crypto.randomUUID()}${safeExt ? '.' + safeExt : ''}`;
       const { error: upErr } = await supabase.storage.from('files').upload(path, file);
-      if (upErr) { toast?.(`${file.name} 업로드 실패`, 'error'); continue; }
+      if (upErr) { toast?.(`${file.name} 업로드 실패: ${upErr.message || '알 수 없는 오류'}`, 'error'); continue; }
       const { data: urlData } = supabase.storage.from('files').getPublicUrl(path);
       const { data, error } = await supabase.from('files').insert({ student_id: student.id, lesson_id: les.id, file_name: file.name, file_type: ftype, file_url: urlData.publicUrl, user_id: user.id }).select().single();
-      if (!error && data) { setFiles(p => [...p, data]); markDirty(); }
+      if (error) { toast?.(`${file.name} 저장 실패: ${error.message || '알 수 없는 오류'}`, 'error'); continue; }
+      if (data) { setFiles(p => [...p, data]); markDirty(); }
     }
     setUploading(false);
   };
@@ -151,19 +157,19 @@ export default function LessonDetailModal({ les, student, textbooks = [], onUpda
     <div style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,.35)" }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} className="detail-modal" style={{ background: C.sf, borderRadius: 16, width: "100%", maxWidth: 560, maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 20px 60px rgba(0,0,0,.15)", overflow: "hidden" }}>
         {/* Header */}
-        <div style={{ padding: "24px 24px 0", flexShrink: 0 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+        <div style={{ padding: isMobile ? "16px 16px 0" : "24px 24px 0", flexShrink: 0 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: isMobile ? 8 : 12 }}>
             <div style={{ flex: 1 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 8 : 10, marginBottom: 6 }}>
                 <div style={{ width: 12, height: 12, borderRadius: "50%", background: col.b }} />
-                <h2 style={{ fontSize: 18, fontWeight: 700, color: C.tp }}>{student?.name}</h2>
+                <h2 style={{ fontSize: isMobile ? 16 : 18, fontWeight: 700, color: C.tp }}>{student?.name}</h2>
                 <span style={{ background: col.bg, color: col.t, padding: "3px 10px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}>{sub}</span>
               </div>
               <input value={topic} onChange={e => { setTopic(e.target.value); markDirty(); }} style={{ border: "none", outline: "none", fontSize: 14, fontWeight: 500, color: C.tp, background: "transparent", padding: "2px 0", width: "100%", borderBottom: "1px dashed " + C.bd, fontFamily: "inherit" }} placeholder="수업 주제 입력..." />
             </div>
             <button aria-label="닫기" onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: C.tt, display: "flex", marginLeft: 12, flexShrink: 0 }}><IcX /></button>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 13, color: C.ts, marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 13, color: C.ts, marginBottom: isMobile ? 10 : 16 }}>
             <span>{m2s(sh * 60 + sm)} ~ {m2s(em)} ({dur}분)</span>
             {rep && <span style={{ color: C.ac, fontSize: 12 }}>🔁 반복</span>}
           </div>
@@ -180,7 +186,7 @@ export default function LessonDetailModal({ les, student, textbooks = [], onUpda
         </div>
 
         {/* Content */}
-        <div style={{ flex: 1, overflow: "auto", padding: 24 }}>
+        <div style={{ flex: 1, overflow: "auto", padding: isMobile ? 16 : 24 }}>
           {tab === "content" && (
             <div>
               {textbooks.length>0&&(<div style={{marginBottom:12}}>
@@ -303,7 +309,7 @@ export default function LessonDetailModal({ les, student, textbooks = [], onUpda
                   <label style={{ cursor: "pointer", display: "block" }}>
                     <div style={{ fontSize: 20, marginBottom: 6 }}>{fileDrag ? "📥" : "📎"}</div>
                     <div style={{ fontSize: 13, color: fileDrag ? C.ac : C.ts }}>{fileDrag ? "놓으면 업로드됩니다" : "파일을 드래그하거나 클릭하여 추가"}</div>
-                    <input type="file" multiple style={{ display: "none" }} onChange={handleFileInput} />
+                    <input type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" style={{ display: "none" }} onChange={handleFileInput} />
                   </label>
                 )}
               </div>
@@ -357,7 +363,7 @@ export default function LessonDetailModal({ les, student, textbooks = [], onUpda
         </div>
 
         {/* Footer */}
-        <div className="ldm-footer" style={{ padding: "16px 24px", borderTop: `1px solid ${C.bd}`, display: "flex", justifyContent: "flex-end", gap: 10, flexShrink: 0 }}>
+        <div className="ldm-footer" style={{ padding: isMobile ? "12px 16px" : "16px 24px", borderTop: `1px solid ${C.bd}`, display: "flex", justifyContent: "flex-end", gap: 10, flexShrink: 0 }}>
           {dirty && <span style={{ fontSize: 12, color: C.wn, display: "flex", alignItems: "center", gap: 4, marginRight: "auto" }}>● 변경사항 있음</span>}
           <button onClick={onClose} style={{ background: C.sfh, color: C.ts, border: `1px solid ${C.bd}`, borderRadius: 8, padding: "10px 20px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>닫기</button>
           <button disabled={saving} onClick={doSave} style={{ background: saving ? "#999" : dirty ? C.ac : C.pr, color: "#fff", border: "none", borderRadius: 8, padding: "10px 24px", fontSize: 13, fontWeight: 600, cursor: saving ? "not-allowed" : "pointer", fontFamily: "inherit" }}>{saving ? "저장 중..." : "저장"}</button>

@@ -36,7 +36,7 @@ export default function Dashboard(){
     try{
       const[sRes,lRes,tRes,scRes,tbRes]=await Promise.all([
         supabase.from('students').select('id,name,subject,grade,school,color_index,archived,sort_order,fee_per_class,fee_status,created_at').order('created_at'),
-        supabase.from('lessons').select('id,student_id,date,start_hour,start_min,duration,subject,topic,status,content,feedback,is_recurring,recurring_day,recurring_end_date,recurring_exceptions,homework(id,title,completion_pct,lesson_id)').order('date'),
+        supabase.from('lessons').select('id,student_id,date,start_hour,start_min,duration,subject,topic,status,content,feedback,private_memo,plan_shared,plan_private,is_recurring,recurring_day,recurring_end_date,recurring_exceptions,homework(id,title,completion_pct,lesson_id),files(id,file_name,file_type,file_url,lesson_id)').order('date'),
         supabase.from('tuition').select('student_id,month,amount,status,fee_override,fee_manual,classes_override,tuition_fee_override,carryover'),
         supabase.from('scores').select('id,student_id,score,grade,date,label').order('date'),
         supabase.from('textbooks').select('id,student_id,title').order('created_at',{ascending:false}).then(r=>r,()=>({data:[],error:null})),
@@ -62,7 +62,7 @@ export default function Dashboard(){
   const moveBlock=(id,toCol)=>{const nl={left:layout.left.filter(b=>b!==id),right:layout.right.filter(b=>b!==id),bottom:(layout.bottom||[]).filter(b=>b!==id),hidden:[...(layout.hidden||[])]};nl[toCol].push(id);saveLay(nl);};
   const doDrop=()=>{if(!dragId||!dropTgt)return;const nl={left:[...layout.left],right:[...layout.right],bottom:[...(layout.bottom||[])],hidden:[...(layout.hidden||[])]};nl.left=nl.left.filter(b=>b!==dragId);nl.right=nl.right.filter(b=>b!==dragId);nl.bottom=nl.bottom.filter(b=>b!==dragId);nl.hidden=nl.hidden.filter(b=>b!==dragId);nl[dropTgt.col].splice(dropTgt.idx,0,dragId);saveLay(nl);setDragId(null);setDropTgt(null);};
 
-  const mkLes=l=>({...l,sh:l.start_hour,sm:l.start_min,dur:l.duration,sub:l.subject,top:l.topic,rep:l.is_recurring,tMemo:l.private_memo||"",hw:l.homework||[],files:l.files||[]});
+  const mkLes=l=>({...l,sh:l.start_hour,sm:l.start_min,dur:l.duration,sub:l.subject,top:l.topic,rep:l.is_recurring,tMemo:l.private_memo||"",hw:l.homework||[],files:l.files||[],planShared:l.plan_shared||"",planPrivate:l.plan_private||""});
   const updDetail=async(id,data)=>{
     const u={};
     if(data.top!==undefined)u.topic=data.top;if(data.content!==undefined)u.content=data.content;
