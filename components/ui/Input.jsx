@@ -1,5 +1,6 @@
 'use client';
 import { forwardRef } from 'react';
+import { C } from '@/components/Colors';
 
 /**
  * Reusable Input component with label and error support.
@@ -9,16 +10,14 @@ import { forwardRef } from 'react';
  * @param {string} [hint] - Help text
  * @param {'text'|'number'|'email'|'password'|'date'|'tel'} [type='text']
  * @param {boolean} [fullWidth=true]
- * @param {string} [className]
- * @param {string} [containerClassName]
+ * @param {Object} [style] - Additional styles for the input
+ * @param {Object} [containerStyle] - Styles for the wrapper div
  */
 const Input = forwardRef(function Input({
   label,
   error,
   hint,
   fullWidth = true,
-  className = '',
-  containerClassName = '',
   style: extraStyle,
   containerStyle,
   id,
@@ -26,24 +25,31 @@ const Input = forwardRef(function Input({
 }, ref) {
   const inputId = id || (label ? `input-${label.replace(/\s/g, '-')}` : undefined);
 
+  const labelStyle = {
+    display: 'block', fontSize: 12, fontWeight: 500,
+    color: C.tt, marginBottom: 6,
+  };
+
+  const inputStyle = {
+    width: fullWidth ? '100%' : undefined,
+    padding: '9px 12px',
+    borderRadius: 8,
+    border: `1px solid ${error ? C.dn : C.bd}`,
+    fontSize: 14,
+    color: C.tp,
+    background: C.sf,
+    outline: 'none',
+    fontFamily: 'inherit',
+    transition: 'border-color .15s',
+    ...extraStyle,
+  };
+
   return (
-    <div className={containerClassName} style={containerStyle}>
-      {label && (
-        <label htmlFor={inputId} className="block text-xs font-medium text-tt mb-1.5">
-          {label}
-        </label>
-      )}
-      <input
-        ref={ref}
-        id={inputId}
-        className={`py-2 px-3 rounded-lg border text-sm text-tp bg-sf outline-none font-[inherit] transition-colors duration-150 focus:border-ac ${
-          error ? 'border-dn' : 'border-bd'
-        } ${fullWidth ? 'w-full' : ''} ${className}`}
-        style={extraStyle}
-        {...rest}
-      />
-      {error && <div className="text-[11px] text-dn mt-1">{error}</div>}
-      {hint && !error && <div className="text-[11px] text-tt mt-1">{hint}</div>}
+    <div style={containerStyle}>
+      {label && <label htmlFor={inputId} style={labelStyle}>{label}</label>}
+      <input ref={ref} id={inputId} style={inputStyle} {...rest} />
+      {error && <div style={{ fontSize: 11, color: C.dn, marginTop: 4 }}>{error}</div>}
+      {hint && !error && <div style={{ fontSize: 11, color: C.tt, marginTop: 4 }}>{hint}</div>}
     </div>
   );
 });

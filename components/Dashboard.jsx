@@ -401,6 +401,8 @@ export default function Dashboard(){
 
   return(
     <div className="main-pad dash-container" style={{padding:28}}>
+      <style>{`.hcard{transition:all .12s;cursor:pointer;}.hcard:hover{background:${C.sfh}!important;}
+        @media(max-width:768px){.dash-main{grid-template-columns:1fr!important;}.main-pad{padding:16px!important;}.dash-container{padding:16px!important;}}`}</style>
 
       {/* Header */}
       <div style={{marginBottom:24,display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
