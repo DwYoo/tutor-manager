@@ -543,14 +543,14 @@ export default function StudentDetail({ student, initialTab }) {
                 {DK.map((d,i)=><div key={d} style={{textAlign:"center",fontSize:12,fontWeight:500,color:i>=5?C.ac:C.tt,padding:"6px 0"}}>{d}</div>)}
               </div>
               {/* Grid */}
-              <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)"}}>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(7,minmax(0,1fr))"}}>
                 {cells.map((c,i)=>{
                   const date=c.cur?new Date(cy,cm,c.d):null;
                   const isToday=c.cur&&td.getFullYear()===cy&&td.getMonth()===cm&&td.getDate()===c.d;
                   const dl=date?gLD(date):[];
                   const isSat=i%7===5,isSun=i%7===6;
                   return(
-                    <div key={i} className="cal-cell" style={{padding:"6px 4px",minHeight:72,borderRadius:8,opacity:c.cur?1:.3}}>
+                    <div key={i} className="cal-cell" style={{padding:"6px 4px",minHeight:72,borderRadius:8,opacity:c.cur?1:.3,overflow:"hidden"}}>
                       <div style={{fontSize:13,fontWeight:isToday?700:400,color:isToday?C.ac:isSun?"#DC2626":isSat?C.ac:C.tp,marginBottom:4}}>{c.d}</div>
                       {dl.length>0&&dl.map(l=>(
                         <div key={l.id} onClick={()=>openLesson(l,fd(date))} style={{fontSize:11,padding:"2px 4px",borderRadius:4,fontWeight:500,marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",background:col.bg,color:col.t,cursor:"pointer"}}>
