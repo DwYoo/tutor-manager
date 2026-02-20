@@ -213,20 +213,10 @@ export default function ShareView({ token }) {
                   <div style={{ fontSize: 11, color: C.ac, marginBottom: 2 }}>총 수업</div>
                   <div style={{ fontSize: 20, fontWeight: 700, color: C.ac }}>{summary.totalClasses}회</div>
                 </div>
-                <div style={{ background: C.sb, borderRadius: 10, padding: "12px 14px", textAlign: "center" }}>
-                  <div style={{ fontSize: 11, color: C.su, marginBottom: 2 }}>기록 완료</div>
-                  <div style={{ fontSize: 20, fontWeight: 700, color: C.su }}>{summary.completedLessons}회</div>
-                </div>
                 {summary.avgScore != null && (
                   <div style={{ background: "#EDE9FE", borderRadius: 10, padding: "12px 14px", textAlign: "center" }}>
                     <div style={{ fontSize: 11, color: "#8B5CF6", marginBottom: 2 }}>평균 점수</div>
                     <div style={{ fontSize: 20, fontWeight: 700, color: "#8B5CF6" }}>{summary.avgScore}점</div>
-                  </div>
-                )}
-                {summary.hwRate != null && (
-                  <div style={{ background: summary.hwRate >= 80 ? C.sb : C.wb, borderRadius: 10, padding: "12px 14px", textAlign: "center" }}>
-                    <div style={{ fontSize: 11, color: summary.hwRate >= 80 ? C.su : C.wn, marginBottom: 2 }}>숙제 완료</div>
-                    <div style={{ fontSize: 20, fontWeight: 700, color: summary.hwRate >= 80 ? C.su : C.wn }}>{summary.hwRate}%</div>
                   </div>
                 )}
               </div>
@@ -393,140 +383,82 @@ export default function ShareView({ token }) {
 
           {/* 수업 일정 서브탭 */}
           {subTab === "schedule" && (<div>
-            {/* Calendar View */}
             {(() => {
-              const now = new Date();
-              const year = calMonth.getFullYear();
-              const month = calMonth.getMonth();
-              const firstDay = new Date(year, month, 1).getDay();
-              const startOffset = firstDay === 0 ? 6 : firstDay - 1;
-              const daysInMonth = new Date(year, month + 1, 0).getDate();
+              const cy = calMonth.getFullYear(), cm = calMonth.getMonth();
+              const fst = new Date(cy, cm, 1), lst = new Date(cy, cm + 1, 0);
+              const sDow = (fst.getDay() + 6) % 7, dim = lst.getDate();
+              const td = new Date();
               const cells = [];
-              for (let i = 0; i < startOffset; i++) cells.push({ d: null });
-              for (let i = 1; i <= daysInMonth; i++) {
-                const ds = `${year}-${p2(month + 1)}-${p2(i)}`;
-                const dt = new Date(year, month, i);
-                const dw = dt.getDay() === 0 ? 7 : dt.getDay();
-                const dayLessons = lessons.filter(l => lessonOnDate(l, dt));
-                cells.push({ d: i, lessons: dayLessons, ds });
-              }
-              const rem = 42 - cells.length;
-              for (let i = 0; i < rem; i++) cells.push({ d: null });
-
-              // 해당 월의 모든 수업 (과거+미래)
-              const monthStart = `${year}-${p2(month + 1)}-01`;
-              const monthEnd = `${year}-${p2(month + 1)}-${p2(daysInMonth)}`;
-              const monthLessons = lessons.filter(l => {
-                if (l.date >= monthStart && l.date <= monthEnd) return true;
-                if (l.is_recurring) {
-                  // recurring lessons
-                  if (l.recurring_end_date && l.recurring_end_date < monthStart) return false;
-                  if (l.date > monthEnd) return false;
-                  return true;
-                }
-                return false;
-              }).sort((a, b) => a.date.localeCompare(b.date));
-
-              return (
-                <div style={{ marginBottom: 24 }}>
-                  <div style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 14, padding: 20 }}>
-                    {/* Header with month navigation */}
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <button onClick={() => setCalMonth(new Date(year, month - 1, 1))} style={{ background: "none", border: "none", cursor: "pointer", color: C.ts, fontSize: 20, padding: "4px 8px", borderRadius: 6, display: "flex", alignItems: "center" }}>‹</button>
-                        <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp, minWidth: 110, textAlign: "center" }}>{year}년 {month + 1}월</h3>
-                        <button onClick={() => setCalMonth(new Date(year, month + 1, 1))} style={{ background: "none", border: "none", cursor: "pointer", color: C.ts, fontSize: 20, padding: "4px 8px", borderRadius: 6, display: "flex", alignItems: "center" }}>›</button>
-                      </div>
+              const pvL = new Date(cy, cm, 0).getDate();
+              for (let i = sDow - 1; i >= 0; i--) cells.push({ d: pvL - i, cur: false });
+              for (let d = 1; d <= dim; d++) cells.push({ d, cur: true });
+              while (cells.length % 7 !== 0 || cells.length < 42) cells.push({ d: cells.length - sDow - dim + 1, cur: false });
+              const gLD = date => { const ds = fd(date), dw = date.getDay() === 0 ? 7 : date.getDay(); return lessons.filter(l => { if (l.is_recurring && l.recurring_exceptions && l.recurring_exceptions.includes(ds)) return false; if (l.date === ds) return true; if (l.is_recurring && l.recurring_day === dw) { if (ds < l.date) return false; if (l.recurring_end_date && ds >= l.recurring_end_date) return false; return true; } return false; }); };
+              const DK = ["월", "화", "수", "목", "금", "토", "일"];
+              let mTotal = 0; for (let d = 1; d <= dim; d++) mTotal += gLD(new Date(cy, cm, d)).length;
+              return (<div>
+                <div style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 14, padding: 20 }}>
+                  {/* Header */}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <button onClick={() => setCalMonth(new Date(cy, cm - 1, 1))} style={{ background: "none", border: "none", cursor: "pointer", color: C.ts, fontSize: 16, padding: "4px 8px", borderRadius: 6, display: "flex", alignItems: "center" }}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+                      </button>
+                      <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp, minWidth: 110, textAlign: "center" }}>{cy}년 {cm + 1}월</h3>
+                      <button onClick={() => setCalMonth(new Date(cy, cm + 1, 1))} style={{ background: "none", border: "none", cursor: "pointer", color: C.ts, fontSize: 16, padding: "4px 8px", borderRadius: 6, display: "flex", alignItems: "center", transform: "rotate(180deg)" }}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+                      </button>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <span style={{ fontSize: 12, color: C.tt }}>이번 달 {mTotal}회 수업</span>
                       <button onClick={() => setCalMonth(new Date())} style={{ padding: "5px 14px", borderRadius: 8, border: "1px solid " + C.bd, background: C.sf, fontSize: 12, cursor: "pointer", color: C.ts, fontFamily: "inherit" }}>이번 달</button>
                     </div>
-                    {/* Day headers */}
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginBottom: 4 }}>
-                      {["월", "화", "수", "목", "금", "토", "일"].map(d => (
-                        <div key={d} style={{ textAlign: "center", fontSize: 12, fontWeight: 500, color: C.tt, padding: "6px 0" }}>{d}</div>
-                      ))}
-                    </div>
-                    {/* Calendar cells */}
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", border: "1px solid " + C.bd, borderRadius: 8, overflow: "hidden" }}>
-                      {cells.map((c, i) => (
-                        <div
-                          key={i}
-                          className="cal-cell"
-                          style={{
-                            minHeight: 72,
-                            padding: 6,
-                            borderBottom: Math.floor(i / 7) < 5 ? "1px solid " + C.bl : "none",
-                            borderRight: (i + 1) % 7 ? "1px solid " + C.bl : "none",
-                            opacity: c.d ? 1 : 0.3,
-                          }}
-                        >
-                          {c.d && (
-                            <div>
-                              <div style={{ fontSize: 13, marginBottom: 4, fontWeight: c.d === now.getDate() && year === now.getFullYear() && month === now.getMonth() ? 700 : 400, color: c.d === now.getDate() && year === now.getFullYear() && month === now.getMonth() ? C.ac : C.tp }}>{c.d}</div>
-                              {c.lessons?.map(l => (
-                                <div
-                                  key={l.id}
-                                  style={{
-                                    fontSize: 11,
-                                    padding: "2px 4px",
-                                    borderRadius: 4,
-                                    fontWeight: 500,
-                                    marginBottom: 2,
-                                    overflow: "hidden",
-                                    textOverflow: "ellipsis",
-                                    whiteSpace: "nowrap",
-                                    background: col.bg,
-                                    color: col.t,
-                                  }}
-                                >
-                                  {p2(l.start_hour || 0)}:{p2(l.start_min || 0)}<span className="cal-lesson-text"> {l.topic || l.subject}</span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
                   </div>
-                </div>
-              );
-            })()}
-
-            {/* 해당 월 수업 전체 리스트 */}
-            {(() => {
-              const year = calMonth.getFullYear();
-              const month = calMonth.getMonth();
-              const daysInMonth = new Date(year, month + 1, 0).getDate();
-              const monthStart = `${year}-${p2(month + 1)}-01`;
-              const monthEnd = `${year}-${p2(month + 1)}-${p2(daysInMonth)}`;
-              const monthLessons = lessons.filter(l => l.date >= monthStart && l.date <= monthEnd).sort((a, b) => a.date.localeCompare(b.date));
-
-              return monthLessons.length > 0 ? (
-                <div>
-                  <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp, marginBottom: 12 }}>{month + 1}월 수업</h3>
-                  <div style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 14, overflow: "hidden" }}>
-                    {monthLessons.map((l, idx) => {
-                      const sh = l.start_hour, sm = l.start_min, dur = l.duration;
-                      const em = sh * 60 + sm + dur;
-                      const dateObj = new Date(l.date + "T00:00:00");
-                      const dayOfWeek = ["일", "월", "화", "수", "목", "금", "토"][dateObj.getDay()];
+                  {/* Day headers */}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", marginBottom: 4 }}>
+                    {DK.map((d, i) => <div key={d} style={{ textAlign: "center", fontSize: 12, fontWeight: 500, color: i >= 5 ? C.ac : C.tt, padding: "6px 0" }}>{d}</div>)}
+                  </div>
+                  {/* Grid */}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)" }}>
+                    {cells.map((c, i) => {
+                      const date = c.cur ? new Date(cy, cm, c.d) : null;
+                      const isToday = c.cur && td.getFullYear() === cy && td.getMonth() === cm && td.getDate() === c.d;
+                      const dl = date ? gLD(date) : [];
+                      const isSat = i % 7 === 5, isSun = i % 7 === 6;
                       return (
-                        <div key={l.id} style={{ padding: "14px 18px", borderBottom: idx < monthLessons.length - 1 ? "1px solid " + C.bl : "none" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                            <div style={{ textAlign: "center", flexShrink: 0 }}>
-                              <div style={{ fontSize: 11, color: C.tt }}>{l.date.split('-')[1]}/{l.date.split('-')[2]}</div>
-                              <div style={{ fontSize: 11, color: C.ts, marginTop: 2 }}>({dayOfWeek})</div>
+                        <div key={i} className="cal-cell" style={{ padding: "6px 4px", minHeight: 72, borderRadius: 8, opacity: c.cur ? 1 : .3 }}>
+                          <div style={{ fontSize: 13, fontWeight: isToday ? 700 : 400, color: isToday ? C.ac : isSun ? "#DC2626" : isSat ? C.ac : C.tp, marginBottom: 4 }}>{c.d}</div>
+                          {dl.length > 0 && dl.map(l => (
+                            <div key={l.id} style={{ fontSize: 11, padding: "2px 4px", borderRadius: 4, fontWeight: 500, marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", background: col.bg, color: col.t }}>
+                              {p2(l.start_hour || 0)}:{p2(l.start_min || 0)}<span className="cal-lesson-text"> {l.topic || l.subject}</span>
                             </div>
-                            <div style={{ flex: 1 }}>
-                              <div style={{ fontSize: 13, fontWeight: 600, color: C.tp }}>{l.subject}{l.topic ? " · " + l.topic : ""}</div>
-                              <div style={{ fontSize: 12, color: C.ts, marginTop: 2 }}>{m2s(sh * 60 + sm)}~{m2s(em)}</div>
-                            </div>
-                          </div>
+                          ))}
                         </div>
                       );
                     })}
                   </div>
                 </div>
-              ) : null;
+                {/* Upcoming lessons list */}
+                {(() => {
+                  const upcoming = [];
+                  for (let d = 1; d <= dim; d++) { const dt = new Date(cy, cm, d); const dl = gLD(dt); dl.forEach(l => upcoming.push({ ...l, _d: fd(dt) })); }
+                  if (!upcoming.length) return null;
+                  return (<div style={{ marginTop: 16 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: C.tp, marginBottom: 10 }}>{cm + 1}월 수업 목록</div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      {upcoming.map((l, i) => { const isOrig = !l.is_recurring || l.date === l._d; return (
+                        <div key={l.id + "-" + l._d + "-" + i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", background: C.sf, border: "1px solid " + C.bd, borderRadius: 10, borderLeft: "3px solid " + col.b }}>
+                          <span style={{ fontSize: 12, color: C.tt, minWidth: 70 }}>{l._d}</span>
+                          <span style={{ fontSize: 12, color: C.ts }}>{p2(l.start_hour)}:{p2(l.start_min)}</span>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: C.tp, flex: 1 }}>{isOrig ? (l.topic || l.subject || "-") : (l.subject || "-")}</span>
+                          <span style={{ fontSize: 11, color: C.tt }}>{l.duration}분</span>
+                          {isOrig && (l.homework || []).length > 0 && <span style={{ fontSize: 11, background: C.wb, color: C.wn, padding: "2px 6px", borderRadius: 4, fontWeight: 600 }}>숙제 {(l.homework || []).length}</span>}
+                        </div>
+                      ); })}
+                    </div>
+                  </div>);
+                })()}
+              </div>);
             })()}
           </div>)}
         </div>)}
@@ -538,7 +470,7 @@ export default function ShareView({ token }) {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp, margin: 0 }}>숙제 현황</h3>
-              {allHw.length > 0 && <span style={{ fontSize: 13, fontWeight: 700, color: hwAvg >= 100 ? C.su : hwAvg > 30 ? C.wn : hwAvg > 0 ? "#EA580C" : C.ts, background: hwAvg >= 100 ? C.sb : hwAvg > 30 ? C.wb : hwAvg > 0 ? "#FFF7ED" : C.sfh, padding: "4px 12px", borderRadius: 8 }}>완료율 {hwAvg}%</span>}
+              {allHw.length > 0 && (() => { const inc = allHw.length - hwDone; return inc > 0 ? <span style={{ fontSize: 13, fontWeight: 700, color: C.wn, background: C.wb, padding: "4px 12px", borderRadius: 8 }}>미완 숙제 {inc}건</span> : <span style={{ fontSize: 13, fontWeight: 700, color: C.su, background: C.sb, padding: "4px 12px", borderRadius: 8 }}>모두 완료</span>; })()}
             </div>
             {allHw.length > 0 && (
               <button onClick={() => setShowHwList(!showHwList)} style={{ padding: "4px 12px", border: "1px solid " + C.bd, borderRadius: 8, background: C.sf, fontSize: 11, color: C.ts, cursor: "pointer", fontFamily: "inherit" }}>
