@@ -3,6 +3,7 @@ import { C } from '@/components/Colors';
 
 /**
  * Reusable Badge/Tag component.
+ * Minimum font size is 11px for accessibility.
  *
  * @param {'default'|'success'|'warning'|'danger'|'info'|'accent'} [variant='default']
  * @param {'sm'|'md'} [size='sm']
@@ -25,8 +26,8 @@ export default function Badge({
   };
 
   const sizes = {
-    sm: { fontSize: 10, padding: '2px 6px', borderRadius: 4 },
-    md: { fontSize: 12, padding: '3px 8px', borderRadius: 6 },
+    sm: { fontSize: 11, padding: '2px 7px', borderRadius: 6 },
+    md: { fontSize: 12, padding: '3px 9px', borderRadius: 6 },
   };
 
   const v = variants[variant] || variants.default;
@@ -44,6 +45,7 @@ export default function Badge({
         alignItems: 'center',
         gap: 4,
         whiteSpace: 'nowrap',
+        lineHeight: 1.4,
         ...extraStyle,
       }}
       {...rest}

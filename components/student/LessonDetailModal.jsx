@@ -53,7 +53,7 @@ function TplBar({ field, value, onApply }) {
                 <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderBottom: '1px solid ' + C.bl, cursor: 'pointer' }}
                   onMouseEnter={e => e.currentTarget.style.background = C.sfh} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                   <div onClick={() => { onApply(t.text); setOpen(false); }} style={{ flex: 1, fontSize: 12, color: C.tp, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.name}</div>
-                  <button onClick={e => { e.stopPropagation(); doDelete(t.id); }} style={{ background: 'none', border: 'none', color: C.tt, fontSize: 10, cursor: 'pointer', padding: 2, flexShrink: 0, opacity: 0.6 }}>✕</button>
+                  <button onClick={e => { e.stopPropagation(); doDelete(t.id); }} style={{ background: 'none', border: 'none', color: C.tt, fontSize: 11, cursor: 'pointer', padding: 2, flexShrink: 0, opacity: 0.6 }}>✕</button>
                 </div>
               ))}
             </div>
@@ -149,7 +149,6 @@ export default function LessonDetailModal({ les, student, textbooks = [], onUpda
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,.35)" }} onClick={onClose}>
-      <style>{`@media(max-width:640px){.ldm-tabs{overflow-x:auto;-webkit-overflow-scrolling:touch;} .ldm-tabs button{white-space:nowrap;flex-shrink:0;} .ldm-footer{position:sticky;bottom:0;background:white;padding:16px;border-top:1px solid #E7E5E4;} .ldm-textarea{min-height:120px!important;}}`}</style>
       <div onClick={e => e.stopPropagation()} className="detail-modal" style={{ background: C.sf, borderRadius: 16, width: "100%", maxWidth: 560, maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 20px 60px rgba(0,0,0,.15)", overflow: "hidden" }}>
         {/* Header */}
         <div style={{ padding: "24px 24px 0", flexShrink: 0 }}>
@@ -173,8 +172,8 @@ export default function LessonDetailModal({ les, student, textbooks = [], onUpda
             {tabs.map(t => (
               <button key={t.id} onClick={() => setTab(t.id)} style={{ padding: "8px 14px", fontSize: 12, fontWeight: tab === t.id ? 600 : 400, color: tab === t.id ? C.ac : C.tt, borderTop: "none", borderLeft: "none", borderRight: "none", borderBottom: tab === t.id ? `2px solid ${C.ac}` : "2px solid transparent", background: "none", cursor: "pointer", fontFamily: "inherit", marginBottom: -1 }}>
                 {t.l}
-                {t.id === "hw" && hw.length > 0 && <span style={{ marginLeft: 4, background: C.ac, color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 10 }}>{hw.length}</span>}
-                {t.id === "files" && files.length > 0 && <span style={{ marginLeft: 4, background: C.tt, color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 10 }}>{files.length}</span>}
+                {t.id === "hw" && hw.length > 0 && <span style={{ marginLeft: 4, background: C.ac, color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 11 }}>{hw.length}</span>}
+                {t.id === "files" && files.length > 0 && <span style={{ marginLeft: 4, background: C.tt, color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 11 }}>{files.length}</span>}
               </button>
             ))}
           </div>
@@ -319,7 +318,7 @@ export default function LessonDetailModal({ les, student, textbooks = [], onUpda
                         <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0 }}>
                           <span style={{ fontSize: 16, flexShrink: 0 }}>{icon}</span>
                           <span style={{ fontSize: 13, fontWeight: 500, color: C.tp, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.file_name || f.name}</span>
-                          {f.file_type && <span style={{ fontSize: 10, color: C.tt, background: C.sfh, padding: "1px 6px", borderRadius: 4, flexShrink: 0 }}>{f.file_type}</span>}
+                          {f.file_type && <span style={{ fontSize: 11, color: C.tt, background: C.sfh, padding: "1px 6px", borderRadius: 4, flexShrink: 0 }}>{f.file_type}</span>}
                         </div>
                         <button onClick={() => delFile(f.id)} style={{ background: "none", border: "none", cursor: "pointer", color: C.tt, fontSize: 12, flexShrink: 0, padding: 4 }}>✕</button>
                       </div>
