@@ -352,25 +352,25 @@ export default function StudentDetail({ student, initialTab }) {
   if(fetchError&&!lessons.length)return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:12}}><div style={{fontSize:14,color:C.dn}}>데이터를 불러오지 못했습니다</div><button onClick={fetchAll} style={{padding:"8px 20px",borderRadius:8,border:`1px solid ${C.bd}`,background:C.sf,color:C.tp,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>다시 시도</button></div>);
 
   return(
-    <div className="sd-container" style={{padding:28}}>
+    <div className="sd-container" style={{padding:isMobile?16:28}}>
 
       {/* Header */}
-      <div className="sd-header" style={{display:"flex",alignItems:"center",gap:16,marginBottom:24}}>
+      <div className="sd-header" style={{display:"flex",flexWrap:"wrap",alignItems:"center",gap:isMobile?10:16,marginBottom:isMobile?16:24}}>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           {tog}
           <button onClick={()=>router.push('/students')} style={{background:"none",border:"none",cursor:"pointer",color:C.tt,display:"flex",padding:4}}><IcBack/></button>
         </div>
-        <div style={{display:"flex",alignItems:"center",gap:14,flex:1}}>
-          <div style={{width:48,height:48,borderRadius:14,background:col.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,fontWeight:800,color:col.t}}>{(s.name||"?")[0]}</div>
-          <div>
-            <div style={{fontSize:20,fontWeight:700,color:C.tp}}>{s.name}</div>
-            <div style={{fontSize:13,color:C.ts}}>{s.subject} · {s.grade}{s.school?" · "+s.school:""}</div>
+        <div style={{display:"flex",alignItems:"center",gap:isMobile?10:14,flex:1,minWidth:0}}>
+          <div style={{width:isMobile?40:48,height:isMobile?40:48,borderRadius:isMobile?10:14,background:col.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:isMobile?16:20,fontWeight:800,color:col.t,flexShrink:0}}>{(s.name||"?")[0]}</div>
+          <div style={{minWidth:0}}>
+            <div style={{fontSize:isMobile?17:20,fontWeight:700,color:C.tp,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.name}</div>
+            <div style={{fontSize:isMobile?12:13,color:C.ts,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.subject} · {s.grade}{s.school?" · "+s.school:""}</div>
           </div>
         </div>
-        <div className="share-btns" style={{display:"flex",alignItems:"center",gap:10}}>
-          <button onClick={()=>exportStudentReportPDF({student:s,scores,lessons,wrongs})} style={{background:C.sf,color:C.ts,border:"1px solid "+C.bd,borderRadius:8,padding:"6px 12px",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>PDF 리포트</button>
-          <button onClick={copyShareLink} style={{background:shareCopied?C.sb:C.as,color:shareCopied?C.su:C.ac,border:"1px solid "+(shareCopied?"#BBF7D0":C.al),borderRadius:8,padding:"6px 12px",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",transition:"all .2s"}}>{shareCopied?"링크 복사됨":"공유 링크"}</button>
-          <button onClick={()=>setShowSharePerms(true)} style={{background:C.sf,color:C.ts,border:"1px solid "+C.bd,borderRadius:8,padding:"6px 12px",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>공유 설정</button>
+        <div className="share-btns" style={{display:"flex",alignItems:"center",gap:isMobile?6:10,...(isMobile?{width:"100%"}:{})}}>
+          <button onClick={()=>exportStudentReportPDF({student:s,scores,lessons,wrongs})} style={{background:C.sf,color:C.ts,border:"1px solid "+C.bd,borderRadius:8,padding:isMobile?"5px 10px":"6px 12px",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>PDF 리포트</button>
+          <button onClick={copyShareLink} style={{background:shareCopied?C.sb:C.as,color:shareCopied?C.su:C.ac,border:"1px solid "+(shareCopied?"#BBF7D0":C.al),borderRadius:8,padding:isMobile?"5px 10px":"6px 12px",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",transition:"all .2s"}}>{shareCopied?"링크 복사됨":"공유 링크"}</button>
+          <button onClick={()=>setShowSharePerms(true)} style={{background:C.sf,color:C.ts,border:"1px solid "+C.bd,borderRadius:8,padding:isMobile?"5px 10px":"6px 12px",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>공유 설정</button>
         </div>
       </div>
 
@@ -462,13 +462,13 @@ export default function StudentDetail({ student, initialTab }) {
                     <div style={{position:"absolute",left:-28+3,top:18,width:10,height:10,borderRadius:"50%",background:isIP?"#EA580C":isFirstDone?col.b:isUp?C.sf:C.bd,border:isUp&&!isIP?"2px solid "+C.bd:"2px solid "+C.sf,zIndex:1,boxShadow:isIP?"0 0 8px rgba(234,88,12,.5)":"none"}}/>
                     <div onClick={()=>setLesDetailData(l)} style={{background:isIP?"#FFF7ED":isUp?C.as:C.sf,border:"1px solid "+(isIP?"#FDBA74":isUp?C.al:C.bd),borderRadius:14,overflow:"hidden",cursor:"pointer",borderLeft:"3px solid "+(isIP?"#EA580C":isUp?C.ac:col.b)}} className="hcard">
                       {/* Header */}
-                      <div style={{padding:"16px 20px "+(hasSections?"12px":"16px")}}>
-                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
-                          <div style={{flex:1}}>
+                      <div style={{padding:isMobile?"12px 14px "+(hasSections?"8px":"12px"):"16px 20px "+(hasSections?"12px":"16px")}}>
+                        <div style={{display:"flex",flexDirection:isMobile?"column":"row",justifyContent:"space-between",alignItems:isMobile?"flex-start":"flex-start",gap:isMobile?6:8}}>
+                          <div style={{flex:1,minWidth:0}}>
                             <div style={{fontSize:12,color:C.tt,marginBottom:4}}>{l.date} {p2(l.start_hour)}:{p2(l.start_min)} ~ {m2s(em)} ({l.duration}분)</div>
-                            <div style={{fontSize:16,fontWeight:700,color:C.tp}}>{l.topic||l.subject||"-"}</div>
+                            <div style={{fontSize:isMobile?15:16,fontWeight:700,color:C.tp,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l.topic||l.subject||"-"}</div>
                           </div>
-                          <div style={{display:"flex",gap:5,alignItems:"center",flexShrink:0,flexWrap:"wrap",justifyContent:"flex-end"}}>
+                          <div style={{display:"flex",gap:5,alignItems:"center",flexShrink:0,flexWrap:"wrap",justifyContent:"flex-start"}}>
                             {isIP&&<span style={{background:"#FFF7ED",color:"#EA580C",padding:"3px 10px",borderRadius:6,fontSize:11,fontWeight:600,animation:"pulse 2s infinite"}}>진행중</span>}
                             {isUp&&<span style={{background:C.ac,color:"#fff",padding:"3px 10px",borderRadius:6,fontSize:11,fontWeight:600}}>예정</span>}
                             <span style={{background:col.bg,color:col.t,padding:"3px 10px",borderRadius:6,fontSize:11,fontWeight:600}}>{l.subject||s.subject}</span>
@@ -479,7 +479,7 @@ export default function StudentDetail({ student, initialTab }) {
                         </div>
                       </div>
                       {/* Section previews */}
-                      {hasSections&&(<div style={{padding:"0 20px 16px",display:"flex",flexDirection:"column",gap:8}}>
+                      {hasSections&&(<div style={{padding:isMobile?"0 14px 12px":"0 20px 16px",display:"flex",flexDirection:"column",gap:8}}>
                         {l.content&&(<div style={{background:C.sfh,borderRadius:10,padding:"10px 14px"}}>
                           <div style={{fontSize:11,fontWeight:600,color:C.tt,marginBottom:4}}>수업 내용</div>
                           <div style={{fontSize:13,color:C.ts,lineHeight:1.5,whiteSpace:"pre-wrap",display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{l.content}</div>

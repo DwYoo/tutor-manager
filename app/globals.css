@@ -176,6 +176,7 @@ input, textarea, select {
 }
 
 @media (max-width: 1023px) {
+  .menu-toggle { display: none !important; }
   .mobile-nav { display: flex !important; }
   .app-root { height: auto !important; overflow: visible !important; }
 }
