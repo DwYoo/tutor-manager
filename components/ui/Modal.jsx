@@ -1,6 +1,6 @@
 'use client';
-import { useEffect, useRef, useCallback } from 'react';
-import { C } from '@/components/Colors';
+import { useEffect, useRef } from 'react';
+import { X } from 'lucide-react';
 
 /**
  * Accessible Modal component with focus trapping and aria attributes.
@@ -11,7 +11,8 @@ import { C } from '@/components/Colors';
  * @param {boolean} [bottomSheet] - Mobile bottom sheet mode
  * @param {number} [maxWidth=480] - Max width in pixels
  * @param {React.ReactNode} [footer] - Footer content
- * @param {Object} [style] - Additional styles for the content container
+ * @param {string} [className]
+ * @param {Object} [style] - Additional styles
  */
 export default function Modal({
   open,
@@ -21,11 +22,11 @@ export default function Modal({
   bottomSheet,
   maxWidth = 480,
   footer,
+  className = '',
   style: extraStyle,
 }) {
   const contentRef = useRef(null);
 
-  // ESC key handler
   useEffect(() => {
     if (!open) return;
     const h = (e) => {
@@ -35,7 +36,6 @@ export default function Modal({
     return () => window.removeEventListener('keydown', h);
   }, [open, onClose]);
 
-  // Focus trap
   useEffect(() => {
     if (!open || !contentRef.current) return;
     const el = contentRef.current;
@@ -66,57 +66,42 @@ export default function Modal({
       role="dialog"
       aria-modal="true"
       aria-labelledby={title ? 'modal-title' : undefined}
-      style={{
-        position: 'fixed', inset: 0, zIndex: 1000,
-        background: 'rgba(0,0,0,.35)',
-        display: 'flex',
-        alignItems: bottomSheet ? 'flex-end' : 'center',
-        justifyContent: 'center',
-        animation: 'fadeIn .15s ease',
-      }}
+      className={`fixed inset-0 z-[1000] flex animate-fadeIn ${
+        bottomSheet ? 'items-end' : 'items-center'
+      } justify-center`}
+      style={{ background: 'rgba(0,0,0,.35)' }}
     >
       <div
         ref={contentRef}
         onClick={e => e.stopPropagation()}
+        className={`bg-sf w-full overflow-y-auto shadow-xl ${className}`}
         style={{
-          background: C.sf,
           borderRadius: bottomSheet ? '16px 16px 0 0' : 16,
-          width: '100%',
           maxWidth,
           padding: bottomSheet
             ? '20px 20px calc(env(safe-area-inset-bottom, 0px) + 20px)'
             : 24,
-          boxShadow: '0 20px 60px rgba(0,0,0,.15)',
           maxHeight: bottomSheet ? '90vh' : '85vh',
-          overflowY: 'auto',
           ...extraStyle,
         }}
       >
         {title && (
-          <div style={{
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            marginBottom: 16,
-          }}>
-            <h2 id="modal-title" style={{ fontSize: 17, fontWeight: 700, color: C.tp, margin: 0 }}>
+          <div className="flex justify-between items-center mb-4">
+            <h2 id="modal-title" className="text-[17px] font-bold text-tp m-0">
               {title}
             </h2>
             <button
               onClick={onClose}
               aria-label="닫기"
-              style={{
-                background: 'none', border: 'none', cursor: 'pointer',
-                color: C.tt, fontSize: 18, display: 'flex',
-                minHeight: 36, minWidth: 36, alignItems: 'center', justifyContent: 'center',
-                fontFamily: 'inherit',
-              }}
+              className="bg-transparent border-none cursor-pointer text-tt flex items-center justify-center min-h-[36px] min-w-[36px] rounded-lg hover:bg-sfh transition-colors"
             >
-              ✕
+              <X size={18} />
             </button>
           </div>
         )}
         {children}
         {footer && (
-          <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <div className="mt-4 flex justify-end gap-2">
             {footer}
           </div>
         )}

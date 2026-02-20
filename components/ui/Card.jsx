@@ -1,34 +1,27 @@
 'use client';
-import { C } from '@/components/Colors';
 
 /**
  * Reusable Card container component.
  *
  * @param {boolean} [hoverable] - Add hover effect
  * @param {boolean} [clickable] - Add pointer cursor
- * @param {string} [padding='16px']
+ * @param {string} [className]
  * @param {Object} [style] - Additional styles
  */
 export default function Card({
   children,
   hoverable,
   clickable,
-  padding = '16px',
+  className = '',
   style: extraStyle,
   ...rest
 }) {
   return (
     <div
-      className={hoverable ? 'hcard' : undefined}
-      style={{
-        background: C.sf,
-        border: '1px solid ' + C.bd,
-        borderRadius: 14,
-        padding,
-        cursor: clickable || hoverable ? 'pointer' : undefined,
-        transition: hoverable ? 'all .12s' : undefined,
-        ...extraStyle,
-      }}
+      className={`bg-sf border border-bd rounded-[14px] p-4 ${
+        hoverable ? 'hcard cursor-pointer' : ''
+      } ${clickable && !hoverable ? 'cursor-pointer' : ''} ${className}`}
+      style={extraStyle}
       {...rest}
     >
       {children}

@@ -1,51 +1,36 @@
 'use client';
-import { C } from '@/components/Colors';
 
 /**
  * Reusable Badge/Tag component.
  *
  * @param {'default'|'success'|'warning'|'danger'|'info'|'accent'} [variant='default']
  * @param {'sm'|'md'} [size='sm']
- * @param {Object} [style] - Additional styles
+ * @param {string} [className]
  */
 export default function Badge({
   children,
   variant = 'default',
   size = 'sm',
-  style: extraStyle,
+  className = '',
   ...rest
 }) {
-  const variants = {
-    default: { background: C.sfh, color: C.ts, border: C.bd },
-    success: { background: C.sb, color: C.su, border: '#BBF7D0' },
-    warning: { background: C.wb, color: C.wn, border: '#FDE68A' },
-    danger: { background: C.db, color: C.dn, border: '#FECACA' },
-    info: { background: C.as, color: C.ac, border: C.al },
-    accent: { background: C.al, color: C.ac, border: C.ac },
+  const variantClasses = {
+    default: 'bg-sfh text-ts border-bd',
+    success: 'bg-sb text-su border-[#BBF7D0]',
+    warning: 'bg-wb text-wn border-[#FDE68A]',
+    danger: 'bg-db text-dn border-[#FECACA]',
+    info: 'bg-as text-ac border-al',
+    accent: 'bg-al text-ac border-ac',
   };
 
-  const sizes = {
-    sm: { fontSize: 10, padding: '2px 6px', borderRadius: 4 },
-    md: { fontSize: 12, padding: '3px 8px', borderRadius: 6 },
+  const sizeClasses = {
+    sm: 'text-[10px] px-1.5 py-0.5 rounded',
+    md: 'text-xs px-2 py-0.5 rounded-md',
   };
-
-  const v = variants[variant] || variants.default;
-  const s = sizes[size] || sizes.sm;
 
   return (
     <span
-      style={{
-        ...s,
-        background: v.background,
-        color: v.color,
-        border: `1px solid ${v.border}`,
-        fontWeight: 600,
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 4,
-        whiteSpace: 'nowrap',
-        ...extraStyle,
-      }}
+      className={`inline-flex items-center gap-1 whitespace-nowrap font-semibold border ${sizeClasses[size] || sizeClasses.sm} ${variantClasses[variant] || variantClasses.default} ${className}`}
       {...rest}
     >
       {children}

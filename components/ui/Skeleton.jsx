@@ -1,5 +1,4 @@
 'use client';
-import { C } from '@/components/Colors';
 
 /**
  * Skeleton loading placeholder.
@@ -8,6 +7,7 @@ import { C } from '@/components/Colors';
  * @param {number|string} [height=16]
  * @param {number} [borderRadius=8]
  * @param {'text'|'circle'|'card'} [variant='text']
+ * @param {string} [className]
  * @param {Object} [style]
  */
 export default function Skeleton({
@@ -15,9 +15,10 @@ export default function Skeleton({
   height = 16,
   borderRadius = 8,
   variant = 'text',
+  className = '',
   style: extraStyle,
 }) {
-  const variantStyles = {
+  const variantOverrides = {
     text: {},
     circle: { borderRadius: '50%', width: height, height },
     card: { borderRadius: 14, height: height || 120 },
@@ -25,29 +26,23 @@ export default function Skeleton({
 
   return (
     <div
+      className={`animate-[shimmer_1.5s_infinite] ${className}`}
       style={{
         width,
         height,
         borderRadius,
-        background: `linear-gradient(90deg, ${C.sfh} 25%, ${C.bl} 50%, ${C.sfh} 75%)`,
+        background: 'linear-gradient(90deg, var(--color-sfh) 25%, var(--color-bl) 50%, var(--color-sfh) 75%)',
         backgroundSize: '200% 100%',
-        animation: 'shimmer 1.5s infinite',
-        ...variantStyles[variant],
+        ...variantOverrides[variant],
         ...extraStyle,
       }}
     />
   );
 }
 
-/**
- * Skeleton group for common patterns.
- */
 export function SkeletonCard({ lines = 3 }) {
   return (
-    <div style={{
-      background: C.sf, border: '1px solid ' + C.bd,
-      borderRadius: 14, padding: 16,
-    }}>
+    <div className="bg-sf border border-bd rounded-[14px] p-4">
       <Skeleton width="60%" height={14} style={{ marginBottom: 12 }} />
       {Array.from({ length: lines }, (_, i) => (
         <Skeleton
@@ -63,7 +58,7 @@ export function SkeletonCard({ lines = 3 }) {
 
 export function SkeletonList({ count = 3 }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div className="flex flex-col gap-3">
       {Array.from({ length: count }, (_, i) => (
         <SkeletonCard key={i} lines={2} />
       ))}
