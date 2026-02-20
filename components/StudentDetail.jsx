@@ -12,6 +12,7 @@ import { syncHomework } from '@/lib/homework';
 import { exportStudentReportPDF } from '@/lib/export';
 import { useShell } from '@/components/AppShell';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
+import { SkeletonCard } from '@/components/ui';
 import { validateFile } from '@/lib/fileValidation';
 const REASON_COLORS=["#2563EB","#DC2626","#F59E0B","#16A34A","#8B5CF6","#EC4899","#06B6D4","#F97316"];
 const ls={display:"block",fontSize:12,fontWeight:500,color:C.tt,marginBottom:6};
@@ -19,7 +20,7 @@ const is={width:"100%",padding:"9px 12px",borderRadius:8,border:"1px solid "+C.b
 const IcBack=()=>(<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>);
 const CustomTooltip=({active,payload})=>{if(!active||!payload?.length)return null;const d=payload[0].payload;return(<div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:10,padding:"10px 14px",boxShadow:"0 4px 12px rgba(0,0,0,.08)"}}><div style={{fontSize:12,color:C.tt,marginBottom:4}}>{d.label||d.date}</div>{d.score!=null&&<div style={{fontSize:16,fontWeight:700,color:C.ac}}>{d.score}점</div>}{d.grade!=null&&<div style={{fontSize:d.score!=null?13:16,fontWeight:700,color:"#8B5CF6"}}>{d.grade}등급</div>}</div>);};
 const ReasonTooltip=({active,payload})=>{if(!active||!payload?.length)return null;const d=payload[0].payload;return(<div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:10,padding:"8px 12px",boxShadow:"0 4px 12px rgba(0,0,0,.08)"}}><div style={{fontSize:11,color:C.tt,marginBottom:2}}>{d.name}</div><div style={{fontSize:14,fontWeight:700,color:d.fill||C.ac}}>{d.count}문항</div></div>);};
-const TruncTick=({x,y,payload,fill,maxLen=5})=>{const t=payload?.value||"";const d=t.length>maxLen?t.slice(0,maxLen)+"…":t;return(<text x={x} y={y+10} textAnchor="middle" fontSize={9} fill={fill}>{d}</text>);};
+const TruncTick=({x,y,payload,fill,maxLen=5})=>{const t=payload?.value||"";const d=t.length>maxLen?t.slice(0,maxLen)+"…":t;return(<text x={x} y={y+10} textAnchor="middle" fontSize={11} fill={fill}>{d}</text>);};
 
 export default function StudentDetail({ student, initialTab }) {
   const router=useRouter();
@@ -207,7 +208,7 @@ export default function StudentDetail({ student, initialTab }) {
   const wTimers=useRef({});
   const updWrong=(id,key,val)=>{setWrongs(p=>p.map(w=>w.id===id?{...w,[key]:val}:w));const tk=id+key;clearTimeout(wTimers.current[tk]);wTimers.current[tk]=setTimeout(async()=>{await supabase.from('wrong_answers').update({[key]:val}).eq('id',id);},500);};
   const addNote=async()=>{if(!noteBody.trim())return;const{data,error}=await supabase.from('reports').insert({student_id:s.id,title:noteTitle.trim()||fd(new Date()),body:noteBody,is_shared:false,type:'note',date:fd(new Date()),user_id:user.id}).select().single();if(error){toast?.('메모 저장에 실패했습니다','error');return;}if(data){setNotes(p=>[data,...p]);setNoteTitle("");setNoteBody("");setShowNewNote(false);toast?.('메모가 저장되었습니다');}};
-  const delNote=async(id)=>{if(!confirm('메모를 삭제하시겠습니까?'))return;const{error}=await supabase.from('reports').delete().eq('id',id);if(error){toast?.('삭제에 실패했습니다','error');return;}setNotes(p=>p.filter(n=>n.id!==id));setPinnedNotes(p=>p.filter(pid=>pid!==id));toast?.('메모가 삭제되었습니다');};
+  const delNote=async(id)=>{if(!await confirm('메모를 삭제하시겠습니까?',{danger:true,confirmText:'삭제'}))return;const{error}=await supabase.from('reports').delete().eq('id',id);if(error){toast?.('삭제에 실패했습니다','error');return;}setNotes(p=>p.filter(n=>n.id!==id));setPinnedNotes(p=>p.filter(pid=>pid!==id));toast?.('메모가 삭제되었습니다');};
   const togglePin=(id)=>{setPinnedNotes(p=>p.includes(id)?p.filter(pid=>pid!==id):[...p,id]);};
 
   const addRp=async()=>{if(!nT.trim())return;const{data,error}=await supabase.from('reports').insert({student_id:s.id,title:nT,body:nB,is_shared:!nS,date:fd(new Date()),user_id:user.id}).select().single();if(error){toast?.('레포트 저장에 실패했습니다','error');return;}if(data){setReports(p=>[data,...p]);setNT("");setNB("");setNS(false);setShowNew(false);toast?.('레포트가 등록되었습니다');}};
@@ -332,12 +333,26 @@ export default function StudentDetail({ student, initialTab }) {
     toast?.('수업 정보가 저장되었습니다');
   };
 
-  if(loading)return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:C.tt,fontSize:14}}>불러오는 중...</div></div>);
+  if(loading||!student)return(
+  <div style={{maxWidth:900,margin:"0 auto",padding:"24px 16px"}}>
+    <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}>
+      <div style={{width:44,height:44,borderRadius:12,background:"linear-gradient(90deg, #F5F5F4 25%, #F0EFED 50%, #F5F5F4 75%)",backgroundSize:"200% 100%",animation:"shimmer 1.5s infinite"}}/>
+      <div>
+        <div style={{width:120,height:18,borderRadius:6,background:"linear-gradient(90deg, #F5F5F4 25%, #F0EFED 50%, #F5F5F4 75%)",backgroundSize:"200% 100%",animation:"shimmer 1.5s infinite",marginBottom:6}}/>
+        <div style={{width:80,height:12,borderRadius:4,background:"linear-gradient(90deg, #F5F5F4 25%, #F0EFED 50%, #F5F5F4 75%)",backgroundSize:"200% 100%",animation:"shimmer 1.5s infinite"}}/>
+      </div>
+    </div>
+    <div style={{display:"flex",gap:8,marginBottom:16}}>
+      {[1,2,3,4].map(i=>(<div key={i} style={{width:80,height:36,borderRadius:10,background:"linear-gradient(90deg, #F5F5F4 25%, #F0EFED 50%, #F5F5F4 75%)",backgroundSize:"200% 100%",animation:"shimmer 1.5s infinite"}}/>))}
+    </div>
+    <SkeletonCard lines={5}/>
+    <div style={{marginTop:16}}><SkeletonCard lines={4}/></div>
+  </div>
+);
   if(fetchError&&!lessons.length)return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:12}}><div style={{fontSize:14,color:C.dn}}>데이터를 불러오지 못했습니다</div><button onClick={fetchAll} style={{padding:"8px 20px",borderRadius:8,border:`1px solid ${C.bd}`,background:C.sf,color:C.tp,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>다시 시도</button></div>);
 
   return(
     <div className="sd-container" style={{padding:28}}>
-      <style>{"@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.6;}}\n.hcard{transition:all .12s;cursor:pointer;}.hcard:hover{background:"+C.sfh+"!important;}\n@media(max-width:768px){.sd-header{flex-direction:column!important;align-items:flex-start!important;} .sd-header .share-btns{margin-top:8px;width:100%;justify-content:flex-start;} .sd-container{padding:14px!important;} .sd-tabs{overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap;} .sd-tabs button{white-space:nowrap;flex-shrink:0;} .sd-subtabs{overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap;} .sd-subtabs button{white-space:nowrap;flex-shrink:0;} .cal-cell{min-height:56px!important;}}\n@media(max-width:640px){.hw-stats{grid-template-columns:repeat(2,1fr)!important;} .score-stats{grid-template-columns:repeat(1,1fr)!important;} .swot-grid{grid-template-columns:1fr!important;}}"}</style>
 
       {/* Header */}
       <div className="sd-header" style={{display:"flex",alignItems:"center",gap:16,marginBottom:24}}>
@@ -404,12 +419,12 @@ export default function StudentDetail({ student, initialTab }) {
       )}
 
       {/* Main tabs */}
-      <div className="sd-tabs" style={{display:"flex",gap:4,marginBottom:4,borderBottom:"1px solid "+C.bd,paddingBottom:0}}>
-        {mainTabs.map(m=>(<button key={m.id} onClick={()=>switchMain(m.id)} style={{padding:"10px 20px",border:"none",borderBottom:mainTab===m.id?"2px solid "+C.ac:"2px solid transparent",background:"none",fontSize:14,fontWeight:mainTab===m.id?600:400,color:mainTab===m.id?C.ac:C.ts,cursor:"pointer",fontFamily:"inherit"}}>{m.l}</button>))}
+      <div className="sd-tabs" role="tablist" style={{display:"flex",gap:4,marginBottom:4,borderBottom:"1px solid "+C.bd,paddingBottom:0}}>
+        {mainTabs.map(m=>(<button key={m.id} role="tab" aria-selected={mainTab===m.id} onClick={()=>switchMain(m.id)} style={{padding:"10px 20px",border:"none",borderBottom:mainTab===m.id?"2px solid "+C.ac:"2px solid transparent",background:"none",fontSize:14,fontWeight:mainTab===m.id?600:400,color:mainTab===m.id?C.ac:C.ts,cursor:"pointer",fontFamily:"inherit"}}>{m.l}</button>))}
       </div>
       {/* Sub tabs */}
-      {curMain&&curMain.subs.length>1&&(<div className="sd-subtabs" style={{display:"flex",gap:4,marginBottom:20,paddingTop:8}}>
-        {curMain.subs.map(sb=>(<button key={sb.id} onClick={()=>setSubTab(sb.id)} style={{padding:"6px 16px",borderRadius:8,border:"1px solid "+(subTab===sb.id?C.ac:C.bd),background:subTab===sb.id?C.as:"transparent",fontSize:12,fontWeight:subTab===sb.id?600:400,color:subTab===sb.id?C.ac:C.ts,cursor:"pointer",fontFamily:"inherit"}}>{sb.l}</button>))}
+      {curMain&&curMain.subs.length>1&&(<div className="sd-subtabs" role="tablist" style={{display:"flex",gap:4,marginBottom:20,paddingTop:8}}>
+        {curMain.subs.map(sb=>(<button key={sb.id} role="tab" aria-selected={subTab===sb.id} onClick={()=>setSubTab(sb.id)} style={{padding:"6px 16px",borderRadius:8,border:"1px solid "+(subTab===sb.id?C.ac:C.bd),background:subTab===sb.id?C.as:"transparent",fontSize:12,fontWeight:subTab===sb.id?600:400,color:subTab===sb.id?C.ac:C.ts,cursor:"pointer",fontFamily:"inherit"}}>{sb.l}</button>))}
       </div>)}
 
       <div style={{marginTop:curMain&&curMain.subs.length<=1?20:0}}>
@@ -457,9 +472,9 @@ export default function StudentDetail({ student, initialTab }) {
                             {isIP&&<span style={{background:"#FFF7ED",color:"#EA580C",padding:"3px 10px",borderRadius:6,fontSize:11,fontWeight:600,animation:"pulse 2s infinite"}}>진행중</span>}
                             {isUp&&<span style={{background:C.ac,color:"#fff",padding:"3px 10px",borderRadius:6,fontSize:11,fontWeight:600}}>예정</span>}
                             <span style={{background:col.bg,color:col.t,padding:"3px 10px",borderRadius:6,fontSize:11,fontWeight:600}}>{l.subject||s.subject}</span>
-                            {hwTotal>0&&<span style={{fontSize:10,background:hwDone===hwTotal?C.sb:C.wb,color:hwDone===hwTotal?C.su:C.wn,padding:"3px 8px",borderRadius:5,fontWeight:600}}>숙제 {hwDone}/{hwTotal}</span>}
-                            {l.content&&<span style={{fontSize:10,background:C.sfh,color:C.ts,padding:"3px 8px",borderRadius:5}}>내용</span>}
-                            {l.feedback&&<span style={{fontSize:10,background:C.as,color:C.ac,padding:"3px 8px",borderRadius:5}}>피드백</span>}
+                            {hwTotal>0&&<span style={{fontSize:11,background:hwDone===hwTotal?C.sb:C.wb,color:hwDone===hwTotal?C.su:C.wn,padding:"3px 8px",borderRadius:5,fontWeight:600}}>숙제 {hwDone}/{hwTotal}</span>}
+                            {l.content&&<span style={{fontSize:11,background:C.sfh,color:C.ts,padding:"3px 8px",borderRadius:5}}>내용</span>}
+                            {l.feedback&&<span style={{fontSize:11,background:C.as,color:C.ac,padding:"3px 8px",borderRadius:5}}>피드백</span>}
                           </div>
                         </div>
                       </div>
@@ -538,7 +553,7 @@ export default function StudentDetail({ student, initialTab }) {
                     <div key={i} className="cal-cell" style={{padding:"6px 4px",minHeight:72,borderRadius:8,opacity:c.cur?1:.3}}>
                       <div style={{fontSize:13,fontWeight:isToday?700:400,color:isToday?C.ac:isSun?"#DC2626":isSat?C.ac:C.tp,marginBottom:4}}>{c.d}</div>
                       {dl.length>0&&dl.map(l=>(
-                        <div key={l.id} onClick={()=>openLesson(l,fd(date))} style={{fontSize:9,padding:"2px 4px",borderRadius:4,fontWeight:500,marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",background:col.bg,color:col.t,cursor:"pointer"}}>
+                        <div key={l.id} onClick={()=>openLesson(l,fd(date))} style={{fontSize:11,padding:"2px 4px",borderRadius:4,fontWeight:500,marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",background:col.bg,color:col.t,cursor:"pointer"}}>
                           {p2(l.start_hour||0)}:{p2(l.start_min||0)}<span className="cal-lesson-text"> {l.topic||l.subject}</span>
                         </div>
                       ))}
@@ -561,7 +576,7 @@ export default function StudentDetail({ student, initialTab }) {
                       <span style={{fontSize:12,color:C.ts}}>{p2(l.start_hour)}:{p2(l.start_min)}</span>
                       <span style={{fontSize:13,fontWeight:600,color:C.tp,flex:1}}>{isOrig?(l.topic||l.subject||"-"):(l.subject||"-")}</span>
                       <span style={{fontSize:11,color:C.tt}}>{l.duration}분</span>
-                      {isOrig&&(l.homework||[]).length>0&&<span style={{fontSize:10,background:C.wb,color:C.wn,padding:"2px 6px",borderRadius:4,fontWeight:600}}>숙제 {(l.homework||[]).length}</span>}
+                      {isOrig&&(l.homework||[]).length>0&&<span style={{fontSize:11,background:C.wb,color:C.wn,padding:"2px 6px",borderRadius:4,fontWeight:600}}>숙제 {(l.homework||[]).length}</span>}
                     </div>
                   );})}
                 </div>
@@ -594,11 +609,11 @@ export default function StudentDetail({ student, initialTab }) {
                     <div style={{display:"flex",alignItems:"center",gap:8,flex:1,minWidth:0}}>
                       <button onClick={()=>togglePin(n.id)} title={pinned?"고정 해제":"고정"} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,padding:0,flexShrink:0,opacity:pinned?1:.4}}>{pinned?"📌":"📌"}</button>
                       <span style={{fontSize:14,fontWeight:600,color:C.tp,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{n.title||"메모"}</span>
-                      {pinned&&<span style={{background:C.as,color:C.ac,padding:"1px 6px",borderRadius:4,fontSize:9,fontWeight:600,flexShrink:0}}>고정</span>}
+                      {pinned&&<span style={{background:C.as,color:C.ac,padding:"1px 6px",borderRadius:4,fontSize:11,fontWeight:600,flexShrink:0}}>고정</span>}
                     </div>
                     <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
                       <span style={{fontSize:12,color:C.tt}}>{n.date}</span>
-                      <button onClick={()=>delNote(n.id)} style={{background:"none",border:"none",fontSize:10,color:C.tt,cursor:"pointer",fontFamily:"inherit",padding:0,opacity:.6}}>삭제</button>
+                      <button onClick={()=>delNote(n.id)} style={{background:"none",border:"none",fontSize:11,color:C.tt,cursor:"pointer",fontFamily:"inherit",padding:0,opacity:.6}}>삭제</button>
                     </div>
                   </div>
                   <div style={{fontSize:13,color:C.ts,lineHeight:1.7,whiteSpace:"pre-wrap"}}>{n.body}</div>
@@ -629,7 +644,7 @@ export default function StudentDetail({ student, initialTab }) {
                 <div style={{position:"absolute",left:-20+1,top:6,width:10,height:10,borderRadius:"50%",background:i===0?C.ac:C.bd}}/>
                 <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:18,borderLeft:i===0?"3px solid "+C.ac:"none"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-                    <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}><span style={{fontSize:14,fontWeight:600,color:C.tp}}>{r.title}</span>{r.is_shared?<span style={{background:C.as,color:C.ac,padding:"2px 8px",borderRadius:5,fontSize:10,fontWeight:600}}>공유됨</span>:<span style={{background:C.sfh,color:C.tt,padding:"2px 8px",borderRadius:5,fontSize:10}}>비공개</span>}{!isParent&&<button onClick={()=>delReport(r.id)} style={{background:"none",border:"none",fontSize:10,color:C.tt,cursor:"pointer",fontFamily:"inherit",padding:0,opacity:.6}}>삭제</button>}</div>
+                    <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}><span style={{fontSize:14,fontWeight:600,color:C.tp}}>{r.title}</span>{r.is_shared?<span style={{background:C.as,color:C.ac,padding:"2px 8px",borderRadius:5,fontSize:11,fontWeight:600}}>공유됨</span>:<span style={{background:C.sfh,color:C.tt,padding:"2px 8px",borderRadius:5,fontSize:11}}>비공개</span>}{!isParent&&<button onClick={()=>delReport(r.id)} style={{background:"none",border:"none",fontSize:11,color:C.tt,cursor:"pointer",fontFamily:"inherit",padding:0,opacity:.6}}>삭제</button>}</div>
                     <span style={{fontSize:12,color:C.tt,flexShrink:0}}>{r.date}</span>
                   </div>
                   <div style={{fontSize:13,color:C.ts,lineHeight:1.7,whiteSpace:"pre-wrap"}}>{r.body}</div>
@@ -697,7 +712,7 @@ export default function StudentDetail({ student, initialTab }) {
                         <div key={h.id} style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:12,padding:"14px 18px"}}>
                           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
                             <input value={h.title||""} onChange={e=>updHw(h.id,"title",e.target.value)} style={{fontSize:14,fontWeight:600,color:C.tp,border:"none",outline:"none",background:"transparent",padding:0,fontFamily:"inherit",minWidth:0,flex:1}} placeholder="숙제" disabled={isParent}/>
-                            <span style={{fontSize:10,background:pb,color:pc,padding:"2px 8px",borderRadius:5,fontWeight:600}}>{sl}</span>
+                            <span style={{fontSize:11,background:pb,color:pc,padding:"2px 8px",borderRadius:5,fontWeight:600}}>{sl}</span>
                           </div>
                           <div style={{display:"flex",alignItems:"center",gap:10}}>
                             <div onMouseDown={barDrag} style={{flex:1,height:10,background:C.bl,borderRadius:5,cursor:isParent?"default":"pointer",position:"relative"}}>
@@ -732,13 +747,13 @@ export default function StudentDetail({ student, initialTab }) {
               <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:12,padding:"14px 12px",overflow:"hidden"}}>
                 <div style={{fontSize:12,fontWeight:600,color:C.tp,marginBottom:6}}>오답 사유별</div>
                 <div style={{display:"flex",gap:3,marginBottom:8,flexWrap:"wrap"}}>
-                  <button onClick={()=>setReasonBook("")} style={{padding:"2px 8px",borderRadius:5,border:"1px solid "+(!reasonBook?C.ac:C.bd),background:!reasonBook?C.as:"transparent",fontSize:9,fontWeight:!reasonBook?600:400,color:!reasonBook?C.ac:C.ts,cursor:"pointer",fontFamily:"inherit"}}>전체</button>
-                  {wBooks.map(b=>(<button key={b} onClick={()=>setReasonBook(reasonBook===b?"":b)} style={{padding:"2px 8px",borderRadius:5,border:"1px solid "+(reasonBook===b?C.ac:C.bd),background:reasonBook===b?C.as:"transparent",fontSize:9,fontWeight:reasonBook===b?600:400,color:reasonBook===b?C.ac:C.ts,cursor:"pointer",fontFamily:"inherit"}}>{b}</button>))}
+                  <button onClick={()=>setReasonBook("")} style={{padding:"2px 8px",borderRadius:5,border:"1px solid "+(!reasonBook?C.ac:C.bd),background:!reasonBook?C.as:"transparent",fontSize:11,fontWeight:!reasonBook?600:400,color:!reasonBook?C.ac:C.ts,cursor:"pointer",fontFamily:"inherit"}}>전체</button>
+                  {wBooks.map(b=>(<button key={b} onClick={()=>setReasonBook(reasonBook===b?"":b)} style={{padding:"2px 8px",borderRadius:5,border:"1px solid "+(reasonBook===b?C.ac:C.bd),background:reasonBook===b?C.as:"transparent",fontSize:11,fontWeight:reasonBook===b?600:400,color:reasonBook===b?C.ac:C.ts,cursor:"pointer",fontFamily:"inherit"}}>{b}</button>))}
                 </div>
                 {reasonData.length>0?(<ResponsiveContainer width="100%" height={120}>
                   <BarChart data={reasonData} margin={{top:4,right:4,left:-20,bottom:0}}>
                     <XAxis dataKey="name" tick={<TruncTick fill={C.tt} maxLen={isMobile?4:6}/>} axisLine={false} tickLine={false} interval={0}/>
-                    <YAxis tick={{fontSize:9,fill:C.tt}} axisLine={false} tickLine={false} allowDecimals={false}/>
+                    <YAxis tick={{fontSize:11,fill:C.tt}} axisLine={false} tickLine={false} allowDecimals={false}/>
                     <Tooltip content={<ReasonTooltip/>}/>
                     <Bar dataKey="count" radius={[4,4,0,0]} barSize={14}>
                       {reasonData.map((d,i)=>(<Cell key={i} fill={d.fill}/>))}
@@ -749,12 +764,12 @@ export default function StudentDetail({ student, initialTab }) {
               <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:12,padding:"14px 12px",overflow:"hidden"}}>
                 <div style={{fontSize:12,fontWeight:600,color:C.tp,marginBottom:6}}>단원별 오답</div>
                 <div style={{display:"flex",gap:3,marginBottom:8,flexWrap:"wrap"}}>
-                  {wBooks.map(b=>(<button key={b} onClick={()=>setChapterBook(b)} style={{padding:"2px 8px",borderRadius:5,border:"1px solid "+(chapterBookSel===b?C.ac:C.bd),background:chapterBookSel===b?C.as:"transparent",fontSize:9,fontWeight:chapterBookSel===b?600:400,color:chapterBookSel===b?C.ac:C.ts,cursor:"pointer",fontFamily:"inherit"}}>{b}</button>))}
+                  {wBooks.map(b=>(<button key={b} onClick={()=>setChapterBook(b)} style={{padding:"2px 8px",borderRadius:5,border:"1px solid "+(chapterBookSel===b?C.ac:C.bd),background:chapterBookSel===b?C.as:"transparent",fontSize:11,fontWeight:chapterBookSel===b?600:400,color:chapterBookSel===b?C.ac:C.ts,cursor:"pointer",fontFamily:"inherit"}}>{b}</button>))}
                 </div>
                 {chapterData.length>0?(<ResponsiveContainer width="100%" height={120}>
                   <BarChart data={chapterData} margin={{top:4,right:4,left:-20,bottom:0}}>
                     <XAxis dataKey="name" tick={<TruncTick fill={C.tt} maxLen={isMobile?4:6}/>} axisLine={false} tickLine={false} interval={0}/>
-                    <YAxis tick={{fontSize:9,fill:C.tt}} axisLine={false} tickLine={false} allowDecimals={false}/>
+                    <YAxis tick={{fontSize:11,fill:C.tt}} axisLine={false} tickLine={false} allowDecimals={false}/>
                     <Tooltip content={<ReasonTooltip/>}/>
                     <Bar dataKey="count" radius={[4,4,0,0]} barSize={14}>
                       {chapterData.map((d,i)=>(<Cell key={i} fill={d.fill}/>))}
@@ -802,20 +817,20 @@ export default function StudentDetail({ student, initialTab }) {
                     <td colSpan={cols} style={{padding:"7px 8px",background:C.sf,borderBottom:"1px solid "+C.bd}}>
                       <div style={{display:"flex",alignItems:"center",gap:6}}>
                         {cc&&<span style={{display:"inline-block",width:7,height:7,borderRadius:"50%",background:cc,flexShrink:0}}/>}
-                        {editingChapter&&editingChapter.book===book&&editingChapter.chapter===ch?(<><input value={editingChapter.value} onClick={e=>e.stopPropagation()} onChange={e=>setEditingChapter(p=>({...p,value:e.target.value}))} onKeyDown={e=>{if(e.key==="Enter"){e.stopPropagation();renameChapter(book,ch,editingChapter.value);}if(e.key==="Escape"){e.stopPropagation();setEditingChapter(null);}}} autoFocus style={{border:"1px solid "+C.ac,outline:"none",background:C.sf,fontSize:12,fontWeight:500,color:C.ts,fontFamily:"inherit",borderRadius:6,padding:"2px 8px",width:140}}/><button onClick={e=>{e.stopPropagation();renameChapter(book,ch,editingChapter.value);}} style={{background:C.ac,color:"#fff",border:"none",borderRadius:5,padding:"2px 8px",fontSize:10,cursor:"pointer",fontFamily:"inherit"}}>확인</button><button onClick={e=>{e.stopPropagation();setEditingChapter(null);}} style={{background:C.sfh,color:C.tt,border:"1px solid "+C.bd,borderRadius:5,padding:"2px 8px",fontSize:10,cursor:"pointer",fontFamily:"inherit"}}>취소</button></>):(<>
+                        {editingChapter&&editingChapter.book===book&&editingChapter.chapter===ch?(<><input value={editingChapter.value} onClick={e=>e.stopPropagation()} onChange={e=>setEditingChapter(p=>({...p,value:e.target.value}))} onKeyDown={e=>{if(e.key==="Enter"){e.stopPropagation();renameChapter(book,ch,editingChapter.value);}if(e.key==="Escape"){e.stopPropagation();setEditingChapter(null);}}} autoFocus style={{border:"1px solid "+C.ac,outline:"none",background:C.sf,fontSize:12,fontWeight:500,color:C.ts,fontFamily:"inherit",borderRadius:6,padding:"2px 8px",width:140}}/><button onClick={e=>{e.stopPropagation();renameChapter(book,ch,editingChapter.value);}} style={{background:C.ac,color:"#fff",border:"none",borderRadius:5,padding:"2px 8px",fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>확인</button><button onClick={e=>{e.stopPropagation();setEditingChapter(null);}} style={{background:C.sfh,color:C.tt,border:"1px solid "+C.bd,borderRadius:5,padding:"2px 8px",fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>취소</button></>):(<>
                         <span style={{fontSize:12,fontWeight:500,color:ch?C.ts:C.tt}}>{ch||"단원 미지정"}</span>
-                        <span style={{fontSize:10,color:C.tt}}>({chItems.length})</span>
-                        {chResolved>0&&<span style={{fontSize:9,color:C.su,background:C.sb,padding:"1px 6px",borderRadius:4}}>{chResolved}해결</span>}
-                        {!isParent&&ch&&<button onClick={e=>{e.stopPropagation();setEditingChapter({book,chapter:ch,value:ch});}} style={{background:"none",border:"none",color:C.ac,cursor:"pointer",fontSize:10,fontFamily:"inherit",padding:"0 4px"}}>수정</button>}
+                        <span style={{fontSize:11,color:C.tt}}>({chItems.length})</span>
+                        {chResolved>0&&<span style={{fontSize:11,color:C.su,background:C.sb,padding:"1px 6px",borderRadius:4}}>{chResolved}해결</span>}
+                        {!isParent&&ch&&<button onClick={e=>{e.stopPropagation();setEditingChapter({book,chapter:ch,value:ch});}} style={{background:"none",border:"none",color:C.ac,cursor:"pointer",fontSize:11,fontFamily:"inherit",padding:"0 4px"}}>수정</button>}
                         </>)}
-                        <span style={{fontSize:10,color:C.tt,marginLeft:"auto"}}>{chExp?"▲":"▼"}</span>
+                        <span style={{fontSize:11,color:C.tt,marginLeft:"auto"}}>{chExp?"▲":"▼"}</span>
                       </div>
                     </td>
                   </tr>
                   {chExp&&chItems.map(w=>{const rc=reasonColorMap[w.reason||"미분류"]||"#888";const resolved=!!w.resolved;const rSt=resolved?{textDecoration:"line-through",opacity:.45}:{};return(<tr key={w.id} style={{borderBottom:"1px solid "+C.bl,background:resolved?C.sb+"60":"transparent"}}>
                   <td style={{padding:"6px 2px",width:28,textAlign:"center"}}>{wBulkMode?<input type="checkbox" checked={wSelected.has(w.id)} onChange={()=>setWSelected(p=>{const n=new Set(p);n.has(w.id)?n.delete(w.id):n.add(w.id);return n;})} style={{cursor:"pointer"}}/>:<button onClick={()=>updWrong(w.id,"resolved",!resolved)} style={{width:18,height:18,borderRadius:"50%",border:"2px solid "+(resolved?C.su:"#D4D4D4"),background:resolved?C.su:"transparent",cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center",padding:0,flexShrink:0}}>{resolved&&<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}</button>}</td>
                   <td style={{padding:"6px 4px",...rSt}}>{isParent?<span style={{fontWeight:600,color:C.tp,fontSize:12,padding:"0 6px"}}>{w.problem_num}</span>:<input value={w.problem_num||""} onChange={e=>updWrong(w.id,"problem_num",e.target.value)} style={{border:"none",outline:"none",background:"transparent",fontWeight:600,color:C.tp,fontSize:12,fontFamily:"inherit",width:60,padding:"2px 6px",...rSt}}/>}</td>
-                  <td style={{padding:"6px 4px",...rSt}}>{isParent?<span style={{background:rc+"20",color:rc,padding:"2px 8px",borderRadius:5,fontSize:10,fontWeight:600}}>{w.reason||"-"}</span>:<input value={w.reason||""} onChange={e=>updWrong(w.id,"reason",e.target.value)} style={{border:"none",outline:"none",background:rc+"20",color:rc,fontSize:11,fontWeight:600,fontFamily:"inherit",borderRadius:5,padding:"2px 8px",width:"100%",...rSt}} placeholder="사유"/>}</td>
+                  <td style={{padding:"6px 4px",...rSt}}>{isParent?<span style={{background:rc+"20",color:rc,padding:"2px 8px",borderRadius:5,fontSize:11,fontWeight:600}}>{w.reason||"-"}</span>:<input value={w.reason||""} onChange={e=>updWrong(w.id,"reason",e.target.value)} style={{border:"none",outline:"none",background:rc+"20",color:rc,fontSize:11,fontWeight:600,fontFamily:"inherit",borderRadius:5,padding:"2px 8px",width:"100%",...rSt}} placeholder="사유"/>}</td>
                   <td style={{padding:"6px 4px",...rSt}}>{isParent?<span style={{color:C.ts,fontSize:12,padding:"0 6px"}}>{w.note||"-"}</span>:<input value={w.note||""} onChange={e=>updWrong(w.id,"note",e.target.value)} style={{border:"none",outline:"none",background:"transparent",color:C.ts,fontSize:12,fontFamily:"inherit",width:"100%",padding:"2px 6px",...rSt}} placeholder="메모"/>}</td>
                   <td style={{padding:"6px 4px",width:48}}>{!isParent&&!wBulkMode&&<button onClick={()=>delWrong(w.id)} style={{background:"none",border:"none",color:C.tt,cursor:"pointer",fontSize:11,fontFamily:"inherit"}}>삭제</button>}</td>
                 </tr>);})}
@@ -830,20 +845,20 @@ export default function StudentDetail({ student, initialTab }) {
                     <td colSpan={cols} style={{padding:"7px 8px",background:C.sf,borderBottom:"1px solid "+C.bd}}>
                       <div style={{display:"flex",alignItems:"center",gap:6}}>
                         {cc&&<span style={{display:"inline-block",width:7,height:7,borderRadius:"50%",background:cc,flexShrink:0}}/>}
-                        {editingChapter&&editingChapter.book===wFilter&&editingChapter.chapter===ch?(<><input value={editingChapter.value} onClick={e=>e.stopPropagation()} onChange={e=>setEditingChapter(p=>({...p,value:e.target.value}))} onKeyDown={e=>{if(e.key==="Enter"){e.stopPropagation();renameChapter(wFilter,ch,editingChapter.value);}if(e.key==="Escape"){e.stopPropagation();setEditingChapter(null);}}} autoFocus style={{border:"1px solid "+C.ac,outline:"none",background:C.sf,fontSize:12,fontWeight:500,color:C.ts,fontFamily:"inherit",borderRadius:6,padding:"2px 8px",width:140}}/><button onClick={e=>{e.stopPropagation();renameChapter(wFilter,ch,editingChapter.value);}} style={{background:C.ac,color:"#fff",border:"none",borderRadius:5,padding:"2px 8px",fontSize:10,cursor:"pointer",fontFamily:"inherit"}}>확인</button><button onClick={e=>{e.stopPropagation();setEditingChapter(null);}} style={{background:C.sfh,color:C.tt,border:"1px solid "+C.bd,borderRadius:5,padding:"2px 8px",fontSize:10,cursor:"pointer",fontFamily:"inherit"}}>취소</button></>):(<>
+                        {editingChapter&&editingChapter.book===wFilter&&editingChapter.chapter===ch?(<><input value={editingChapter.value} onClick={e=>e.stopPropagation()} onChange={e=>setEditingChapter(p=>({...p,value:e.target.value}))} onKeyDown={e=>{if(e.key==="Enter"){e.stopPropagation();renameChapter(wFilter,ch,editingChapter.value);}if(e.key==="Escape"){e.stopPropagation();setEditingChapter(null);}}} autoFocus style={{border:"1px solid "+C.ac,outline:"none",background:C.sf,fontSize:12,fontWeight:500,color:C.ts,fontFamily:"inherit",borderRadius:6,padding:"2px 8px",width:140}}/><button onClick={e=>{e.stopPropagation();renameChapter(wFilter,ch,editingChapter.value);}} style={{background:C.ac,color:"#fff",border:"none",borderRadius:5,padding:"2px 8px",fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>확인</button><button onClick={e=>{e.stopPropagation();setEditingChapter(null);}} style={{background:C.sfh,color:C.tt,border:"1px solid "+C.bd,borderRadius:5,padding:"2px 8px",fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>취소</button></>):(<>
                         <span style={{fontSize:12,fontWeight:500,color:ch?C.ts:C.tt}}>{ch||"단원 미지정"}</span>
-                        <span style={{fontSize:10,color:C.tt}}>({chItems.length})</span>
-                        {chResolved>0&&<span style={{fontSize:9,color:C.su,background:C.sb,padding:"1px 6px",borderRadius:4}}>{chResolved}해결</span>}
-                        {!isParent&&ch&&<button onClick={e=>{e.stopPropagation();setEditingChapter({book:wFilter,chapter:ch,value:ch});}} style={{background:"none",border:"none",color:C.ac,cursor:"pointer",fontSize:10,fontFamily:"inherit",padding:"0 4px"}}>수정</button>}
+                        <span style={{fontSize:11,color:C.tt}}>({chItems.length})</span>
+                        {chResolved>0&&<span style={{fontSize:11,color:C.su,background:C.sb,padding:"1px 6px",borderRadius:4}}>{chResolved}해결</span>}
+                        {!isParent&&ch&&<button onClick={e=>{e.stopPropagation();setEditingChapter({book:wFilter,chapter:ch,value:ch});}} style={{background:"none",border:"none",color:C.ac,cursor:"pointer",fontSize:11,fontFamily:"inherit",padding:"0 4px"}}>수정</button>}
                         </>)}
-                        <span style={{fontSize:10,color:C.tt,marginLeft:"auto"}}>{chExp?"▲":"▼"}</span>
+                        <span style={{fontSize:11,color:C.tt,marginLeft:"auto"}}>{chExp?"▲":"▼"}</span>
                       </div>
                     </td>
                   </tr>
                   {chExp&&chItems.map(w=>{const rc=reasonColorMap[w.reason||"미분류"]||"#888";const resolved=!!w.resolved;const rSt=resolved?{textDecoration:"line-through",opacity:.45}:{};return(<tr key={w.id} style={{borderBottom:"1px solid "+C.bl,background:resolved?C.sb+"60":"transparent"}}>
                   <td style={{padding:"6px 2px",width:28,textAlign:"center"}}>{wBulkMode?<input type="checkbox" checked={wSelected.has(w.id)} onChange={()=>setWSelected(p=>{const n=new Set(p);n.has(w.id)?n.delete(w.id):n.add(w.id);return n;})} style={{cursor:"pointer"}}/>:<button onClick={()=>updWrong(w.id,"resolved",!resolved)} style={{width:18,height:18,borderRadius:"50%",border:"2px solid "+(resolved?C.su:"#D4D4D4"),background:resolved?C.su:"transparent",cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center",padding:0,flexShrink:0}}>{resolved&&<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}</button>}</td>
                   <td style={{padding:"6px 4px",...rSt}}>{isParent?<span style={{fontWeight:600,color:C.tp,fontSize:12,padding:"0 6px"}}>{w.problem_num}</span>:<input value={w.problem_num||""} onChange={e=>updWrong(w.id,"problem_num",e.target.value)} style={{border:"none",outline:"none",background:"transparent",fontWeight:600,color:C.tp,fontSize:12,fontFamily:"inherit",width:60,padding:"2px 6px",...rSt}}/>}</td>
-                  <td style={{padding:"6px 4px",...rSt}}>{isParent?<span style={{background:rc+"20",color:rc,padding:"2px 8px",borderRadius:5,fontSize:10,fontWeight:600}}>{w.reason||"-"}</span>:<input value={w.reason||""} onChange={e=>updWrong(w.id,"reason",e.target.value)} style={{border:"none",outline:"none",background:rc+"20",color:rc,fontSize:11,fontWeight:600,fontFamily:"inherit",borderRadius:5,padding:"2px 8px",width:"100%",...rSt}} placeholder="사유"/>}</td>
+                  <td style={{padding:"6px 4px",...rSt}}>{isParent?<span style={{background:rc+"20",color:rc,padding:"2px 8px",borderRadius:5,fontSize:11,fontWeight:600}}>{w.reason||"-"}</span>:<input value={w.reason||""} onChange={e=>updWrong(w.id,"reason",e.target.value)} style={{border:"none",outline:"none",background:rc+"20",color:rc,fontSize:11,fontWeight:600,fontFamily:"inherit",borderRadius:5,padding:"2px 8px",width:"100%",...rSt}} placeholder="사유"/>}</td>
                   <td style={{padding:"6px 4px",...rSt}}>{isParent?<span style={{color:C.ts,fontSize:12,padding:"0 6px"}}>{w.note||"-"}</span>:<input value={w.note||""} onChange={e=>updWrong(w.id,"note",e.target.value)} style={{border:"none",outline:"none",background:"transparent",color:C.ts,fontSize:12,fontFamily:"inherit",width:"100%",padding:"2px 6px",...rSt}} placeholder="메모"/>}</td>
                   <td style={{padding:"6px 4px",width:48}}>{!isParent&&!wBulkMode&&<button onClick={()=>delWrong(w.id)} style={{background:"none",border:"none",color:C.tt,cursor:"pointer",fontSize:11,fontFamily:"inherit"}}>삭제</button>}</td>
                 </tr>);})}
@@ -894,12 +909,12 @@ export default function StudentDetail({ student, initialTab }) {
                       <div style={{flex:1,minWidth:0}}>
                         <div style={{display:"flex",alignItems:"center",gap:6}}>
                           <span style={{fontSize:14,fontWeight:600,color:C.tp}}>{tb.title}</span>
-                          {tb.subject&&<span style={{fontSize:10,background:"#EFF6FF",color:C.ac,padding:"2px 8px",borderRadius:5,fontWeight:600}}>{tb.subject}</span>}
+                          {tb.subject&&<span style={{fontSize:11,background:"#EFF6FF",color:C.ac,padding:"2px 8px",borderRadius:5,fontWeight:600}}>{tb.subject}</span>}
                         </div>
                         {tb.publisher&&<div style={{fontSize:12,color:C.ts}}>{tb.publisher}</div>}
                       </div>
                       <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
-                        {wCnt>0&&<span style={{fontSize:10,background:C.db,color:C.dn,padding:"2px 8px",borderRadius:5,fontWeight:600}}>오답 {wCnt}</span>}
+                        {wCnt>0&&<span style={{fontSize:11,background:C.db,color:C.dn,padding:"2px 8px",borderRadius:5,fontWeight:600}}>오답 {wCnt}</span>}
                         {!isParent&&<>
                           <button onClick={()=>{setEditTb(tb);setEditTbForm({title:tb.title,publisher:tb.publisher||"",subject:tb.subject||""});}} style={{background:"none",border:"none",color:C.ac,cursor:"pointer",fontSize:11,fontFamily:"inherit"}}>수정</button>
                           <button onClick={()=>delTextbook(tb.id)} style={{background:"none",border:"none",color:C.tt,cursor:"pointer",fontSize:11,fontFamily:"inherit"}}>삭제</button>
@@ -910,11 +925,11 @@ export default function StudentDetail({ student, initialTab }) {
                     <div style={{marginTop:10,paddingTop:10,borderTop:"1px solid "+C.bl}}>
                       <div style={{fontSize:11,fontWeight:500,color:C.tt,marginBottom:6}}>단원 ({chs.length})</div>
                       {chs.length>0&&<div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:8}}>
-                        {chs.map((ch,ci)=>(<span key={ci} style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:11,background:C.sfh,color:C.ts,padding:"3px 8px",borderRadius:6}}>{ch}{!isParent&&<button onClick={()=>delChapter(tb.id,ci)} style={{background:"none",border:"none",color:C.tt,cursor:"pointer",fontSize:10,padding:0,lineHeight:1}}>✕</button>}</span>))}
+                        {chs.map((ch,ci)=>(<span key={ci} style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:11,background:C.sfh,color:C.ts,padding:"3px 8px",borderRadius:6}}>{ch}{!isParent&&<button onClick={()=>delChapter(tb.id,ci)} style={{background:"none",border:"none",color:C.tt,cursor:"pointer",fontSize:11,padding:0,lineHeight:1}}>✕</button>}</span>))}
                       </div>}
                       {!isParent&&<div style={{display:"flex",gap:6,alignItems:"center"}}>
                         <input value={editTb?.id===tb.id?editNewChapter:(newChapterMap[tb.id]||"")} onChange={e=>{if(editTb?.id===tb.id)setEditNewChapter(e.target.value);else setNewChapterMap(p=>({...p,[tb.id]:e.target.value}));}} onKeyDown={e=>{if(e.key==="Enter"){const v=editTb?.id===tb.id?editNewChapter:(newChapterMap[tb.id]||"");addChapter(tb.id,v);if(editTb?.id===tb.id)setEditNewChapter("");else setNewChapterMap(p=>({...p,[tb.id]:""}));}}} style={{...is,fontSize:11,padding:"4px 8px",width:140}} placeholder="단원명 입력..."/>
-                        <button onClick={()=>{const v=editTb?.id===tb.id?editNewChapter:(newChapterMap[tb.id]||"");addChapter(tb.id,v);if(editTb?.id===tb.id)setEditNewChapter("");else setNewChapterMap(p=>({...p,[tb.id]:""}));}} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:6,padding:"4px 10px",fontSize:10,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>추가</button>
+                        <button onClick={()=>{const v=editTb?.id===tb.id?editNewChapter:(newChapterMap[tb.id]||"");addChapter(tb.id,v);if(editTb?.id===tb.id)setEditNewChapter("");else setNewChapterMap(p=>({...p,[tb.id]:""}));}} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:6,padding:"4px 10px",fontSize:11,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>추가</button>
                       </div>}
                     </div>
                   </div>)}
@@ -984,7 +999,7 @@ export default function StudentDetail({ student, initialTab }) {
                 <div style={{fontSize:22,fontWeight:700,color:C.su}}>{maxSc}점</div>
               </div>
               <div style={{background:"#F5F5F4",borderRadius:12,padding:"16px 12px",textAlign:"center"}}>
-                <div style={{fontSize:11,color:C.tt,marginBottom:4}}>평균 점수 <span style={{fontSize:10,color:C.tt}}>(1년)</span></div>
+                <div style={{fontSize:11,color:C.tt,marginBottom:4}}>평균 점수 <span style={{fontSize:11,color:C.tt}}>(1년)</span></div>
                 <div style={{fontSize:22,fontWeight:700,color:C.ts}}>{avgSc}점</div>
               </div>
             </div>):(<div className="score-stats" style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
@@ -1016,10 +1031,10 @@ export default function StudentDetail({ student, initialTab }) {
                   <AreaChart data={chartData} margin={{top:10,right:10,left:-10,bottom:0}}>
                     <defs><linearGradient id="scoreGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor={C.ac} stopOpacity={0.15}/><stop offset="95%" stopColor={C.ac} stopOpacity={0}/></linearGradient></defs>
                     <CartesianGrid strokeDasharray="3 3" stroke={C.bl} vertical={false}/>
-                    <XAxis dataKey="monthLabel" tick={{fontSize:10,fill:C.tt}} axisLine={false} tickLine={false}/>
-                    <YAxis domain={[minY,100]} tick={{fontSize:10,fill:C.tt}} axisLine={false} tickLine={false}/>
+                    <XAxis dataKey="monthLabel" tick={{fontSize:11,fill:C.tt}} axisLine={false} tickLine={false}/>
+                    <YAxis domain={[minY,100]} tick={{fontSize:11,fill:C.tt}} axisLine={false} tickLine={false}/>
                     <Tooltip content={<CustomTooltip/>}/>
-                    {goalNum&&<ReferenceLine y={goalNum} stroke={C.wn} strokeDasharray="6 4" strokeWidth={1.5} label={{value:`목표 ${goalNum}`,position:"insideTopRight",fontSize:10,fill:C.wn,fontWeight:600}}/>}
+                    {goalNum&&<ReferenceLine y={goalNum} stroke={C.wn} strokeDasharray="6 4" strokeWidth={1.5} label={{value:`목표 ${goalNum}`,position:"insideTopRight",fontSize:11,fill:C.wn,fontWeight:600}}/>}
                     <Area type="monotone" dataKey="score" stroke={C.ac} fill="url(#scoreGrad)" strokeWidth={2.5} dot={{r:5,fill:C.ac,stroke:"#fff",strokeWidth:2}}/>
                   </AreaChart>
                 </ResponsiveContainer>:<div style={{textAlign:"center",padding:30,color:C.tt,fontSize:13}}>점수 데이터가 없습니다</div>}
@@ -1028,8 +1043,8 @@ export default function StudentDetail({ student, initialTab }) {
                   <AreaChart data={gradeChartData} margin={{top:10,right:10,left:-10,bottom:0}}>
                     <defs><linearGradient id="gradeGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.15}/><stop offset="95%" stopColor="#8B5CF6" stopOpacity={0}/></linearGradient></defs>
                     <CartesianGrid strokeDasharray="3 3" stroke={C.bl} vertical={false}/>
-                    <XAxis dataKey="monthLabel" tick={{fontSize:10,fill:C.tt}} axisLine={false} tickLine={false}/>
-                    <YAxis domain={[1,9]} reversed tick={{fontSize:10,fill:C.tt}} axisLine={false} tickLine={false} tickFormatter={v=>v+"등급"}/>
+                    <XAxis dataKey="monthLabel" tick={{fontSize:11,fill:C.tt}} axisLine={false} tickLine={false}/>
+                    <YAxis domain={[1,9]} reversed tick={{fontSize:11,fill:C.tt}} axisLine={false} tickLine={false} tickFormatter={v=>v+"등급"}/>
                     <Tooltip content={<CustomTooltip/>}/>
                     <Area type="monotone" dataKey="grade" stroke="#8B5CF6" fill="url(#gradeGrad)" strokeWidth={2.5} dot={{r:5,fill:"#8B5CF6",stroke:"#fff",strokeWidth:2}}/>
                   </AreaChart>
@@ -1046,7 +1061,7 @@ export default function StudentDetail({ student, initialTab }) {
                 const grBarColor=sc.grade!=null?gradeColor(sc.grade):C.tt;
                 return(<div key={sc.id} style={{display:"flex",alignItems:"center",padding:"10px 4px",cursor:isParent?undefined:"pointer",borderRadius:8,transition:"background .15s"}} onClick={()=>{if(!isParent)openEditScore(sc);}} onMouseEnter={e=>{if(!isParent)e.currentTarget.style.background=C.sfh;}} onMouseLeave={e=>{e.currentTarget.style.background="transparent";}}>
                   <div style={{minWidth:80,flexShrink:0}}>
-                    {i===0&&<div style={{fontSize:10,fontWeight:600,color:C.ac,marginBottom:2}}>최근</div>}
+                    {i===0&&<div style={{fontSize:11,fontWeight:600,color:C.ac,marginBottom:2}}>최근</div>}
                     <div style={{display:"flex",alignItems:"baseline",gap:8}}>
                       <span style={{fontSize:14,fontWeight:700,color:C.tp}}>{sc.label||`${sorted.length-i}차`}</span>
                       <span style={{fontSize:12,color:C.tt}}>{mLabel}</span>
@@ -1105,25 +1120,25 @@ export default function StudentDetail({ student, initialTab }) {
               <div style={{background:C.sb,border:"1px solid #BBF7D0",borderRadius:14,padding:16}}>
                 <div style={{fontSize:13,fontWeight:600,color:C.su,marginBottom:8}}>💪 강점 (S)</div>
                 <textarea value={planStrength} onChange={e=>{setPlanStrength(e.target.value);e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px';}} onKeyDown={e=>bk(e,planStrength,setPlanStrength)} ref={el=>{if(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}}} style={{...is,minHeight:60,resize:"none",fontSize:12,background:"transparent",border:"1px solid #BBF7D0",overflow:"hidden"}} placeholder="강점 기록..."/>
-                {planStrengthPrivate||planEditing?<><div style={{display:"flex",alignItems:"center",gap:4,marginTop:8,marginBottom:4}}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={C.dn} strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg><span style={{fontSize:10,color:C.dn,fontWeight:600}}>비공개</span></div>
+                {planStrengthPrivate||planEditing?<><div style={{display:"flex",alignItems:"center",gap:4,marginTop:8,marginBottom:4}}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={C.dn} strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg><span style={{fontSize:11,color:C.dn,fontWeight:600}}>비공개</span></div>
                 <textarea value={planStrengthPrivate} onChange={e=>{setPlanStrengthPrivate(e.target.value);e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px';}} onKeyDown={e=>bk(e,planStrengthPrivate,setPlanStrengthPrivate)} ref={el=>{if(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}}} style={{...is,minHeight:36,resize:"none",fontSize:11,background:"rgba(254,226,226,.3)",border:"1px dashed #FECACA",overflow:"hidden"}} placeholder="선생님 메모..."/></>:null}
               </div>
               <div style={{background:C.db,border:"1px solid #FECACA",borderRadius:14,padding:16}}>
                 <div style={{fontSize:13,fontWeight:600,color:C.dn,marginBottom:8}}>🔧 약점 (W)</div>
                 <textarea value={planWeakness} onChange={e=>{setPlanWeakness(e.target.value);e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px';}} onKeyDown={e=>bk(e,planWeakness,setPlanWeakness)} ref={el=>{if(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}}} style={{...is,minHeight:60,resize:"none",fontSize:12,background:"transparent",border:"1px solid #FECACA",overflow:"hidden"}} placeholder="약점 기록..."/>
-                {planWeaknessPrivate||planEditing?<><div style={{display:"flex",alignItems:"center",gap:4,marginTop:8,marginBottom:4}}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={C.dn} strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg><span style={{fontSize:10,color:C.dn,fontWeight:600}}>비공개</span></div>
+                {planWeaknessPrivate||planEditing?<><div style={{display:"flex",alignItems:"center",gap:4,marginTop:8,marginBottom:4}}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={C.dn} strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg><span style={{fontSize:11,color:C.dn,fontWeight:600}}>비공개</span></div>
                 <textarea value={planWeaknessPrivate} onChange={e=>{setPlanWeaknessPrivate(e.target.value);e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px';}} onKeyDown={e=>bk(e,planWeaknessPrivate,setPlanWeaknessPrivate)} ref={el=>{if(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}}} style={{...is,minHeight:36,resize:"none",fontSize:11,background:"rgba(254,226,226,.3)",border:"1px dashed #FECACA",overflow:"hidden"}} placeholder="선생님 메모..."/></>:null}
               </div>
               <div style={{background:"#EFF6FF",border:"1px solid #BFDBFE",borderRadius:14,padding:16}}>
                 <div style={{fontSize:13,fontWeight:600,color:C.ac,marginBottom:8}}>🚀 기회 (O)</div>
                 <textarea value={planOpportunity} onChange={e=>{setPlanOpportunity(e.target.value);e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px';}} onKeyDown={e=>bk(e,planOpportunity,setPlanOpportunity)} ref={el=>{if(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}}} style={{...is,minHeight:60,resize:"none",fontSize:12,background:"transparent",border:"1px solid #BFDBFE",overflow:"hidden"}} placeholder="기회 요인 기록..."/>
-                {planOpportunityPrivate||planEditing?<><div style={{display:"flex",alignItems:"center",gap:4,marginTop:8,marginBottom:4}}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={C.dn} strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg><span style={{fontSize:10,color:C.dn,fontWeight:600}}>비공개</span></div>
+                {planOpportunityPrivate||planEditing?<><div style={{display:"flex",alignItems:"center",gap:4,marginTop:8,marginBottom:4}}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={C.dn} strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg><span style={{fontSize:11,color:C.dn,fontWeight:600}}>비공개</span></div>
                 <textarea value={planOpportunityPrivate} onChange={e=>{setPlanOpportunityPrivate(e.target.value);e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px';}} onKeyDown={e=>bk(e,planOpportunityPrivate,setPlanOpportunityPrivate)} ref={el=>{if(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}}} style={{...is,minHeight:36,resize:"none",fontSize:11,background:"rgba(254,226,226,.3)",border:"1px dashed #FECACA",overflow:"hidden"}} placeholder="선생님 메모..."/></>:null}
               </div>
               <div style={{background:C.wb,border:"1px solid #FDE68A",borderRadius:14,padding:16}}>
                 <div style={{fontSize:13,fontWeight:600,color:"#B45309",marginBottom:8}}>⚠️ 위협 (T)</div>
                 <textarea value={planThreat} onChange={e=>{setPlanThreat(e.target.value);e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px';}} onKeyDown={e=>bk(e,planThreat,setPlanThreat)} ref={el=>{if(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}}} style={{...is,minHeight:60,resize:"none",fontSize:12,background:"transparent",border:"1px solid #FDE68A",overflow:"hidden"}} placeholder="위협 요인 기록..."/>
-                {planThreatPrivate||planEditing?<><div style={{display:"flex",alignItems:"center",gap:4,marginTop:8,marginBottom:4}}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={C.dn} strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg><span style={{fontSize:10,color:C.dn,fontWeight:600}}>비공개</span></div>
+                {planThreatPrivate||planEditing?<><div style={{display:"flex",alignItems:"center",gap:4,marginTop:8,marginBottom:4}}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={C.dn} strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg><span style={{fontSize:11,color:C.dn,fontWeight:600}}>비공개</span></div>
                 <textarea value={planThreatPrivate} onChange={e=>{setPlanThreatPrivate(e.target.value);e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px';}} onKeyDown={e=>bk(e,planThreatPrivate,setPlanThreatPrivate)} ref={el=>{if(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}}} style={{...is,minHeight:36,resize:"none",fontSize:11,background:"rgba(254,226,226,.3)",border:"1px dashed #FECACA",overflow:"hidden"}} placeholder="선생님 메모..."/></>:null}
               </div>
             </div>
@@ -1136,28 +1151,28 @@ export default function StudentDetail({ student, initialTab }) {
             <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:20,marginBottom:16}}>
               <div style={{fontSize:13,fontWeight:600,color:C.ac,marginBottom:10}}>🧭 학습 전략</div>
               <div style={{fontSize:13,color:planStrategy?C.tp:C.tt,lineHeight:1.7,whiteSpace:"pre-wrap",minHeight:20}}>{planStrategy||"아직 작성된 전략이 없습니다"}</div>
-              {!isParent&&planStrategyPrivate&&<div style={{marginTop:10,padding:"8px 12px",background:"#FEF2F2",border:"1px dashed #FECACA",borderRadius:8}}><div style={{display:"flex",alignItems:"center",gap:4,marginBottom:4}}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={C.dn} strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg><span style={{fontSize:10,color:C.dn,fontWeight:600}}>선생님 메모</span></div><div style={{fontSize:12,color:C.tp,lineHeight:1.6,whiteSpace:"pre-wrap"}}>{planStrategyPrivate}</div></div>}
+              {!isParent&&planStrategyPrivate&&<div style={{marginTop:10,padding:"8px 12px",background:"#FEF2F2",border:"1px dashed #FECACA",borderRadius:8}}><div style={{display:"flex",alignItems:"center",gap:4,marginBottom:4}}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={C.dn} strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg><span style={{fontSize:11,color:C.dn,fontWeight:600}}>선생님 메모</span></div><div style={{fontSize:12,color:C.tp,lineHeight:1.6,whiteSpace:"pre-wrap"}}>{planStrategyPrivate}</div></div>}
             </div>
             <div className="swot-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}>
               <div style={{background:C.sb,border:"1px solid #BBF7D0",borderRadius:14,padding:16}}>
                 <div style={{fontSize:13,fontWeight:600,color:C.su,marginBottom:8}}>💪 강점 (S)</div>
                 <div style={{fontSize:12,color:planStrength?C.tp:C.tt,lineHeight:1.7,whiteSpace:"pre-wrap",minHeight:20}}>{planStrength||"미작성"}</div>
-                {!isParent&&planStrengthPrivate&&<div style={{marginTop:8,padding:"6px 10px",background:"rgba(254,226,226,.3)",border:"1px dashed #FECACA",borderRadius:6}}><div style={{display:"flex",alignItems:"center",gap:4,marginBottom:2}}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={C.dn} strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg><span style={{fontSize:9,color:C.dn,fontWeight:600}}>비공개</span></div><div style={{fontSize:11,color:C.tp,lineHeight:1.5,whiteSpace:"pre-wrap"}}>{planStrengthPrivate}</div></div>}
+                {!isParent&&planStrengthPrivate&&<div style={{marginTop:8,padding:"6px 10px",background:"rgba(254,226,226,.3)",border:"1px dashed #FECACA",borderRadius:6}}><div style={{display:"flex",alignItems:"center",gap:4,marginBottom:2}}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={C.dn} strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg><span style={{fontSize:11,color:C.dn,fontWeight:600}}>비공개</span></div><div style={{fontSize:11,color:C.tp,lineHeight:1.5,whiteSpace:"pre-wrap"}}>{planStrengthPrivate}</div></div>}
               </div>
               <div style={{background:C.db,border:"1px solid #FECACA",borderRadius:14,padding:16}}>
                 <div style={{fontSize:13,fontWeight:600,color:C.dn,marginBottom:8}}>🔧 약점 (W)</div>
                 <div style={{fontSize:12,color:planWeakness?C.tp:C.tt,lineHeight:1.7,whiteSpace:"pre-wrap",minHeight:20}}>{planWeakness||"미작성"}</div>
-                {!isParent&&planWeaknessPrivate&&<div style={{marginTop:8,padding:"6px 10px",background:"rgba(254,226,226,.3)",border:"1px dashed #FECACA",borderRadius:6}}><div style={{display:"flex",alignItems:"center",gap:4,marginBottom:2}}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={C.dn} strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg><span style={{fontSize:9,color:C.dn,fontWeight:600}}>비공개</span></div><div style={{fontSize:11,color:C.tp,lineHeight:1.5,whiteSpace:"pre-wrap"}}>{planWeaknessPrivate}</div></div>}
+                {!isParent&&planWeaknessPrivate&&<div style={{marginTop:8,padding:"6px 10px",background:"rgba(254,226,226,.3)",border:"1px dashed #FECACA",borderRadius:6}}><div style={{display:"flex",alignItems:"center",gap:4,marginBottom:2}}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={C.dn} strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg><span style={{fontSize:11,color:C.dn,fontWeight:600}}>비공개</span></div><div style={{fontSize:11,color:C.tp,lineHeight:1.5,whiteSpace:"pre-wrap"}}>{planWeaknessPrivate}</div></div>}
               </div>
               <div style={{background:"#EFF6FF",border:"1px solid #BFDBFE",borderRadius:14,padding:16}}>
                 <div style={{fontSize:13,fontWeight:600,color:C.ac,marginBottom:8}}>🚀 기회 (O)</div>
                 <div style={{fontSize:12,color:planOpportunity?C.tp:C.tt,lineHeight:1.7,whiteSpace:"pre-wrap",minHeight:20}}>{planOpportunity||"미작성"}</div>
-                {!isParent&&planOpportunityPrivate&&<div style={{marginTop:8,padding:"6px 10px",background:"rgba(254,226,226,.3)",border:"1px dashed #FECACA",borderRadius:6}}><div style={{display:"flex",alignItems:"center",gap:4,marginBottom:2}}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={C.dn} strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg><span style={{fontSize:9,color:C.dn,fontWeight:600}}>비공개</span></div><div style={{fontSize:11,color:C.tp,lineHeight:1.5,whiteSpace:"pre-wrap"}}>{planOpportunityPrivate}</div></div>}
+                {!isParent&&planOpportunityPrivate&&<div style={{marginTop:8,padding:"6px 10px",background:"rgba(254,226,226,.3)",border:"1px dashed #FECACA",borderRadius:6}}><div style={{display:"flex",alignItems:"center",gap:4,marginBottom:2}}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={C.dn} strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg><span style={{fontSize:11,color:C.dn,fontWeight:600}}>비공개</span></div><div style={{fontSize:11,color:C.tp,lineHeight:1.5,whiteSpace:"pre-wrap"}}>{planOpportunityPrivate}</div></div>}
               </div>
               <div style={{background:C.wb,border:"1px solid #FDE68A",borderRadius:14,padding:16}}>
                 <div style={{fontSize:13,fontWeight:600,color:"#B45309",marginBottom:8}}>⚠️ 위협 (T)</div>
                 <div style={{fontSize:12,color:planThreat?C.tp:C.tt,lineHeight:1.7,whiteSpace:"pre-wrap",minHeight:20}}>{planThreat||"미작성"}</div>
-                {!isParent&&planThreatPrivate&&<div style={{marginTop:8,padding:"6px 10px",background:"rgba(254,226,226,.3)",border:"1px dashed #FECACA",borderRadius:6}}><div style={{display:"flex",alignItems:"center",gap:4,marginBottom:2}}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={C.dn} strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg><span style={{fontSize:9,color:C.dn,fontWeight:600}}>비공개</span></div><div style={{fontSize:11,color:C.tp,lineHeight:1.5,whiteSpace:"pre-wrap"}}>{planThreatPrivate}</div></div>}
+                {!isParent&&planThreatPrivate&&<div style={{marginTop:8,padding:"6px 10px",background:"rgba(254,226,226,.3)",border:"1px dashed #FECACA",borderRadius:6}}><div style={{display:"flex",alignItems:"center",gap:4,marginBottom:2}}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={C.dn} strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg><span style={{fontSize:11,color:C.dn,fontWeight:600}}>비공개</span></div><div style={{fontSize:11,color:C.tp,lineHeight:1.5,whiteSpace:"pre-wrap"}}>{planThreatPrivate}</div></div>}
               </div>
             </div>
           </>)}
@@ -1192,8 +1207,8 @@ export default function StudentDetail({ student, initialTab }) {
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
                       <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
                         <span style={{fontSize:14,fontWeight:600,color:C.tp}}>{sp.title||"학습 계획"}</span>
-                        {sp.is_shared?<span style={{background:C.as,color:C.ac,padding:"2px 8px",borderRadius:5,fontSize:10,fontWeight:600}}>공유됨</span>:<span style={{background:C.sfh,color:C.tt,padding:"2px 8px",borderRadius:5,fontSize:10}}>비공개</span>}
-                        {!isParent&&editingStudyPlan!==sp.id&&<><button onClick={()=>{setEditingStudyPlan(sp.id);setEditStudyPlanTitle(sp.title||"");setEditStudyPlanBody(sp.body||"");setEditStudyPlanShared(!sp.is_shared);}} style={{background:"none",border:"none",fontSize:10,color:C.ac,cursor:"pointer",fontFamily:"inherit",padding:0}}>수정</button><button onClick={()=>delStudyPlan(sp.id)} style={{background:"none",border:"none",fontSize:10,color:C.tt,cursor:"pointer",fontFamily:"inherit",padding:0,opacity:.6}}>삭제</button></>}
+                        {sp.is_shared?<span style={{background:C.as,color:C.ac,padding:"2px 8px",borderRadius:5,fontSize:11,fontWeight:600}}>공유됨</span>:<span style={{background:C.sfh,color:C.tt,padding:"2px 8px",borderRadius:5,fontSize:11}}>비공개</span>}
+                        {!isParent&&editingStudyPlan!==sp.id&&<><button onClick={()=>{setEditingStudyPlan(sp.id);setEditStudyPlanTitle(sp.title||"");setEditStudyPlanBody(sp.body||"");setEditStudyPlanShared(!sp.is_shared);}} style={{background:"none",border:"none",fontSize:11,color:C.ac,cursor:"pointer",fontFamily:"inherit",padding:0}}>수정</button><button onClick={()=>delStudyPlan(sp.id)} style={{background:"none",border:"none",fontSize:11,color:C.tt,cursor:"pointer",fontFamily:"inherit",padding:0,opacity:.6}}>삭제</button></>}
                       </div>
                       <span style={{fontSize:12,color:C.tt,flexShrink:0}}>{sp.date}</span>
                     </div>
@@ -1203,8 +1218,8 @@ export default function StudentDetail({ student, initialTab }) {
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                         <label style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:C.ts,cursor:"pointer"}}><input type="checkbox" checked={editStudyPlanShared} onChange={e=>setEditStudyPlanShared(e.target.checked)}/><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>비공개</label>
                         <div style={{display:"flex",gap:6}}>
-                          <button onClick={()=>setEditingStudyPlan(null)} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:6,padding:"4px 10px",fontSize:10,cursor:"pointer",fontFamily:"inherit"}}>취소</button>
-                          <button onClick={()=>updateStudyPlan(sp.id)} style={{background:C.pr,color:"#fff",border:"none",borderRadius:6,padding:"4px 10px",fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>저장</button>
+                          <button onClick={()=>setEditingStudyPlan(null)} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:6,padding:"4px 10px",fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>취소</button>
+                          <button onClick={()=>updateStudyPlan(sp.id)} style={{background:C.pr,color:"#fff",border:"none",borderRadius:6,padding:"4px 10px",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>저장</button>
                         </div>
                       </div>
                     </div>):(<div style={{fontSize:13,color:C.ts,lineHeight:1.7,whiteSpace:"pre-wrap"}}>{sp.body}</div>)}
@@ -1244,8 +1259,8 @@ export default function StudentDetail({ student, initialTab }) {
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
                       <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
                         <span style={{fontSize:14,fontWeight:600,color:C.tp}}>{c.title||"리포트"}</span>
-                        {c.is_shared?<span style={{background:C.as,color:C.ac,padding:"2px 8px",borderRadius:5,fontSize:10,fontWeight:600}}>공유됨</span>:<span style={{background:C.sfh,color:C.tt,padding:"2px 8px",borderRadius:5,fontSize:10}}>비공개</span>}
-                        {!isParent&&editingComment!==c.id&&<><button onClick={()=>{setEditingComment(c.id);setEditCommentTitle(c.title||"");setEditCommentText(c.body||"");setEditCommentShared(!c.is_shared);}} style={{background:"none",border:"none",fontSize:10,color:C.ac,cursor:"pointer",fontFamily:"inherit",padding:0}}>수정</button><button onClick={()=>delPlanComment(c.id)} style={{background:"none",border:"none",fontSize:10,color:C.tt,cursor:"pointer",fontFamily:"inherit",padding:0,opacity:.6}}>삭제</button></>}
+                        {c.is_shared?<span style={{background:C.as,color:C.ac,padding:"2px 8px",borderRadius:5,fontSize:11,fontWeight:600}}>공유됨</span>:<span style={{background:C.sfh,color:C.tt,padding:"2px 8px",borderRadius:5,fontSize:11}}>비공개</span>}
+                        {!isParent&&editingComment!==c.id&&<><button onClick={()=>{setEditingComment(c.id);setEditCommentTitle(c.title||"");setEditCommentText(c.body||"");setEditCommentShared(!c.is_shared);}} style={{background:"none",border:"none",fontSize:11,color:C.ac,cursor:"pointer",fontFamily:"inherit",padding:0}}>수정</button><button onClick={()=>delPlanComment(c.id)} style={{background:"none",border:"none",fontSize:11,color:C.tt,cursor:"pointer",fontFamily:"inherit",padding:0,opacity:.6}}>삭제</button></>}
                       </div>
                       <span style={{fontSize:12,color:C.tt,flexShrink:0}}>{c.date}</span>
                     </div>
@@ -1255,8 +1270,8 @@ export default function StudentDetail({ student, initialTab }) {
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                         <label style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:C.ts,cursor:"pointer"}}><input type="checkbox" checked={editCommentShared} onChange={e=>setEditCommentShared(e.target.checked)}/><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>비공개</label>
                         <div style={{display:"flex",gap:6}}>
-                          <button onClick={()=>setEditingComment(null)} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:6,padding:"4px 10px",fontSize:10,cursor:"pointer",fontFamily:"inherit"}}>취소</button>
-                          <button onClick={()=>updatePlanComment(c.id)} style={{background:C.pr,color:"#fff",border:"none",borderRadius:6,padding:"4px 10px",fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>저장</button>
+                          <button onClick={()=>setEditingComment(null)} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:6,padding:"4px 10px",fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>취소</button>
+                          <button onClick={()=>updatePlanComment(c.id)} style={{background:C.pr,color:"#fff",border:"none",borderRadius:6,padding:"4px 10px",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>저장</button>
                         </div>
                       </div>
                     </div>):(<div style={{fontSize:13,color:C.ts,lineHeight:1.7,whiteSpace:"pre-wrap"}}>{c.body}</div>)}
@@ -1291,8 +1306,8 @@ export default function StudentDetail({ student, initialTab }) {
                 <div key={f.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:C.sf,border:"1px solid "+C.bd,borderRadius:10}}>
                   <span style={{fontSize:18}}>{icon}</span>
                   <span style={{fontSize:13,fontWeight:500,color:C.tp,flex:1}}>{f.file_name}</span>
-                  <span style={{fontSize:10,color:C.tt,background:C.sfh,padding:"2px 8px",borderRadius:4}}>{f.file_type||"file"}</span>
-                  {f.file_url&&<a href={f.file_url} target="_blank" rel="noreferrer" style={{fontSize:10,color:C.ac,textDecoration:"none"}}>열기</a>}
+                  <span style={{fontSize:11,color:C.tt,background:C.sfh,padding:"2px 8px",borderRadius:4}}>{f.file_type||"file"}</span>
+                  {f.file_url&&<a href={f.file_url} target="_blank" rel="noreferrer" style={{fontSize:11,color:C.ac,textDecoration:"none"}}>열기</a>}
                   {!isParent&&<button onClick={()=>delFile(f.id)} style={{background:"none",border:"none",color:C.tt,cursor:"pointer",fontSize:11,fontFamily:"inherit"}}>삭제</button>}
                 </div>);})}
             </div>
@@ -1304,10 +1319,10 @@ export default function StudentDetail({ student, initialTab }) {
             <div>
               <div style={{fontSize:13,fontWeight:600,color:C.tp,marginBottom:8}}>수업 자료</div>
               {[...new Set(allFiles.map(f=>f.lesTopic))].map(topic=>{const items=allFiles.filter(f=>f.lesTopic===topic);return(<div key={topic||"etc"} style={{marginBottom:16}}>
-              <div style={{fontSize:12,color:C.ts,marginBottom:6,display:"flex",alignItems:"center",gap:8}}><span>{topic||"수업"}</span><span style={{fontSize:10,color:C.tt}}>({items[0]?.lesDate})</span></div>
+              <div style={{fontSize:12,color:C.ts,marginBottom:6,display:"flex",alignItems:"center",gap:8}}><span>{topic||"수업"}</span><span style={{fontSize:11,color:C.tt}}>({items[0]?.lesDate})</span></div>
               <div style={{display:"flex",flexDirection:"column",gap:6}}>{items.map(f=>{const icon=(f.file_type||"")==="pdf"?"📄":(f.file_type||"")==="img"?"🖼️":"📎";return(
                 <div key={f.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:C.sf,border:"1px solid "+C.bd,borderRadius:10}}>
-                  <span style={{fontSize:18}}>{icon}</span><span style={{fontSize:13,fontWeight:500,color:C.tp,flex:1}}>{f.file_name||f.name}</span><span style={{fontSize:10,color:C.tt,background:C.sfh,padding:"2px 8px",borderRadius:4}}>{f.file_type||"file"}</span>
+                  <span style={{fontSize:18}}>{icon}</span><span style={{fontSize:13,fontWeight:500,color:C.tp,flex:1}}>{f.file_name||f.name}</span><span style={{fontSize:11,color:C.tt,background:C.sfh,padding:"2px 8px",borderRadius:4}}>{f.file_type||"file"}</span>
                 </div>);})}</div>
             </div>);})}
             </div>

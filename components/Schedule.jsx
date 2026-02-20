@@ -9,6 +9,7 @@ import { p2, fd, m2s, DKS as DK, gwd, s5, sdy, lessonOnDate } from '@/lib/utils'
 import { syncHomework } from '@/lib/homework';
 import { useShell } from '@/components/AppShell';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
+import { SkeletonCard } from '@/components/ui';
 const LSTATUS={scheduled:{l:"예정",c:"#78716C",bg:"#F5F5F4"},in_progress:{l:"진행중",c:"#EA580C",bg:"#FFF7ED"},completed:{l:"완료",c:"#16A34A",bg:"#F0FDF4"},cancelled:{l:"취소",c:"#DC2626",bg:"#FEF2F2"},makeup:{l:"보강",c:"#2563EB",bg:"#DBEAFE"}};
 const ls={display:"block",fontSize:12,fontWeight:500,color:C.tt,marginBottom:6};
 const is={width:"100%",padding:"9px 12px",borderRadius:8,border:`1px solid ${C.bd}`,fontSize:14,color:C.tp,background:C.sf,outline:"none",fontFamily:"inherit"};
@@ -332,15 +333,26 @@ export default function Schedule(){
   const scrolledRef=useRef(false);
   useEffect(()=>{if(scrolledRef.current||!gridRef.current||loading)return;scrolledRef.current=true;const nowM=new Date().getHours()*60+new Date().getMinutes();const stM=stH*60;if(nowM>stM){const tp=((nowM-stM)/SMN)*SHT;gridRef.current.scrollTop=Math.max(0,tp-100);};},[loading]);
 
-  if(loading)return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:C.tt,fontSize:14}}>불러오는 중...</div></div>);
+  if(loading)return(
+  <div style={{maxWidth:1200,margin:"0 auto",padding:"24px 16px"}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+      <div style={{width:120,height:28,borderRadius:8,background:"linear-gradient(90deg, #F5F5F4 25%, #F0EFED 50%, #F5F5F4 75%)",backgroundSize:"200% 100%",animation:"shimmer 1.5s infinite"}}/>
+      <div style={{display:"flex",gap:8}}>
+        <div style={{width:36,height:36,borderRadius:10,background:"linear-gradient(90deg, #F5F5F4 25%, #F0EFED 50%, #F5F5F4 75%)",backgroundSize:"200% 100%",animation:"shimmer 1.5s infinite"}}/>
+        <div style={{width:36,height:36,borderRadius:10,background:"linear-gradient(90deg, #F5F5F4 25%, #F0EFED 50%, #F5F5F4 75%)",backgroundSize:"200% 100%",animation:"shimmer 1.5s infinite"}}/>
+      </div>
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"60px repeat(7,1fr)",gap:1,minHeight:400}}>
+      {Array.from({length:8},(_,i)=>(<div key={i} style={{height:60,borderRadius:4,background:"linear-gradient(90deg, #F5F5F4 25%, #F0EFED 50%, #F5F5F4 75%)",backgroundSize:"200% 100%",animation:"shimmer 1.5s infinite"}}/>))}
+    </div>
+  </div>
+);
   if(fetchError)return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:12}}><div style={{fontSize:14,color:C.dn}}>데이터를 불러오지 못했습니다</div><button onClick={fetchData} style={{padding:"8px 20px",borderRadius:8,border:`1px solid ${C.bd}`,background:C.sf,color:C.tp,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>다시 시도</button></div>);
 
   const cms={padding:"7px 12px",fontSize:12,cursor:"pointer",borderRadius:6,color:C.tp,background:"transparent",border:"none",width:"100%",textAlign:"left",fontFamily:"inherit"};
 
   return(
     <div className="sch-container" style={{minHeight:"100vh",background:C.bg,padding:28}} onClick={()=>ctxMenu&&setCtx(null)}>
-      <style>{`.lb{cursor:grab;transition:box-shadow .12s,transform .1s;}.lb:hover{box-shadow:0 4px 12px rgba(0,0,0,.12);transform:scale(1.02);}.nb{transition:all .1s;cursor:pointer;border:none;background:none;display:flex;align-items:center;justify-content:center;padding:8px;border-radius:8px;color:${C.ts};min-height:44px;min-width:44px;}.nb:hover{background:${C.sfh};}.cm-i{transition:background .1s;min-height:44px;}.cm-i:hover{background:${C.sfh};}@keyframes wkR{from{transform:translateX(50px);opacity:0}to{transform:translateX(0);opacity:1}}@keyframes wkL{from{transform:translateX(-50px);opacity:0}to{transform:translateX(0);opacity:1}}.wk-r{animation:wkR .2s ease-out}.wk-l{animation:wkL .2s ease-out}@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}@media(hover:hover){.mc-cell:hover{background:${C.sfh}!important;}}.mc-cell:active{background:${C.sfh}!important;}@media(max-width:768px){.sch-container{padding:12px!important;}.sch-header{padding:12px 14px!important;}.sch-header-title{font-size:15px!important;}.sch-header-sub{font-size:11px!important;}.sch-filter-row{display:none!important;}.sch-dur-btn{min-height:44px;min-width:44px;}select,input[type="date"],input[type="number"]{min-height:44px;}.sch-week-grid>div{min-width:0!important;}}`}</style>
-
       {/* Header */}
       <div className="sch-header" style={{background:C.sf,borderBottom:`1px solid ${C.bd}`,padding:"16px 24px",position:"sticky",top:0,zIndex:20}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12}}>
@@ -389,9 +401,9 @@ export default function Schedule(){
                   {dl.sort((a,b)=>(a.start_hour*60+a.start_min)-(b.start_hour*60+b.start_min)).slice(0,3).map(l=>{const co=gCo(l.student_id);const st=getStu(l.student_id);const ls=effSt(l,ds);const isCan=ls==='cancelled';const dim=activeStu&&l.student_id!==activeStu;return(
                     <div key={l.id} style={{fontSize:10,padding:"1px 4px",borderRadius:4,background:isCan||dim?C.sfh:co.bg,color:isCan||dim?C.tt:co.t,fontWeight:500,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",opacity:isCan?.5:dim?.3:1,textDecoration:isCan?'line-through':'none'}}>{p2(l.start_hour)}:{p2(l.start_min)} {st?.name||""}{ls==='completed'?' ✓':''}</div>);
                   })}
-                  {dl.length>3&&<div style={{fontSize:9,color:C.tt,paddingLeft:4}}>+{dl.length-3}건</div>}
+                  {dl.length>3&&<div style={{fontSize:11,color:C.tt,paddingLeft:4}}>+{dl.length-3}건</div>}
                 </div>}
-                {isM&&compact&&cnt>0&&<div style={{display:"flex",gap:3,flexWrap:"wrap",marginTop:2}}>{dl.filter(l=>(!activeStu||l.student_id===activeStu)&&effSt(l,ds)!=='cancelled').slice(0,4).map((l,idx)=>{const co=gCo(l.student_id);return <div key={l.id+'-'+idx} style={{width:6,height:6,borderRadius:"50%",background:co.b}}/>;})}{dl.filter(l=>(!activeStu||l.student_id===activeStu)&&effSt(l,ds)!=='cancelled').length>4&&<span style={{fontSize:8,color:C.tt}}>+</span>}</div>}
+                {isM&&compact&&cnt>0&&<div style={{display:"flex",gap:3,flexWrap:"wrap",marginTop:2}}>{dl.filter(l=>(!activeStu||l.student_id===activeStu)&&effSt(l,ds)!=='cancelled').slice(0,4).map((l,idx)=>{const co=gCo(l.student_id);return <div key={l.id+'-'+idx} style={{width:6,height:6,borderRadius:"50%",background:co.b}}/>;})}{dl.filter(l=>(!activeStu||l.student_id===activeStu)&&effSt(l,ds)!=='cancelled').length>4&&<span style={{fontSize:11,color:C.tt}}>+</span>}</div>}
               </div>);
             })}
           </div>
@@ -413,7 +425,7 @@ export default function Schedule(){
           <div style={{borderRight:`1px solid ${C.bl}`,position:"relative"}}>
             {hrs.map(h=>(<div key={h} style={{height:SHT*4,display:"flex",alignItems:"flex-start",justifyContent:"flex-end",padding:"2px 8px 0 0",fontSize:11,color:C.tt,fontWeight:500,borderBottom:`1px solid ${C.bl}`}}>{p2(h)}:00</div>))}
             <div style={{display:"flex",alignItems:"flex-start",justifyContent:"flex-end",padding:"2px 8px 0 0",fontSize:11,color:C.tt,fontWeight:500}}>{p2(enH)}:00</div>
-            {(()=>{const nowM=new Date().getHours()*60+new Date().getMinutes();const stM=stH*60,enM=enH*60;if(nowM>=stM&&nowM<=enM){const tp=((nowM-stM)/SMN)*SHT;return(<div style={{position:"absolute",top:tp,right:4,transform:"translateY(-50%)",fontSize:9,fontWeight:700,color:C.ac,opacity:.7,pointerEvents:"none"}}>{p2(Math.floor(nowM/60))}:{p2(nowM%60)}</div>);}return null;})()}
+            {(()=>{const nowM=new Date().getHours()*60+new Date().getMinutes();const stM=stH*60,enM=enH*60;if(nowM>=stM&&nowM<=enM){const tp=((nowM-stM)/SMN)*SHT;return(<div style={{position:"absolute",top:tp,right:4,transform:"translateY(-50%)",fontSize:11,fontWeight:700,color:C.ac,opacity:.7,pointerEvents:"none"}}>{p2(Math.floor(nowM/60))}:{p2(nowM%60)}</div>);}return null;})()}
           </div>
 
           {/* Day columns */}
@@ -432,8 +444,8 @@ export default function Schedule(){
                     <div key={l.id} className="lb" onMouseDown={e=>onLD(e,l,date)} onContextMenu={e=>onRC(e,l,date)} style={{position:"absolute",top:tp,left:3,right:3,height:hp-2,borderRadius:8,background:isPers?"rgba(156,163,175,.12)":isCan||dim?C.sfh:co.bg,borderLeft:`3px solid ${isPers?"#9CA3AF":isCan||dim?C.bd:co.b}`,padding:"4px 8px",overflow:"hidden",zIndex:isPers?2:dim?1:3,opacity:isPers?.6:isCan?.45:dim?.25:1,transition:"opacity .15s"}}>
                       <div style={{display:"flex",alignItems:"center",gap:4}}>
                         <span style={{fontSize:11,fontWeight:600,color:isPers?"#6B7280":isCan?C.tt:co.t,textDecoration:isCan?'line-through':'none'}}>{isPers?(l.subject||l.topic||"개인 일정"):st?.name||""}</span>
-                        {!isPers&&<span style={{fontSize:8,fontWeight:700,color:LSTATUS[lSt]?.c,background:LSTATUS[lSt]?.bg,borderRadius:3,padding:"1px 4px",lineHeight:"14px"}}>{LSTATUS[lSt]?.l}</span>}
-                        {!isPers&&isOrig&&(l.homework||[]).length>0&&<span style={{fontSize:9,background:co.t,color:co.bg,borderRadius:4,padding:"0 4px",fontWeight:600}}>{(l.homework||[]).length}</span>}
+                        {!isPers&&<span style={{fontSize:11,fontWeight:700,color:LSTATUS[lSt]?.c,background:LSTATUS[lSt]?.bg,borderRadius:3,padding:"1px 4px",lineHeight:"14px"}}>{LSTATUS[lSt]?.l}</span>}
+                        {!isPers&&isOrig&&(l.homework||[]).length>0&&<span style={{fontSize:11,background:co.t,color:co.bg,borderRadius:4,padding:"0 4px",fontWeight:600}}>{(l.homework||[]).length}</span>}
                       </div>
                       {hp>32&&<div style={{fontSize:10,color:isPers?"#9CA3AF":isCan?C.tt:co.t,opacity:.7,marginTop:1,textDecoration:isCan?'line-through':'none'}}>{isPers?(l.topic||""):(isOrig?(l.topic||""):(l.subject||""))}</div>}
                       {hp>48&&<div style={{fontSize:10,color:isPers?"#9CA3AF":isCan?C.tt:co.t,opacity:.6,marginTop:1}}>{p2(l.start_hour)}:{p2(l.start_min)} · {l.duration}분</div>}
@@ -460,7 +472,7 @@ export default function Schedule(){
               <button key={i} onClick={()=>{setSlide(i>mobileDay?'r':'l');setAnim(k=>k+1);setMobileDay(i);}} style={{flex:1,minWidth:44,padding:"8px 4px",borderRadius:12,border:sel?`2px solid ${C.ac}`:`1px solid ${it?C.ac:C.bd}`,background:sel?C.as:it?"rgba(37,99,235,.05)":C.sf,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:2,fontFamily:"inherit",transition:"all .15s"}}>
                 <span style={{fontSize:11,fontWeight:sel?700:500,color:sel?C.ac:it?C.ac:C.tt}}>{DK[i]}</span>
                 <span style={{fontSize:16,fontWeight:700,color:sel?C.ac:C.tp,...(it&&!sel?{width:26,height:26,borderRadius:"50%",background:C.ac,color:"#fff",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:14}:{})}}>{d.getDate()}</span>
-                {cnt>0&&<span style={{fontSize:9,fontWeight:600,color:sel?C.ac:C.ts,background:sel?C.al:C.sfh,borderRadius:4,padding:"1px 5px"}}>{cnt}건</span>}
+                {cnt>0&&<span style={{fontSize:11,fontWeight:600,color:sel?C.ac:C.ts,background:sel?C.al:C.sfh,borderRadius:4,padding:"1px 5px"}}>{cnt}건</span>}
               </button>);
             })}
           </div>
@@ -506,7 +518,7 @@ export default function Schedule(){
                       style={{position:"absolute",top:tp,left:4,right:4,height:hp-2,borderRadius:10,background:isPers?"rgba(156,163,175,.12)":isCan||dim?C.sfh:co.bg,borderLeft:`4px solid ${isPers?"#9CA3AF":isCan||dim?C.bd:co.b}`,padding:"6px 10px",overflow:"hidden",zIndex:isPers?2:dim?1:3,opacity:isPers?.6:isCan?.45:dim?.25:1,cursor:"pointer",transition:"opacity .15s",WebkitUserSelect:"none",userSelect:"none"}}>
                       <div style={{display:"flex",alignItems:"center",gap:6}}>
                         <span style={{fontSize:13,fontWeight:600,color:isPers?"#6B7280":isCan?C.tt:co.t,textDecoration:isCan?'line-through':'none'}}>{isPers?(l.subject||l.topic||"개인 일정"):st?.name||""}</span>
-                        {!isPers&&<span style={{fontSize:9,fontWeight:700,color:LSTATUS[lSt]?.c,background:LSTATUS[lSt]?.bg,borderRadius:3,padding:"1px 5px",lineHeight:"16px"}}>{LSTATUS[lSt]?.l}</span>}
+                        {!isPers&&<span style={{fontSize:11,fontWeight:700,color:LSTATUS[lSt]?.c,background:LSTATUS[lSt]?.bg,borderRadius:3,padding:"1px 5px",lineHeight:"16px"}}>{LSTATUS[lSt]?.l}</span>}
                         {!isPers&&isOrig&&(l.homework||[]).length>0&&<span style={{fontSize:10,background:co.t,color:co.bg,borderRadius:4,padding:"0 5px",fontWeight:600}}>{(l.homework||[]).length}</span>}
                       </div>
                       <div style={{fontSize:11,color:isPers?"#9CA3AF":isCan?C.tt:co.t,opacity:.7,marginTop:2,textDecoration:isCan?'line-through':'none'}}>{isPers?(l.topic||""):(isOrig?(l.topic||l.subject||""):(l.subject||""))}</div>
