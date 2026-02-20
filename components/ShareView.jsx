@@ -220,11 +220,6 @@ export default function ShareView({ token }) {
                   </div>
                 )}
               </div>
-              {summary.topics.length > 0 && (
-                <div style={{ marginTop: 10, fontSize: 12, color: C.ts, lineHeight: 1.6 }}>
-                  학습 주제: {summary.topics.slice(0, 6).join(', ')}{summary.topics.length > 6 ? ` 외 ${summary.topics.length - 6}개` : ''}
-                </div>
-              )}
             </div>
           </div>
         );
