@@ -27,6 +27,7 @@ export default function ShareView({ token }) {
   const [showHwList, setShowHwList] = useState(false);
   const [chartMode, setChartMode] = useState(null);
   const [wExpanded, setWExpanded] = useState({});
+  const [expandedLesson, setExpandedLesson] = useState(null);
   const [calMonth, setCalMonth] = useState(new Date());
   const [perms, setPerms] = useState({homework_edit:false,homework_view:true,scores_view:true,lessons_view:true,wrong_view:true,files_view:true,reports_view:true,plans_view:true});
   const [hwSaving, setHwSaving] = useState(null);
@@ -305,10 +306,12 @@ export default function ShareView({ token }) {
                     const hw = l.homework || [], hwDoneC = hw.filter(h => (h.completion_pct || 0) >= 100).length, hwTotal = hw.length;
                     const em = l.start_hour * 60 + l.start_min + l.duration;
                     const hasSections = l.content || l.feedback || hwTotal > 0 || (l.plan_shared && !isDone);
+                    const isExp = expandedLesson === l.id;
+                    const clamp = isExp ? {} : { display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" };
                     return (
                       <div key={l.id} style={{ position: "relative", marginBottom: 16 }}>
                         <div style={{ position: "absolute", left: -28 + 3, top: 18, width: 10, height: 10, borderRadius: "50%", background: isIP ? "#EA580C" : isFirstDone ? col.b : isUp ? C.sf : C.bd, border: isUp && !isIP ? "2px solid " + C.bd : "2px solid " + C.sf, zIndex: 1, boxShadow: isIP ? "0 0 8px rgba(234,88,12,.5)" : "none" }} />
-                        <div style={{ background: isIP ? "#FFF7ED" : isUp ? C.as : C.sf, border: "1px solid " + (isIP ? "#FDBA74" : isUp ? C.al : C.bd), borderRadius: 14, overflow: "hidden", borderLeft: "3px solid " + (isIP ? "#EA580C" : isUp ? C.ac : col.b) }}>
+                        <div onClick={() => setExpandedLesson(isExp ? null : l.id)} style={{ background: isIP ? "#FFF7ED" : isUp ? C.as : C.sf, border: "1px solid " + (isIP ? "#FDBA74" : isUp ? C.al : C.bd), borderRadius: 14, overflow: "hidden", borderLeft: "3px solid " + (isIP ? "#EA580C" : isUp ? C.ac : col.b), cursor: hasSections ? "pointer" : "default" }}>
                           <div style={{ padding: "16px 20px " + (hasSections ? "12px" : "16px") }}>
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                               <div style={{ flex: 1 }}>
@@ -328,11 +331,11 @@ export default function ShareView({ token }) {
                           {hasSections && (<div style={{ padding: "0 20px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
                             {l.content && (<div style={{ background: C.sfh, borderRadius: 10, padding: "10px 14px" }}>
                               <div style={{ fontSize: 11, fontWeight: 600, color: C.tt, marginBottom: 4 }}>수업 내용</div>
-                              <div style={{ fontSize: 13, color: C.ts, lineHeight: 1.5, whiteSpace: "pre-wrap", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{l.content}</div>
+                              <div style={{ fontSize: 13, color: C.ts, lineHeight: 1.5, whiteSpace: "pre-wrap", ...clamp }}>{l.content}</div>
                             </div>)}
                             {l.feedback && (<div style={{ background: C.as, borderRadius: 10, padding: "10px 14px" }}>
                               <div style={{ fontSize: 11, fontWeight: 600, color: C.ac, marginBottom: 4 }}>피드백</div>
-                              <div style={{ fontSize: 13, color: C.ts, lineHeight: 1.5, whiteSpace: "pre-wrap", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{l.feedback}</div>
+                              <div style={{ fontSize: 13, color: C.ts, lineHeight: 1.5, whiteSpace: "pre-wrap", ...clamp }}>{l.feedback}</div>
                             </div>)}
                             {hwTotal > 0 && (<div style={{ background: C.sfh, borderRadius: 10, padding: "10px 14px" }}>
                               <div style={{ fontSize: 11, fontWeight: 600, color: C.tt, marginBottom: 6 }}>숙제</div>
@@ -344,8 +347,9 @@ export default function ShareView({ token }) {
                             </div>)}
                             {l.plan_shared && !isDone && (<div style={{ background: C.wb, borderRadius: 10, padding: "10px 14px" }}>
                               <div style={{ fontSize: 11, fontWeight: 600, color: C.wn, marginBottom: 4 }}>수업 계획</div>
-                              <div style={{ fontSize: 13, color: C.ts, lineHeight: 1.5, whiteSpace: "pre-wrap", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{l.plan_shared}</div>
+                              <div style={{ fontSize: 13, color: C.ts, lineHeight: 1.5, whiteSpace: "pre-wrap", ...clamp }}>{l.plan_shared}</div>
                             </div>)}
+                            {hasSections && <div style={{ textAlign: "center", fontSize: 11, color: C.tt, paddingTop: 2 }}>{isExp ? "접기 ▲" : "더보기 ▼"}</div>}
                           </div>)}
                         </div>
                       </div>
