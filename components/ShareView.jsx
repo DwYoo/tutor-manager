@@ -667,7 +667,7 @@ export default function ShareView({ token }) {
           {/* SWOT */}
           {perms.plans_view !== false && (<>
           <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp, marginBottom: 12 }}>학습 오버뷰</h3>
-          {(()=>{const sp=studyPlans.filter(p=>p.is_shared!==false);if(!sp.length&&!s.plan_strategy)return null;return(<div style={{ marginBottom: 16 }}>
+          {(()=>{const sp=studyPlans.filter(p=>p.is_shared!==false);if(!sp.length)return null;return(<div style={{ marginBottom: 16 }}>
             <div style={{ fontSize: 14, fontWeight: 600, color: C.tp, marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}><span>🧭</span>지도 방향</div>
             <div style={{ position: "relative", paddingLeft: 20 }}>
               <div style={{ position: "absolute", left: 5, top: 8, bottom: 8, width: 2, background: C.bl }}/>
@@ -681,16 +681,6 @@ export default function ShareView({ token }) {
                   <div style={{ fontSize: 13, color: C.ts, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{p.body}</div>
                 </div>
               </div>))}
-              {s.plan_strategy&&(<div style={{ position: "relative", marginBottom: 12 }}>
-                <div style={{ position: "absolute", left: -20+1, top: 6, width: 10, height: 10, borderRadius: "50%", background: C.bd }}/>
-                <div style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 14, padding: 16, opacity: .85 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: C.tp }}>초기 지도 방향</span>
-                    <span style={{ fontSize: 12, color: C.tt, flexShrink: 0, marginLeft: 8 }}>{s.created_at?new Date(s.created_at).toISOString().slice(0,10):""}</span>
-                  </div>
-                  <div style={{ fontSize: 13, color: C.ts, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{s.plan_strategy}</div>
-                </div>
-              </div>)}
             </div>
           </div>);})()}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))", gap: 12, marginBottom: 24 }}>
