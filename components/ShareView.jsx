@@ -196,33 +196,6 @@ export default function ShareView({ token }) {
         </div>
       </div>
 
-      {/* 월간 진도 요약 */}
-      {(() => {
-        const now = new Date();
-        const yr = now.getFullYear(), mo = now.getMonth() + 1;
-        const allHw = pastLessons.flatMap(l => (l.homework || []).map(h => ({ ...h, lesDate: l.date })));
-        const summary = generateMonthlySummary({ lessons, scores, homework: allHw, year: yr, month: mo });
-        if (summary.totalClasses === 0) return null;
-        return (
-          <div style={{ background: C.sf, borderBottom: "1px solid " + C.bd, padding: "20px 0" }}>
-            <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 20px" }}>
-              <h3 style={{ fontSize: 14, fontWeight: 700, color: C.tp, marginBottom: 12 }}>{mo}월 진도 요약</h3>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(130px,1fr))", gap: 10 }}>
-                <div style={{ background: C.as, borderRadius: 10, padding: "12px 14px", textAlign: "center" }}>
-                  <div style={{ fontSize: 11, color: C.ac, marginBottom: 2 }}>총 수업</div>
-                  <div style={{ fontSize: 20, fontWeight: 700, color: C.ac }}>{summary.totalClasses}회</div>
-                </div>
-                {summary.avgScore != null && (
-                  <div style={{ background: "#EDE9FE", borderRadius: 10, padding: "12px 14px", textAlign: "center" }}>
-                    <div style={{ fontSize: 11, color: "#8B5CF6", marginBottom: 2 }}>평균 점수</div>
-                    <div style={{ fontSize: 20, fontWeight: 700, color: "#8B5CF6" }}>{summary.avgScore}점</div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-      })()}
 
       {/* Recent Report and Study Plan (above tabs) */}
       {(() => {
