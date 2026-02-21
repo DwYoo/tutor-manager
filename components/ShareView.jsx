@@ -250,10 +250,10 @@ export default function ShareView({ token }) {
               )}
               {recentPlan && (
                 <div style={{ flex: 1 }}>
-                  <h3 style={{ fontSize: 14, fontWeight: 700, color: C.tp, marginBottom: 10 }}>학습 계획</h3>
+                  <h3 style={{ fontSize: 14, fontWeight: 700, color: C.tp, marginBottom: 10 }}>지도 방향</h3>
                   <div style={{ background: "linear-gradient(135deg, #D1FAE5 0%, " + C.sf + " 100%)", border: "2px solid #16A34A", borderRadius: 14, padding: 16 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                      <span style={{ fontSize: 14, fontWeight: 700, color: C.tp }}>{recentPlan.title || "학습 계획"}</span>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: C.tp }}>{recentPlan.title || "지도 방향"}</span>
                       <span style={{ fontSize: 11, color: C.tt }}>{recentPlan.date}</span>
                     </div>
                     <div style={{ fontSize: 13, color: C.tp, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{recentPlan.body}</div>
@@ -667,10 +667,26 @@ export default function ShareView({ token }) {
           {/* SWOT */}
           {perms.plans_view !== false && (<>
           <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp, marginBottom: 12 }}>학습 오버뷰</h3>
-          <div style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 14, padding: 20, marginBottom: 16 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: C.ac, marginBottom: 10 }}>🧭 학습 전략</div>
-            <div style={{ fontSize: 13, color: s.plan_strategy ? C.tp : C.tt, lineHeight: 1.7, whiteSpace: "pre-wrap", minHeight: 20 }}>{s.plan_strategy || "아직 작성된 전략이 없습니다"}</div>
-          </div>
+          {s.plan_strategy&&<div style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 14, padding: 18, marginBottom: 16, borderLeft: "3px solid " + C.tt, opacity: .85 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <span style={{ fontSize: 14, fontWeight: 600, color: C.tp }}>초기 지도 방향</span>
+              <span style={{ background: C.sfh, color: C.tt, padding: "2px 8px", borderRadius: 5, fontSize: 11 }}>최초 작성</span>
+            </div>
+            <div style={{ fontSize: 13, color: C.ts, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{s.plan_strategy}</div>
+          </div>}
+          {(()=>{const sp=studyPlans.filter(p=>p.is_shared!==false);if(!sp.length)return null;return(<div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: C.tp, marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}><span>🧭</span>지도 방향</div>
+            <div style={{ position: "relative", paddingLeft: 20 }}>
+              <div style={{ position: "absolute", left: 5, top: 8, bottom: 8, width: 2, background: C.bl }}/>
+              {sp.map((p,i)=>(<div key={p.id} style={{ position: "relative", marginBottom: 12 }}>
+                <div style={{ position: "absolute", left: -20+1, top: 6, width: 10, height: 10, borderRadius: "50%", background: i===0?C.ac:C.bd }}/>
+                <div style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 14, padding: 16, borderLeft: i===0?"3px solid "+C.ac:"none" }}>
+                  <div style={{ fontSize: 12, color: C.tt, marginBottom: 6 }}>{p.date}</div>
+                  <div style={{ fontSize: 13, color: C.ts, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{p.body}</div>
+                </div>
+              </div>))}
+            </div>
+          </div>);})()}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))", gap: 12, marginBottom: 24 }}>
             <SwotCard label="💪 강점 (S)" bg={C.sb} border="#BBF7D0" color={C.su} text={s.plan_strength} />
             <SwotCard label="🔧 약점 (W)" bg={C.db} border="#FECACA" color={C.dn} text={s.plan_weakness} />
