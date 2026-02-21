@@ -515,6 +515,7 @@ export default function ShareView({ token }) {
                         <div style={{ width: pct + "%", minWidth: pct > 0 ? 8 : 0, height: "100%", borderRadius: 4, background: pc }} />
                       </div>
                     )}
+                    {h.note && <div style={{ fontSize: 12, color: C.ts, marginTop: 8, paddingTop: 8, borderTop: "1px solid " + C.bl, whiteSpace: "pre-wrap" }}>{h.note}</div>}
                   </div>
                   );
                 })}
