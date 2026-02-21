@@ -196,33 +196,6 @@ export default function ShareView({ token }) {
         </div>
       </div>
 
-      {/* 월간 진도 요약 */}
-      {(() => {
-        const now = new Date();
-        const yr = now.getFullYear(), mo = now.getMonth() + 1;
-        const allHw = pastLessons.flatMap(l => (l.homework || []).map(h => ({ ...h, lesDate: l.date })));
-        const summary = generateMonthlySummary({ lessons, scores, homework: allHw, year: yr, month: mo });
-        if (summary.totalClasses === 0) return null;
-        return (
-          <div style={{ background: C.sf, borderBottom: "1px solid " + C.bd, padding: "20px 0" }}>
-            <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 20px" }}>
-              <h3 style={{ fontSize: 14, fontWeight: 700, color: C.tp, marginBottom: 12 }}>{mo}월 진도 요약</h3>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(130px,1fr))", gap: 10 }}>
-                <div style={{ background: C.as, borderRadius: 10, padding: "12px 14px", textAlign: "center" }}>
-                  <div style={{ fontSize: 11, color: C.ac, marginBottom: 2 }}>총 수업</div>
-                  <div style={{ fontSize: 20, fontWeight: 700, color: C.ac }}>{summary.totalClasses}회</div>
-                </div>
-                {summary.avgScore != null && (
-                  <div style={{ background: "#EDE9FE", borderRadius: 10, padding: "12px 14px", textAlign: "center" }}>
-                    <div style={{ fontSize: 11, color: "#8B5CF6", marginBottom: 2 }}>평균 점수</div>
-                    <div style={{ fontSize: 20, fontWeight: 700, color: "#8B5CF6" }}>{summary.avgScore}점</div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-      })()}
 
       {/* Recent Report and Study Plan (above tabs) */}
       {(() => {
@@ -597,7 +570,7 @@ export default function ShareView({ token }) {
                         return (
                           <div className="sv-wrong-table" style={{ background: C.sf, border: "1px solid " + C.bd, borderRadius: 10, overflow: "hidden" }}>
                             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                              <thead><tr>{["번호", "사유", "메모"].map((h) => (<th key={h} style={{ padding: "8px 10px", textAlign: "left", color: C.tt, fontWeight: 500, borderBottom: "1px solid " + C.bd }}>{h}</th>))}</tr></thead>
+                              <thead><tr>{["번호", "사유"].map((h) => (<th key={h} style={{ padding: "8px 10px", textAlign: "left", color: C.tt, fontWeight: 500, borderBottom: "1px solid " + C.bd }}>{h}</th>))}</tr></thead>
                               <tbody>{uCh.map(ch => {
                                 const ck = bk + "::" + (ch || "__no_ch__");
                                 const chExp = wExpanded[ck] !== false;
@@ -605,7 +578,7 @@ export default function ShareView({ token }) {
                                 return (
                                   <Fragment key={ck}>
                                     <tr onClick={() => setWExpanded(p => ({ ...p, [ck]: !chExp }))} style={{ cursor: "pointer" }}>
-                                      <td colSpan={3} style={{ padding: "7px 8px", background: C.bl, borderBottom: "1px solid " + C.bd }}>
+                                      <td colSpan={2} style={{ padding: "7px 8px", background: C.bl, borderBottom: "1px solid " + C.bd }}>
                                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                                           <span style={{ fontSize: 12, fontWeight: 500, color: ch ? C.ts : C.tt }}>{ch || "단원 미지정"}</span>
                                           <span style={{ fontSize: 11, color: C.tt }}>({chItems.length})</span>
@@ -619,7 +592,6 @@ export default function ShareView({ token }) {
                                         <tr key={w.id} style={{ borderBottom: "1px solid " + C.bl }}>
                                           <td style={{ padding: "6px 10px", fontWeight: 600, color: C.tp, fontSize: 12 }}>{w.problem_num}</td>
                                           <td style={{ padding: "6px 10px" }}>{w.reason && <span style={{ background: rc + "20", color: rc, padding: "2px 8px", borderRadius: 5, fontSize: 11, fontWeight: 600 }}>{w.reason}</span>}</td>
-                                          <td style={{ padding: "6px 10px", color: C.ts, fontSize: 12 }}>{w.note || "-"}</td>
                                         </tr>
                                       );
                                     })}
