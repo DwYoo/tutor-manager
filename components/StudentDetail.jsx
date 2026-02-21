@@ -118,9 +118,10 @@ export default function StudentDetail({ student, initialTab }) {
 
   // Tabs: 리포트를 수업 안 "기록" 서브탭으로, 계획 제거, 분석에서 리포트 제거
   const mainTabs=[
-    {id:"class",l:"수업",subs:[{id:"timeline",l:"타임라인"},{id:"calendar",l:"수업 일정"},{id:"memo",l:"메모"}]},
+    {id:"class",l:"수업",subs:[{id:"timeline",l:"타임라인"},{id:"calendar",l:"수업 일정"}]},
     {id:"study",l:"학습 관리",subs:[{id:"homework",l:"숙제"},{id:"wrong",l:"오답 관리"},{id:"textbook",l:"교재"}]},
     {id:"analysis",l:"학습 분석",subs:[{id:"plan",l:"오버뷰"},{id:"scores",l:"성적"}]},
+    {id:"memos",l:"메모",subs:[{id:"memo",l:"메모"}]},
     {id:"archive",l:"자료실",subs:[{id:"files",l:"자료"}]}
   ];
   const curMain=mainTabs.find(m=>m.id===mainTab);
@@ -455,7 +456,7 @@ export default function StudentDetail({ student, initialTab }) {
                 const isFirstDone=isDone&&(i===0||!isLessonDone(tlLessons[i-1]));
                 const hw=l.homework||[],hwDone=hw.filter(h=>(h.completion_pct||0)>=100).length,hwTotal=hw.length;
                 const em=l.start_hour*60+l.start_min+l.duration;
-                const hasSections=l.content||l.feedback||hwTotal>0||(l.plan_shared&&!isDone)||(l.plan_private&&!isDone)||l.private_memo;
+                const hasSections=l.content||l.feedback||hwTotal>0||(l.plan_shared&&!isDone)||(l.plan_private&&!isDone);
                 return(
                   <div key={l.id} style={{position:"relative",marginBottom:16}}>
                     <div style={{position:"absolute",left:-28+3,top:18,width:10,height:10,borderRadius:"50%",background:isIP?"#EA580C":isFirstDone?col.b:isUp?C.sf:C.bd,border:isUp&&!isIP?"2px solid "+C.bd:"2px solid "+C.sf,zIndex:1,boxShadow:isIP?"0 0 8px rgba(234,88,12,.5)":"none"}}/>
@@ -502,10 +503,6 @@ export default function StudentDetail({ student, initialTab }) {
                         {l.plan_private&&!isDone&&(<div style={{background:"#FEF2F2",borderRadius:10,padding:"10px 14px",border:"1px dashed #FECACA"}}>
                           <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:4}}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={C.dn} strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg><span style={{fontSize:11,fontWeight:600,color:C.dn}}>비공개 계획</span></div>
                           <div style={{fontSize:13,color:C.ts,lineHeight:1.5,whiteSpace:"pre-wrap",display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{l.plan_private}</div>
-                        </div>)}
-                        {l.private_memo&&(<div style={{background:"#FEF2F2",borderRadius:10,padding:"10px 14px",border:"1px dashed #FECACA"}}>
-                          <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:4}}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={C.dn} strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg><span style={{fontSize:11,fontWeight:600,color:C.dn}}>비공개 메모</span></div>
-                          <div style={{fontSize:13,color:C.ts,lineHeight:1.5,whiteSpace:"pre-wrap",display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{l.private_memo}</div>
                         </div>)}
                       </div>)}
                     </div>
