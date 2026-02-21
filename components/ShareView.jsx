@@ -4,7 +4,6 @@ import { supabase } from '@/lib/supabase';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
 import { C, SC } from '@/components/Colors';
 import { p2, m2s, fd, lessonOnDate } from '@/lib/utils';
-import { exportStudentReportPDF, generateMonthlySummary } from '@/lib/export';
 const REASON_COLORS=["#2563EB","#DC2626","#F59E0B","#16A34A","#8B5CF6","#EC4899","#06B6D4","#F97316"];
 const ScoreTooltip=({active,payload})=>{if(!active||!payload?.length)return null;const d=payload[0].payload;return(<div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:10,padding:"10px 14px",boxShadow:"0 4px 12px rgba(0,0,0,.08)"}}><div style={{fontSize:12,color:C.tt,marginBottom:4}}>{d.label||d.date}</div><div style={{fontSize:16,fontWeight:700,color:C.ac}}>{d.score}점</div></div>);};
 
@@ -26,7 +25,7 @@ export default function ShareView({ token }) {
   const [hwFilters, setHwFilters] = useState(new Set());
   const [showWrongList, setShowWrongList] = useState(false);
   const [showHwList, setShowHwList] = useState(false);
-  const [chartMode, setChartMode] = useState("grade");
+  const [chartMode, setChartMode] = useState(null);
   const [wExpanded, setWExpanded] = useState({});
   const [calMonth, setCalMonth] = useState(new Date());
   const [perms, setPerms] = useState({homework_edit:false,homework_view:true,scores_view:true,lessons_view:true,wrong_view:true,files_view:true,reports_view:true,plans_view:true});
@@ -93,6 +92,12 @@ export default function ShareView({ token }) {
       setLoading(false);
     })();
   }, [token]);
+
+  useEffect(() => {
+    if (chartMode !== null || scores.length === 0) return;
+    const hasGrades = scores.some(x => x.grade != null);
+    setChartMode(hasGrades ? "grade" : "score");
+  }, [scores, chartMode]);
 
   const updateHwCompletion = useCallback((hwId, pct) => {
     // Optimistic: update local state immediately for smooth UX
@@ -191,7 +196,6 @@ export default function ShareView({ token }) {
               <div style={{ fontSize: 20, fontWeight: 700, color: C.tp }}>{s.name}</div>
               <div style={{ fontSize: 13, color: C.ts }}>{s.subject} · {s.grade}{s.school ? " · " + s.school : ""}</div>
             </div>
-            <button onClick={() => exportStudentReportPDF({ student: s, scores, lessons, wrongs })} style={{ background: C.sf, color: C.ts, border: "1px solid " + C.bd, borderRadius: 8, padding: "8px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap", flexShrink: 0 }}>PDF 리포트</button>
           </div>
         </div>
       </div>
@@ -667,7 +671,7 @@ export default function ShareView({ token }) {
           {perms.scores_view !== false && (<>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
             <h3 style={{ fontSize: 16, fontWeight: 700, color: C.tp, margin: 0 }}>성적 추이</h3>
-            {scores.length > 0 && (
+            {scores.length > 0 && gradeEntries.length > 0 && scores.length > gradeEntries.length && (
               <div style={{ display: "flex", gap: 6 }}>
                 <button onClick={() => setChartMode("grade")} style={{ padding: "4px 12px", border: "1px solid " + (chartMode === "grade" ? "#8B5CF6" : C.bd), borderRadius: 8, background: chartMode === "grade" ? "#EDE9FE" : C.sf, fontSize: 11, fontWeight: chartMode === "grade" ? 600 : 400, color: chartMode === "grade" ? "#8B5CF6" : C.ts, cursor: "pointer", fontFamily: "inherit" }}>등급</button>
                 <button onClick={() => setChartMode("score")} style={{ padding: "4px 12px", border: "1px solid " + (chartMode === "score" ? C.ac : C.bd), borderRadius: 8, background: chartMode === "score" ? C.as : C.sf, fontSize: 11, fontWeight: chartMode === "score" ? 600 : 400, color: chartMode === "score" ? C.ac : C.ts, cursor: "pointer", fontFamily: "inherit" }}>점수</button>

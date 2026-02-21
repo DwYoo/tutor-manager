@@ -1284,10 +1284,11 @@ export default function StudentDetail({ student, initialTab }) {
 
           {/* Drop zone */}
           {!isParent&&(<div onDragOver={e=>{e.preventDefault();setFileDrag(true);}} onDragLeave={()=>setFileDrag(false)} onDrop={handleFileDrop}
-            style={{border:"2px dashed "+(fileDrag?C.ac:C.bd),borderRadius:14,padding:uploading?20:24,textAlign:"center",marginBottom:16,background:fileDrag?C.as:C.sf,transition:"all .15s",cursor:"pointer",position:"relative"}}
-            onClick={()=>{const inp=document.createElement('input');inp.type='file';inp.multiple=true;inp.onchange=e=>handleFileDrop(e);inp.click();}}>
+            style={{border:"2px dashed "+(fileDrag?C.ac:C.bd),borderRadius:14,padding:uploading?20:24,textAlign:"center",marginBottom:16,background:fileDrag?C.as:C.sf,transition:"all .15s",cursor:"pointer",position:"relative"}}>
             {uploading?(<div style={{color:C.ac,fontSize:13}}>업로드 중...</div>):(
-              <div><div style={{fontSize:20,marginBottom:6}}>{fileDrag?"📥":"📎"}</div><div style={{fontSize:13,color:fileDrag?C.ac:C.ts}}>{fileDrag?"놓으면 업로드됩니다":"파일을 드래그하거나 클릭하여 추가"}</div></div>
+              <label style={{cursor:"pointer",display:"block"}}><div style={{fontSize:20,marginBottom:6}}>{fileDrag?"📥":"📎"}</div><div style={{fontSize:13,color:fileDrag?C.ac:C.ts}}>{fileDrag?"놓으면 업로드됩니다":"파일을 드래그하거나 클릭하여 추가"}</div>
+                <input type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" style={{display:"none"}} onChange={e=>{handleFileDrop(e);e.target.value='';}}/>
+              </label>
             )}
           </div>)}
 
