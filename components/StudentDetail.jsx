@@ -438,7 +438,7 @@ export default function StudentDetail({ student, initialTab }) {
           const doneLessons=lessons.filter(l=>isDoneOrCompleted(l)&&l.status!=='cancelled').sort((a,b)=>{if(a.date!==b.date)return b.date.localeCompare(a.date);return(b.start_hour*60+b.start_min)-(a.start_hour*60+a.start_min);});
           const upcomingLessons=lessons.filter(l=>!isDoneOrCompleted(l)&&l.status!=='cancelled').sort((a,b)=>{if(a.date!==b.date)return a.date.localeCompare(b.date);return(a.start_hour*60+a.start_min)-(b.start_hour*60+b.start_min);});
           const topCount=(upcomingLessons.length>0&&isLessonInProgress(upcomingLessons[0]))?2:1;
-          const topLessons=upcomingLessons.slice(0,topCount);
+          const topLessons=upcomingLessons.slice(0,topCount).reverse();
           const tlLessons=[...topLessons,...doneLessons];
           const doneCount=doneLessons.length;
           return(<div>
