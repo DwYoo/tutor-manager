@@ -46,6 +46,8 @@ export default function Tuition(){
   const[sealLoading,setSealLoading]=useState(false);
   const[hiddenStudents,setHiddenStudents]=useState(()=>{try{return JSON.parse(localStorage.getItem('tuition-hidden')||'{}');}catch{return{};}});
   const[showHidden,setShowHidden]=useState(false);
+  const[isMobile,setIsMobile]=useState(false);
+  useEffect(()=>{const ck=()=>setIsMobile(window.innerWidth<640);ck();window.addEventListener("resize",ck);return()=>window.removeEventListener("resize",ck);},[]);
 
   // Sync seal image & tutor name from Supabase Storage (cross-device)
   const uploadSealToStorage=async(dataUrl)=>{
@@ -426,10 +428,10 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
   const ris={width:"100%",padding:"7px 10px",borderRadius:6,border:"1px solid "+C.bd,fontSize:13,fontFamily:"inherit",color:C.tp,background:C.sf,outline:"none",boxSizing:"border-box"};
 
   return(
-    <div className="tui-container" style={{padding:28}}>
+    <div className="tui-container" style={{padding:isMobile?16:28}}>
       {/* Header */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24,flexWrap:"wrap",gap:12}}>
-        <div style={{display:"flex",alignItems:"center",gap:12}}>{tog}<h1 style={{fontSize:20,fontWeight:700,color:C.tp}}>수업료 관리</h1></div>
+        <div style={{display:"flex",alignItems:"center",gap:12}}>{tog}<h1 style={{fontSize:isMobile?17:20,fontWeight:700,color:C.tp}}>수업료 관리</h1></div>
         <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
           <button className="nb" onClick={prevM}><IcL/></button>
           <span style={{fontSize:15,fontWeight:600,color:C.tp,minWidth:110,textAlign:"center"}}>{year}년 {month}월</span>
@@ -439,7 +441,7 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
       </div>
 
       {/* Stats */}
-      <div className="tu-stats" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:14,marginBottom:24}}>
+      <div className="tu-stats" style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(auto-fill,minmax(140px,1fr))",gap:isMobile?10:14,marginBottom:isMobile?16:24}}>
         <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:18}}><div style={{fontSize:12,color:C.tt,marginBottom:4}}>총 청구액</div><div style={{fontSize:20,fontWeight:700,color:C.tp}}>₩{totalFee.toLocaleString()}</div></div>
         <div style={{background:C.sb,border:"1px solid #BBF7D0",borderRadius:14,padding:18}}><div style={{fontSize:12,color:C.su,marginBottom:4}}>납부 완료</div><div style={{fontSize:20,fontWeight:700,color:C.su}}>₩{totalPaid.toLocaleString()}</div></div>
         <div style={{background:totalUnpaid>0?C.db:C.sb,border:"1px solid "+(totalUnpaid>0?"#FECACA":"#BBF7D0"),borderRadius:14,padding:18}}><div style={{fontSize:12,color:totalUnpaid>0?C.dn:C.su,marginBottom:4}}>미수금</div><div style={{fontSize:20,fontWeight:700,color:totalUnpaid>0?C.dn:C.su}}>₩{totalUnpaid.toLocaleString()}</div></div>
@@ -458,9 +460,9 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
       ):null;})()}
 
       {/* Main grid */}
-      <div className="tu-grid" style={{display:"grid",gridTemplateColumns:"1fr 280px",gap:20}}>
+      <div className="tu-grid" style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 280px",gap:isMobile?14:20}}>
         {/* Table */}
-        <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,overflow:"auto"}}>
+        <div className="table-scroll" style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,overflow:"auto",WebkitOverflowScrolling:"touch"}}>
           {hiddenCount>0&&<div style={{padding:"8px 14px",display:"flex",alignItems:"center",gap:8,borderBottom:"1px solid "+C.bl,background:C.sfh}}><span style={{fontSize:11,color:C.tt}}>{hiddenCount}명 숨김</span><button onClick={()=>setShowHidden(!showHidden)} style={{fontSize:11,color:C.ac,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",textDecoration:"underline",padding:0}}>{showHidden?"숨김 적용":"모두 표시"}</button></div>}
           <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
             <thead><tr style={{borderBottom:"1px solid "+C.bd}}>
@@ -632,7 +634,7 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
       {/* Receipt modal */}
       {receiptData&&(
         <div onClick={()=>setReceiptData(null)} style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.35)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}}>
-          <div onClick={e=>e.stopPropagation()} style={{background:C.sf,borderRadius:14,padding:28,width:"100%",maxWidth:500,maxHeight:"90vh",overflow:"auto",boxShadow:"0 8px 30px rgba(0,0,0,.12)"}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:C.sf,borderRadius:isMobile?0:14,padding:isMobile?20:28,width:"100%",maxWidth:isMobile?"100vw":500,maxHeight:isMobile?"100vh":"90vh",height:isMobile?"100vh":"auto",overflow:"auto",boxShadow:isMobile?"none":"0 8px 30px rgba(0,0,0,.12)"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
               <h2 style={{fontSize:17,fontWeight:700,color:C.tp,margin:0}}>교습비 영수증 발행</h2>
               <button onClick={()=>setReceiptData(null)} style={{background:"none",border:"none",cursor:"pointer",fontSize:18,color:C.tt,fontFamily:"inherit"}}>✕</button>

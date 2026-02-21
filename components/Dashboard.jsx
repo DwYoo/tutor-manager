@@ -29,6 +29,8 @@ export default function Dashboard(){
   const[layout,setLayout]=useState(DFL);
   const[dragId,setDragId]=useState(null);
   const[dropTgt,setDropTgt]=useState(null);
+  const[isMobile,setIsMobile]=useState(false);
+  useEffect(()=>{const ck=()=>setIsMobile(window.innerWidth<640);ck();window.addEventListener("resize",ck);return()=>window.removeEventListener("resize",ck);},[]);
 
   const[fetchError,setFetchError]=useState(false);
   const fetchData=useCallback(async()=>{
@@ -300,7 +302,7 @@ export default function Dashboard(){
           <button onClick={()=>router.push('/students')} style={{fontSize:11,color:C.ac,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>전체보기 →</button>
         </div>
         {stuStat.length>0?(
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:10}}>
+        <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(auto-fill,minmax(220px,1fr))",gap:10}}>
           {stuStat.map(({s,hwInc,recent,nc})=>{const co=SC[(s.color_index||0)%8];
             return(
             <div key={s.id} onClick={()=>router.push('/students/'+s.id)} style={{padding:12,borderRadius:10,border:`1px solid ${C.bl}`,cursor:"pointer"}} className="hcard">
@@ -427,12 +429,12 @@ export default function Dashboard(){
   if(fetchError)return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:12}}><div style={{fontSize:14,color:C.dn}}>데이터를 불러오지 못했습니다</div><button onClick={fetchData} style={{padding:"8px 20px",borderRadius:8,border:`1px solid ${C.bd}`,background:C.sf,color:C.tp,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>다시 시도</button></div>);
 
   return(
-    <div className="main-pad dash-container" style={{padding:28}}>
+    <div className="main-pad dash-container" style={{padding:isMobile?16:28}}>
       {/* Header */}
       <div style={{marginBottom:24,display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
         {tog}
         <div style={{flex:1}}>
-          <h1 style={{fontSize:22,fontWeight:700,color:C.tp}}>안녕하세요, 선생님 👋</h1>
+          <h1 style={{fontSize:isMobile?18:22,fontWeight:700,color:C.tp}}>안녕하세요, 선생님 👋</h1>
           <p style={{fontSize:14,color:C.ts,marginTop:4}}>{todayLabel}{todayClasses.length>0?` · 오늘 수업 ${todayClasses.length}건`:""}</p>
         </div>
         <button onClick={()=>setEditMode(!editMode)} style={{padding:"6px 14px",borderRadius:8,border:`1px solid ${editMode?C.ac:C.bd}`,background:editMode?C.as:C.sf,color:editMode?C.ac:C.ts,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>{editMode?"완료":"편집"}</button>
@@ -453,7 +455,7 @@ export default function Dashboard(){
       )}
 
       {/* Main grid */}
-      <div className="dash-main" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
+      <div className="dash-main" style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:isMobile?14:20}}>
         {['left','right'].map(col=>{
           const items=layout[col]||[];
           const showEndDrop=editMode&&dropTgt&&dropTgt.col===col&&dropTgt.idx>=items.length;
