@@ -7,6 +7,12 @@ import ErrorBoundary from '@/components/ErrorBoundary'
 export const metadata = {
   title: '과외 매니저',
   description: '과외 선생님을 위한 올인원 관리 도구',
+  openGraph: {
+    title: '과외 매니저',
+    description: '과외 선생님을 위한 올인원 관리 도구',
+    type: 'website',
+    siteName: '과외 매니저',
+  },
 }
 
 export const viewport = {

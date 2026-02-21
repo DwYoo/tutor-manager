@@ -118,6 +118,7 @@ export default function Schedule(){
   const undoStack=useRef([]);const[undoToast,setUndoToast]=useState(null);const undoToastTimer=useRef(null);
   const[mobileDay,setMobileDay]=useState(()=>{const d=new Date().getDay();return d===0?6:d-1;});
   const[mTimeSet,setMTS]=useState(false);
+  const[recurEdit,setRecurEdit]=useState(null); // {formData, oldLesson, viewDate, fromDrag, dragOrigPos}
   const gridRef=useRef(null);const dragRef=useRef(null);const movedRef=useRef(false);const swipeRef=useRef(null);
   const lpRef=useRef(null);const lpStartRef=useRef(null);const lpFired=useRef(false);
   const mDragRef=useRef(null);const[mDC,setMDC]=useState(null);
@@ -211,14 +212,54 @@ export default function Schedule(){
   };
 
   /* CRUD */
+  const hasTimeChange=(old,f)=>old.start_hour!==f.start_hour||old.start_min!==f.start_min||old.duration!==f.duration||old.date!==f.date;
+  const doRecurEdit=async(mode,formData,oldLesson,viewDate)=>{
+    const f=formData;const st=getStu(f.student_id);const isPers=!f.student_id;
+    if(mode==='all'){
+      // 모든 수업 — 기존 동작
+      const oldData={student_id:oldLesson.student_id,date:oldLesson.date,start_hour:oldLesson.start_hour,start_min:oldLesson.start_min,duration:oldLesson.duration,subject:oldLesson.subject,topic:oldLesson.topic,is_recurring:oldLesson.is_recurring,recurring_day:oldLesson.recurring_day};
+      const{error}=await supabase.from('lessons').update({student_id:f.student_id,date:f.date,start_hour:f.start_hour,start_min:f.start_min,duration:f.duration,subject:f.subject,topic:f.topic,is_recurring:f.is_recurring,recurring_day:f.recurring_day}).eq('id',oldLesson.id);
+      if(!error){setLessons(p=>p.map(l=>l.id===oldLesson.id?{...l,...f}:l));const eid=oldLesson.id;pushUndo(async()=>{await supabase.from('lessons').update(oldData).eq('id',eid);setLessons(p=>p.map(l=>l.id===eid?{...l,...oldData}:l));},`${isPers?'일정':st?.name||''} 모든 수업 수정`);}
+    }else if(mode==='this'){
+      // 이 수업만 — materialize후 수정
+      const vd=viewDate||f.date;
+      const{data,error}=await supabase.from('lessons').insert({student_id:f.student_id,date:f.date,start_hour:f.start_hour,start_min:f.start_min,duration:f.duration,subject:f.subject,topic:f.topic||"",is_recurring:false,recurring_day:null,status:'scheduled',user_id:user.id}).select('*, homework(*), files(*)').single();
+      if(!error&&data){
+        const prev=Array.isArray(oldLesson.recurring_exceptions)?oldLesson.recurring_exceptions:[];const exc=[...prev,vd];
+        await supabase.from('lessons').update({recurring_exceptions:exc}).eq('id',oldLesson.id);
+        setLessons(p=>[...p.map(x=>x.id===oldLesson.id?{...x,recurring_exceptions:exc}:x),data]);
+        const nid=data.id;const oid=oldLesson.id;
+        pushUndo(async()=>{await supabase.from('lessons').delete().eq('id',nid);await supabase.from('lessons').update({recurring_exceptions:prev}).eq('id',oid);setLessons(p=>p.filter(l=>l.id!==nid).map(x=>x.id===oid?{...x,recurring_exceptions:prev}:x));},`${isPers?'일정':st?.name||''} 이 수업 수정`);
+      }
+    }else if(mode==='future'){
+      // 이 수업 및 향후 — 기존 시리즈 end_date 설정 + 새 반복 수업 생성
+      const vd=viewDate||f.date;
+      const oldEnd=oldLesson.recurring_end_date;
+      // 기존 시리즈 종료
+      await supabase.from('lessons').update({recurring_end_date:vd}).eq('id',oldLesson.id);
+      // 새 반복 시리즈 생성
+      const{data,error}=await supabase.from('lessons').insert({student_id:f.student_id,date:f.date,start_hour:f.start_hour,start_min:f.start_min,duration:f.duration,subject:f.subject,topic:f.topic||"",is_recurring:true,recurring_day:f.recurring_day,recurring_end_date:oldEnd||null,status:'scheduled',user_id:user.id}).select('*, homework(*), files(*)').single();
+      if(!error&&data){
+        setLessons(p=>[...p.map(x=>x.id===oldLesson.id?{...x,recurring_end_date:vd}:x),data]);
+        const nid=data.id;const oid=oldLesson.id;
+        pushUndo(async()=>{await supabase.from('lessons').delete().eq('id',nid);await supabase.from('lessons').update({recurring_end_date:oldEnd||null}).eq('id',oid);setLessons(p=>p.filter(l=>l.id!==nid).map(x=>x.id===oid?{...x,recurring_end_date:oldEnd||null}:x));},`${isPers?'일정':st?.name||''} 이후 수업 수정`);
+      }
+    }
+    setRecurEdit(null);
+  };
   const save=async(f)=>{
     const isPers=!f.student_id;
     if(!isPers){const cf=checkConflict(f.date,f.start_hour,f.start_min,f.duration,eLes?.id);
     if(cf){const sn=getStu(cf.student_id);if(!await confirm((sn?.name||'다른 수업')+'과 시간이 겹칩니다. 계속하시겠습니까?'))return;}}
     const st=isPers?null:getStu(f.student_id);
     if(eLes?.id){
-      // Update
       const old=lessons.find(l=>l.id===eLes.id);
+      // 반복 수업이고 시간/날짜가 바뀌었으면 팝업
+      if(old?.is_recurring&&hasTimeChange(old,f)){
+        setRecurEdit({formData:f,oldLesson:old,viewDate:eLes._viewDate||old.date});
+        setMO(false);setEL(null);return;
+      }
+      // Update (non-recurring or no time change)
       const oldData=old?{student_id:old.student_id,date:old.date,start_hour:old.start_hour,start_min:old.start_min,duration:old.duration,subject:old.subject,topic:old.topic,is_recurring:old.is_recurring,recurring_day:old.recurring_day}:{};
       const{error}=await supabase.from('lessons').update({student_id:f.student_id,date:f.date,start_hour:f.start_hour,start_min:f.start_min,duration:f.duration,subject:f.subject,topic:f.topic,is_recurring:f.is_recurring,recurring_day:f.recurring_day}).eq('id',eLes.id);
       if(!error){setLessons(p=>p.map(l=>l.id===eLes.id?{...l,...f}:l));const eid=eLes.id;pushUndo(async()=>{await supabase.from('lessons').update(oldData).eq('id',eid);setLessons(p=>p.map(l=>l.id===eid?{...l,...oldData}:l));},`${isPers?'일정':st?.name||''} ${isPers?'':'수업 '}수정`);}
@@ -301,6 +342,13 @@ export default function Schedule(){
       }else if(lastPos){
         const cf=checkConflict(lastPos.date,lastPos.start_hour,lastPos.start_min,l.duration,l.id);
         if(cf){setLessons(p=>p.map(x=>x.id===l.id?{...x,...origPos}:x));return;}
+        // 반복 수업 드래그 시 팝업
+        if(l.is_recurring){
+          const old=lessons.find(x=>x.id===l.id)||l;
+          const fData={...lastPos,student_id:l.student_id,duration:l.duration,subject:l.subject,topic:l.topic||"",is_recurring:true,recurring_day:lastPos.recurring_day};
+          setRecurEdit({formData:fData,oldLesson:{...old,...origPos},viewDate:viewDate,fromDrag:true,dragOrigPos:{id:l.id,...origPos}});
+          return;
+        }
         await supabase.from('lessons').update(lastPos).eq('id',l.id);
         const lid=l.id,op={...origPos};const st=getStu(l.student_id);
         pushUndo(async()=>{await supabase.from('lessons').update(op).eq('id',lid);setLessons(p=>p.map(x=>x.id===lid?{...x,...op}:x));},`${st?.name||''} 수업 이동`);
@@ -596,6 +644,38 @@ export default function Schedule(){
         </div>
       </>);})()}
 
+      {/* Recurring Edit Choice Popup */}
+      {recurEdit&&(()=>{
+        const st=getStu(recurEdit.oldLesson.student_id);const co=st?SC[(st.color_index||0)%8]:{b:"#9CA3AF",bg:"#F3F4F6",t:"#6B7280"};
+        const cancel=()=>{if(recurEdit.fromDrag&&recurEdit.dragOrigPos){const{id,...op}=recurEdit.dragOrigPos;setLessons(p=>p.map(x=>x.id===id?{...x,...op}:x));}setRecurEdit(null);};
+        const pick=async(mode)=>{await doRecurEdit(mode,recurEdit.formData,recurEdit.oldLesson,recurEdit.viewDate);};
+        const rbs={width:"100%",padding:"14px 16px",borderRadius:12,border:`1px solid ${C.bd}`,background:C.sf,cursor:"pointer",fontFamily:"inherit",textAlign:"left",display:"flex",alignItems:"center",gap:12,minHeight:52};
+        return(<div style={{position:"fixed",inset:0,zIndex:120,display:"flex",alignItems:isMobile?"flex-end":"center",justifyContent:"center",background:"rgba(0,0,0,.4)"}} onClick={cancel}>
+          <div onClick={e=>e.stopPropagation()} style={{background:C.sf,borderRadius:isMobile?"16px 16px 0 0":16,width:"100%",maxWidth:400,padding:isMobile?"20px 20px calc(env(safe-area-inset-bottom,0px) + 20px)":28,boxShadow:"0 20px 60px rgba(0,0,0,.15)"}}>
+            {isMobile&&<div style={{width:36,height:4,borderRadius:2,background:C.bd,margin:"0 auto 16px"}}/>}
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
+              <div style={{width:36,height:36,borderRadius:9,background:co.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,color:co.t}}>{(st?.name||"?")[0]}</div>
+              <div><div style={{fontSize:16,fontWeight:700,color:C.tp}}>반복 수업 수정</div><div style={{fontSize:12,color:C.ts}}>{st?.name||"일정"} · {recurEdit.oldLesson.subject}</div></div>
+            </div>
+            <div style={{fontSize:13,color:C.ts,marginBottom:16}}>이 변경을 어떻게 적용하시겠습니까?</div>
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              <button onClick={()=>pick('this')} style={rbs} className="hcard">
+                <div style={{width:32,height:32,borderRadius:8,background:C.as,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.ac} strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+                <div><div style={{fontSize:14,fontWeight:600,color:C.tp}}>이 수업만</div><div style={{fontSize:11,color:C.tt}}>선택한 수업만 변경합니다</div></div>
+              </button>
+              <button onClick={()=>pick('future')} style={rbs} className="hcard">
+                <div style={{width:32,height:32,borderRadius:8,background:"#FEF3C7",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2" strokeLinecap="round"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg></div>
+                <div><div style={{fontSize:14,fontWeight:600,color:C.tp}}>이 수업 및 향후 수업</div><div style={{fontSize:11,color:C.tt}}>이 수업부터 이후 모든 수업을 변경합니다</div></div>
+              </button>
+              <button onClick={()=>pick('all')} style={rbs} className="hcard">
+                <div style={{width:32,height:32,borderRadius:8,background:"#EDE9FE",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2" strokeLinecap="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></div>
+                <div><div style={{fontSize:14,fontWeight:600,color:C.tp}}>모든 수업</div><div style={{fontSize:11,color:C.tt}}>이 반복 수업 전체를 변경합니다</div></div>
+              </button>
+            </div>
+            <button onClick={cancel} style={{width:"100%",padding:"12px 0",marginTop:12,fontSize:14,fontWeight:600,color:C.ts,background:C.sfh,border:"none",borderRadius:10,cursor:"pointer",fontFamily:"inherit",minHeight:44}}>취소</button>
+          </div>
+        </div>);
+      })()}
       {mOpen&&<SchModal les={eLes} students={students} onSave={save} onClose={()=>{setMO(false);setEL(null);}} checkConflict={checkConflict} durPresets={durPresets} isMobile={isMobile}/>}
       {dLes&&<LessonDetailModal les={dLes} student={getStu(dLes.student_id)} textbooks={textbooks.filter(t=>t.student_id===dLes.student_id)} onUpdate={updDetail} onClose={()=>setDL(null)}/>}
       {undoToast&&<div style={{position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",zIndex:200,background:C.pr,color:"#fff",padding:"10px 20px",borderRadius:10,fontSize:13,fontWeight:500,boxShadow:"0 4px 16px rgba(0,0,0,.2)",display:"flex",alignItems:"center",gap:10,fontFamily:"inherit",animation:"slideUp .2s ease-out"}}>
