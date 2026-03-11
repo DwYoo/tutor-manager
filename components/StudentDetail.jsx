@@ -272,8 +272,8 @@ export default function StudentDetail({ student, initialTab }) {
       const ftype=["pdf"].includes(ext)?"pdf":["jpg","jpeg","png","gif","webp"].includes(ext)?"img":"file";
       const safeExt=(ext||'').replace(/[^a-z0-9]/g,'');
       const path=`students/${s.id}/${crypto.randomUUID()}${safeExt?'.'+safeExt:''}`;
-      const{error:upErr}=await supabase.storage.from('files').upload(path,file);
-      if(upErr){toast?.(`${file.name} 업로드 실패`,'error');continue;}
+      const{error:upErr}=await supabase.storage.from('files').upload(path,file,{contentType:file.type||'application/octet-stream'});
+      if(upErr){toast?.(`${file.name} 업로드 실패: ${upErr.message||'알 수 없는 오류'}`,'error');continue;}
       const{data:urlData}=supabase.storage.from('files').getPublicUrl(path);
       const{data,error}=await supabase.from('files').insert({student_id:s.id,file_name:file.name,file_type:ftype,file_url:urlData.publicUrl,user_id:user.id}).select().single();
       if(!error&&data)setStandaloneFiles(p=>[data,...p]);
