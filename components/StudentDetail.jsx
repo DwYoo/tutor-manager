@@ -7,7 +7,7 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianG
 import LessonDetailModal from './student/LessonDetailModal';
 import { useToast } from '@/components/Toast';
 import { C, SC } from '@/components/Colors';
-import { p2, fd, m2s, bk, lessonOnDate } from '@/lib/utils';
+import { p2, fd, m2s, bk } from '@/lib/utils';
 import { syncHomework } from '@/lib/homework';
 import { exportStudentReportPDF } from '@/lib/export';
 import { useShell } from '@/components/AppShell';
@@ -431,27 +431,12 @@ export default function StudentDetail({ student, initialTab }) {
         {/* TIMELINE */}
         {subTab==="timeline"&&(()=>{
           const now=new Date();
-          /* Expand recurring lessons into virtual entries for upcoming dates */
-          const expandedLessons=[...lessons];
-          const existingDates=new Set(lessons.map(l=>(l.date||"").slice(0,10)));
-          for(const l of lessons){
-            if(!l.is_recurring||l.status==='cancelled')continue;
-            for(let offset=0;offset<=90;offset++){
-              const d=new Date(now);d.setDate(now.getDate()+offset);
-              const ds=fd(d);
-              if(existingDates.has(ds))continue;
-              if(lessonOnDate(l,d)){
-                expandedLessons.push({...l,date:ds,_virtual:true,content:null,feedback:null,homework:[],files:[],plan_shared:null,plan_private:null});
-                existingDates.add(ds);
-              }
-            }
-          }
           const isLessonDone=(l)=>{const end=new Date(l.date+"T00:00:00");end.setHours(l.start_hour,l.start_min+l.duration,0,0);return now>=end;};
           const isLessonInProgress=(l)=>{const st=new Date(l.date+"T00:00:00");st.setHours(l.start_hour,l.start_min,0,0);const end=new Date(l.date+"T00:00:00");end.setHours(l.start_hour,l.start_min+l.duration,0,0);return now>=st&&now<end;};
           const getLessonStatus=(l)=>{const s=l.status||'scheduled';if(s!=='scheduled')return s;if(isLessonInProgress(l))return'in_progress';if(isLessonDone(l))return'completed';return'scheduled';};
           const isDoneOrCompleted=(l)=>isLessonDone(l)||l.status==='completed';
-          const doneLessons=expandedLessons.filter(l=>isDoneOrCompleted(l)&&l.status!=='cancelled').sort((a,b)=>{if(a.date!==b.date)return b.date.localeCompare(a.date);return(b.start_hour*60+b.start_min)-(a.start_hour*60+a.start_min);});
-          const upcomingLessons=expandedLessons.filter(l=>!isDoneOrCompleted(l)&&l.status!=='cancelled').sort((a,b)=>{if(a.date!==b.date)return a.date.localeCompare(b.date);return(a.start_hour*60+a.start_min)-(b.start_hour*60+b.start_min);});
+          const doneLessons=lessons.filter(l=>isDoneOrCompleted(l)&&l.status!=='cancelled').sort((a,b)=>{if(a.date!==b.date)return b.date.localeCompare(a.date);return(b.start_hour*60+b.start_min)-(a.start_hour*60+a.start_min);});
+          const upcomingLessons=lessons.filter(l=>!isDoneOrCompleted(l)&&l.status!=='cancelled').sort((a,b)=>{if(a.date!==b.date)return a.date.localeCompare(b.date);return(a.start_hour*60+a.start_min)-(b.start_hour*60+b.start_min);});
           const topCount=(upcomingLessons.length>0&&isLessonInProgress(upcomingLessons[0]))?2:1;
           const topLessons=upcomingLessons.slice(0,topCount).reverse();
           const tlLessons=[...topLessons,...doneLessons];
@@ -472,9 +457,9 @@ export default function StudentDetail({ student, initialTab }) {
                 const em=l.start_hour*60+l.start_min+l.duration;
                 const hasSections=l.content||l.feedback||hwTotal>0||(l.plan_shared&&!isDone)||(l.plan_private&&!isDone);
                 return(
-                  <div key={l.id+"-"+l.date} style={{position:"relative",marginBottom:16}}>
+                  <div key={l.id} style={{position:"relative",marginBottom:16}}>
                     <div style={{position:"absolute",left:-28+3,top:18,width:10,height:10,borderRadius:"50%",background:isIP?"#EA580C":isFirstDone?col.b:isUp?C.sf:C.bd,border:isUp&&!isIP?"2px solid "+C.bd:"2px solid "+C.sf,zIndex:1,boxShadow:isIP?"0 0 8px rgba(234,88,12,.5)":"none"}}/>
-                    <div onClick={()=>l._virtual?openLesson(l,l.date):setLesDetailData(l)} style={{background:isIP?"#FFF7ED":isUp?C.as:C.sf,border:"1px solid "+(isIP?"#FDBA74":isUp?C.al:C.bd),borderRadius:14,overflow:"hidden",cursor:"pointer",borderLeft:"3px solid "+(isIP?"#EA580C":isUp?C.ac:col.b)}} className="hcard">
+                    <div onClick={()=>setLesDetailData(l)} style={{background:isIP?"#FFF7ED":isUp?C.as:C.sf,border:"1px solid "+(isIP?"#FDBA74":isUp?C.al:C.bd),borderRadius:14,overflow:"hidden",cursor:"pointer",borderLeft:"3px solid "+(isIP?"#EA580C":isUp?C.ac:col.b)}} className="hcard">
                       {/* Header */}
                       <div style={{padding:isMobile?"12px 14px "+(hasSections?"8px":"12px"):"16px 20px "+(hasSections?"12px":"16px")}}>
                         <div style={{display:"flex",flexDirection:isMobile?"column":"row",justifyContent:"space-between",alignItems:isMobile?"flex-start":"flex-start",gap:isMobile?6:8}}>
