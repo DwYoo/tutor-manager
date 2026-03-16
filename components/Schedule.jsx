@@ -177,8 +177,11 @@ export default function Schedule(){
     const dl=lessons.filter(x=>{
       if(x.id===excludeId||x.status==='cancelled')return false;
       if(x.is_recurring&&x.recurring_exceptions&&x.recurring_exceptions.includes(dateStr))return false;
+      // recurring_end_date 체크를 시작일 체크보다 먼저 수행 (lessonOnDate와 동일한 로직)
+      if(x.is_recurring&&x.recurring_end_date&&dateStr>=(x.recurring_end_date+'').slice(0,10))return false;
       if(x.date===dateStr)return true;
-      if(x.is_recurring&&x.recurring_day===dw){if(dateStr<x.date)return false;if(x.recurring_end_date&&dateStr>=x.recurring_end_date)return false;return true;}
+      // recurring_day 비교 시 타입 강제 변환 추가 (DB에서 문자열로 올 수 있음)
+      if(x.is_recurring&&+x.recurring_day===dw){if(dateStr<x.date)return false;return true;}
       return false;
     });
     const s1=sh*60+sm,e1=s1+dur;
@@ -190,16 +193,30 @@ export default function Schedule(){
     if(!ctxMenu)return;
     const{l,vd}=ctxMenu;
     let targetId=l.id;
+    let didMaterialize=false;
     if(l.is_recurring&&l.date!==fd(vd)){
       const mat=await materialize(l,fd(vd));
       if(!mat)return;
       targetId=mat.id;
+      didMaterialize=true;
     }
     const oldStatus=lessons.find(x=>x.id===targetId)?.status||'scheduled';
     const st=getStu(l.student_id);
     await supabase.from('lessons').update({status}).eq('id',targetId);
     setLessons(p=>p.map(x=>x.id===targetId?{...x,status}:x));
-    pushUndo(async()=>{await supabase.from('lessons').update({status:oldStatus}).eq('id',targetId);setLessons(p=>p.map(x=>x.id===targetId?{...x,status:oldStatus}:x));},`${st?.name||''} 상태 변경`);
+    if(didMaterialize){
+      // 실체화(materialize)가 일어난 경우 undo 시 생성된 단독 수업 삭제 및 예외 복원
+      const origId=l.id;
+      const prevExc=Array.isArray(l.recurring_exceptions)?l.recurring_exceptions:[];
+      const matId=targetId;
+      pushUndo(async()=>{
+        await supabase.from('lessons').delete().eq('id',matId);
+        await supabase.from('lessons').update({recurring_exceptions:prevExc}).eq('id',origId);
+        setLessons(p=>p.filter(x=>x.id!==matId).map(x=>x.id===origId?{...x,recurring_exceptions:prevExc}:x));
+      },`${st?.name||''} 상태 변경`);
+    }else{
+      pushUndo(async()=>{await supabase.from('lessons').update({status:oldStatus}).eq('id',targetId);setLessons(p=>p.map(x=>x.id===targetId?{...x,status:oldStatus}:x));},`${st?.name||''} 상태 변경`);
+    }
     setCtx(null);
   };
 
@@ -212,22 +229,28 @@ export default function Schedule(){
   };
 
   /* CRUD */
-  const hasTimeChange=(old,f)=>old.start_hour!==f.start_hour||old.start_min!==f.start_min||old.duration!==f.duration||old.date!==f.date;
+  // is_recurring 변경도 반복 수업 수정 다이얼로그를 띄우는 조건에 포함
+  const hasTimeChange=(old,f)=>old.start_hour!==f.start_hour||old.start_min!==f.start_min||old.duration!==f.duration||old.date!==f.date||!!old.is_recurring!==!!f.is_recurring;
   const doRecurEdit=async(mode,formData,oldLesson,viewDate)=>{
     const f=formData;const st=getStu(f.student_id);const isPers=!f.student_id;
     // 원본 반복 수업의 위치 복원용 (드래그로 상태가 변경된 경우)
     const origFields={date:oldLesson.date,start_hour:oldLesson.start_hour,start_min:oldLesson.start_min,recurring_day:oldLesson.recurring_day};
     if(mode==='all'){
-      // 모든 수업 — 기존 동작
-      const oldData={student_id:oldLesson.student_id,date:oldLesson.date,start_hour:oldLesson.start_hour,start_min:oldLesson.start_min,duration:oldLesson.duration,subject:oldLesson.subject,topic:oldLesson.topic,is_recurring:oldLesson.is_recurring,recurring_day:oldLesson.recurring_day};
-      const{error}=await supabase.from('lessons').update({student_id:f.student_id,date:f.date,start_hour:f.start_hour,start_min:f.start_min,duration:f.duration,subject:f.subject,topic:f.topic,is_recurring:f.is_recurring,recurring_day:f.recurring_day}).eq('id',oldLesson.id);
-      if(!error){setLessons(p=>p.map(l=>l.id===oldLesson.id?{...l,...f}:l));const eid=oldLesson.id;pushUndo(async()=>{await supabase.from('lessons').update(oldData).eq('id',eid);setLessons(p=>p.map(l=>l.id===eid?{...l,...oldData}:l));},`${isPers?'일정':st?.name||''} 모든 수업 수정`);}
+      // 모든 수업 — recurring_exceptions 초기화 포함 (기존 예외 날짜가 잔존하지 않도록)
+      const oldData={student_id:oldLesson.student_id,date:oldLesson.date,start_hour:oldLesson.start_hour,start_min:oldLesson.start_min,duration:oldLesson.duration,subject:oldLesson.subject,topic:oldLesson.topic,is_recurring:oldLesson.is_recurring,recurring_day:oldLesson.recurring_day,recurring_exceptions:oldLesson.recurring_exceptions||[]};
+      const{error}=await supabase.from('lessons').update({student_id:f.student_id,date:f.date,start_hour:f.start_hour,start_min:f.start_min,duration:f.duration,subject:f.subject,topic:f.topic,is_recurring:f.is_recurring,recurring_day:f.recurring_day,recurring_exceptions:[]}).eq('id',oldLesson.id);
+      if(!error){setLessons(p=>p.map(l=>l.id===oldLesson.id?{...l,...f,recurring_exceptions:[]}:l));const eid=oldLesson.id;pushUndo(async()=>{await supabase.from('lessons').update(oldData).eq('id',eid);setLessons(p=>p.map(l=>l.id===eid?{...l,...oldData}:l));},`${isPers?'일정':st?.name||''} 모든 수업 수정`);}
     }else if(mode==='this'){
       // 이 수업만 — 독립 수업 생성 + 원본 반복 수업은 원래 위치 유지
       const vd=viewDate||f.date;
       const{data,error}=await supabase.from('lessons').insert({student_id:f.student_id,date:f.date,start_hour:f.start_hour,start_min:f.start_min,duration:f.duration,subject:f.subject,topic:f.topic||"",is_recurring:false,recurring_day:null,status:'scheduled',user_id:user.id}).select('*, homework(*), files(*)').single();
       if(!error&&data){
-        const prev=Array.isArray(oldLesson.recurring_exceptions)?oldLesson.recurring_exceptions:[];const exc=[...prev,vd];
+        const prev=Array.isArray(oldLesson.recurring_exceptions)?oldLesson.recurring_exceptions:[];
+        // f.date가 vd와 다르고 반복 패턴에 포함되는 날짜라면 이중 수업 방지를 위해 f.date도 예외에 추가
+        const fDateDw=new Date(f.date+'T00:00:00').getDay();
+        const fDateDwIso=fDateDw===0?7:fDateDw;
+        const fDateIsRecurring=f.date!==vd&&+oldLesson.recurring_day===fDateDwIso&&f.date>=(oldLesson.date||'').slice(0,10)&&(!oldLesson.recurring_end_date||f.date<(oldLesson.recurring_end_date+'').slice(0,10));
+        const exc=fDateIsRecurring?[...prev,vd,f.date]:[...prev,vd];
         await supabase.from('lessons').update({recurring_exceptions:exc}).eq('id',oldLesson.id);
         setLessons(p=>[...p.map(x=>x.id===oldLesson.id?{...x,...origFields,recurring_exceptions:exc}:x),data]);
         const nid=data.id;const oid=oldLesson.id;
@@ -288,11 +311,12 @@ export default function Schedule(){
   };
   const delFuture=async(id,viewDate)=>{
     const les=lessons.find(l=>l.id===id);const st=les?getStu(les.student_id):null;
-    if(!les||les.date===viewDate){
+    if(!les){toast?.('수업을 찾을 수 없습니다','error');return;}
+    if(les.date===viewDate){
       const{error}=await supabase.from('lessons').delete().eq('id',id);
       if(error){toast?.('수업 삭제에 실패했습니다','error');return;}
       setLessons(p=>p.filter(l=>l.id!==id));setMO(false);setEL(null);setCtx(null);
-      if(les){pushUndo(async()=>{const{student_id,date,start_hour,start_min,duration,subject,topic,is_recurring,recurring_day,status:os,recurring_end_date}=les;const{data}=await supabase.from('lessons').insert({student_id,date,start_hour,start_min,duration,subject,topic,is_recurring,recurring_day,recurring_end_date,status:os||'scheduled',user_id:user.id}).select('*, homework(*), files(*)').single();if(data)setLessons(p=>[...p,data]);},`${st?.name||''} 반복수업 삭제`);}
+      {pushUndo(async()=>{const{student_id,date,start_hour,start_min,duration,subject,topic,is_recurring,recurring_day,status:os,recurring_end_date}=les;const{data}=await supabase.from('lessons').insert({student_id,date,start_hour,start_min,duration,subject,topic,is_recurring,recurring_day,recurring_end_date,status:os||'scheduled',user_id:user.id}).select('*, homework(*), files(*)').single();if(data)setLessons(p=>[...p,data]);},`${st?.name||''} 반복수업 삭제`);}
     }else{
       const oldEnd=les.recurring_end_date;
       const{error}=await supabase.from('lessons').update({recurring_end_date:viewDate}).eq('id',id);
