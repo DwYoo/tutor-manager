@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import LessonDetailModal from './student/LessonDetailModal'
+import TeacherTodoTab from './TeacherTodoTab'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { SkeletonCard } from '@/components/ui'
 import { C, SC } from '@/components/Colors'
@@ -13,10 +14,13 @@ import { useShell } from '@/components/AppShell'
 const BN={prep:"다음 수업 준비",upcoming:"다가오는 수업",unrecorded:"기록 미완료",alerts:"주의 학생",weekChart:"주간 수업",studentList:"학생 근황",tuition:"수업료 요약",lessonRate:"수업 이행률",classHours:"수업시간 요약"};
 const DFL={left:["prep","upcoming","lessonRate"],right:["unrecorded","alerts","weekChart","classHours","tuition"],bottom:["studentList"],hidden:[]};
 
+const DASH_TABS=[{id:'dashboard',label:'대시보드'},{id:'todo',label:'할 일'}];
+
 export default function Dashboard(){
   const router=useRouter();
   const{menuBtn}=useShell();
   const tog=menuBtn;
+  const[activeTab,setActiveTab]=useState('dashboard');
   const[students,setStudents]=useState([]);
   const[lessons,setLessons]=useState([]);
   const[tuitions,setTuitions]=useState([]);
@@ -431,14 +435,27 @@ export default function Dashboard(){
   return(
     <div className="main-pad dash-container" style={{padding:isMobile?16:28}}>
       {/* Header */}
-      <div style={{marginBottom:24,display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+      <div style={{marginBottom:16,display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
         {tog}
         <div style={{flex:1}}>
           <h1 style={{fontSize:isMobile?18:22,fontWeight:700,color:C.tp}}>안녕하세요, 선생님 👋</h1>
           <p style={{fontSize:14,color:C.ts,marginTop:4}}>{todayLabel}{todayClasses.length>0?` · 오늘 수업 ${todayClasses.length}건`:""}</p>
         </div>
-        <button onClick={()=>setEditMode(!editMode)} style={{padding:"6px 14px",borderRadius:8,border:`1px solid ${editMode?C.ac:C.bd}`,background:editMode?C.as:C.sf,color:editMode?C.ac:C.ts,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>{editMode?"완료":"편집"}</button>
+        {activeTab==='dashboard'&&<button onClick={()=>setEditMode(!editMode)} style={{padding:"6px 14px",borderRadius:8,border:`1px solid ${editMode?C.ac:C.bd}`,background:editMode?C.as:C.sf,color:editMode?C.ac:C.ts,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>{editMode?"완료":"편집"}</button>}
       </div>
+
+      {/* Tabs */}
+      <div style={{display:"flex",gap:4,borderBottom:`1px solid ${C.bd}`,marginBottom:20}}>
+        {DASH_TABS.map(t=>{const isA=activeTab===t.id;return(
+          <button key={t.id} onClick={()=>{setActiveTab(t.id);if(t.id==='dashboard'){}}} style={{padding:"10px 20px",border:"none",borderBottom:isA?`2px solid ${C.ac}`:"2px solid transparent",background:"none",fontSize:14,fontWeight:isA?600:400,color:isA?C.ac:C.ts,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",transition:"color .15s,border-color .15s"}}>{t.label}</button>
+        );})}
+      </div>
+
+      {/* Todo tab */}
+      {activeTab==='todo'&&<TeacherTodoTab/>}
+
+      {/* Dashboard tab content */}
+      {activeTab==='dashboard'&&<>
 
       {/* Hidden blocks restore */}
       {editMode&&(layout.hidden||[]).length>0&&(
@@ -483,6 +500,7 @@ export default function Dashboard(){
         </div>
       )}
       {dLes&&<LessonDetailModal les={dLes} student={getStu(dLes.student_id)} textbooks={textbooks.filter(tb=>tb.student_id===dLes.student_id)} onUpdate={updDetail} onClose={()=>setDLes(null)}/>}
+      </>}
     </div>
   );
 }
