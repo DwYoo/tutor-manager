@@ -44,6 +44,8 @@ export default function TeacherTodoTab() {
   const [editId, setEditId] = useState(null)
   const [form, setForm] = useState({ title: '', priority: 'medium', category: '기타', due_date: '' })
   const [saving, setSaving] = useState(false)
+  const [dragId, setDragId] = useState(null)
+  const [dropIdx, setDropIdx] = useState(null)
 
   const fetchTodos = useCallback(async () => {
     setLoading(true)
@@ -112,6 +114,17 @@ export default function TeacherTodoTab() {
   const deleteTodo = async (id) => {
     await supabase.from('teacher_todos').delete().eq('id', id)
     setTodos(prev => prev.filter(t => t.id !== id))
+  }
+
+  const reorder = async (fromId, toIdx) => {
+    const next = [...todos]
+    const fromIdx = next.findIndex(t => t.id === fromId)
+    if (fromIdx === -1 || fromIdx === toIdx) return
+    const [item] = next.splice(fromIdx, 1)
+    next.splice(toIdx, 0, item)
+    const reindexed = next.map((t, i) => ({ ...t, sort_order: i }))
+    setTodos(reindexed)
+    await Promise.all(reindexed.map(t => supabase.from('teacher_todos').update({ sort_order: t.sort_order }).eq('id', t.id)))
   }
 
   const filteredTodos = todos.filter(t => {
@@ -319,87 +332,84 @@ export default function TeacherTodoTab() {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {filteredTodos.map(todo => {
+          {filteredTodos.map((todo, idx) => {
             const pm = getPriorityMeta(todo.priority)
             const due = formatDueDate(todo.due_date)
             const isEditing = editId === todo.id && adding
+            const isDragging = dragId === todo.id
+            const showDropLine = dropIdx === idx && dragId && dragId !== todo.id
+            const realIdx = todos.findIndex(t => t.id === todo.id)
             return (
-              <div
-                key={todo.id}
-                style={{
-                  background: C.sf,
-                  border: `1px solid ${isEditing ? C.ac : C.bd}`,
-                  borderRadius: 10,
-                  padding: '12px 14px',
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: 10,
-                  opacity: todo.completed ? 0.65 : 1,
-                  transition: 'opacity .15s',
-                }}
-              >
-                {/* Checkbox */}
-                <button
-                  onClick={() => toggleComplete(todo)}
+              <div key={todo.id}>
+                {showDropLine && <div style={{ height: 2, background: C.ac, borderRadius: 2, marginBottom: 4 }} />}
+                <div
+                  draggable
+                  onDragStart={e => { setDragId(todo.id); e.dataTransfer.effectAllowed = 'move' }}
+                  onDragEnd={() => { setDragId(null); setDropIdx(null) }}
+                  onDragOver={e => { e.preventDefault(); setDropIdx(idx) }}
+                  onDrop={e => { e.preventDefault(); reorder(dragId, realIdx); setDragId(null); setDropIdx(null) }}
                   style={{
-                    width: 20, height: 20, borderRadius: 6, flexShrink: 0, marginTop: 1,
-                    border: `2px solid ${todo.completed ? C.su : C.bd}`,
-                    background: todo.completed ? C.su : 'transparent',
-                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    padding: 0,
+                    background: C.sf,
+                    border: `1px solid ${isEditing ? C.ac : C.bd}`,
+                    borderRadius: 10,
+                    padding: '12px 14px',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: 10,
+                    opacity: isDragging ? 0.4 : todo.completed ? 0.65 : 1,
+                    transition: 'opacity .15s',
+                    cursor: 'grab',
                   }}
                 >
-                  {todo.completed && (
-                    <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                      <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  )}
-                </button>
-
-                {/* Content */}
-                <div style={{ flex: 1, minWidth: 0 }}>
+                  {/* Drag handle */}
                   <div style={{
-                    fontSize: 14, fontWeight: 500, color: C.tp,
-                    textDecoration: todo.completed ? 'line-through' : 'none',
-                    marginBottom: 4,
-                  }}>
-                    {todo.title}
-                  </div>
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                    {/* Priority badge */}
-                    <span style={{
-                      fontSize: 11, fontWeight: 600,
-                      color: pm.color, background: pm.bg,
-                      padding: '1px 7px', borderRadius: 4,
-                    }}>
-                      {pm.label}
-                    </span>
-                    {/* Category badge */}
-                    <span style={{
-                      fontSize: 11, color: C.ts, background: C.sfh,
-                      border: `1px solid ${C.bd}`, padding: '1px 7px', borderRadius: 4,
-                    }}>
-                      {todo.category}
-                    </span>
-                    {/* Due date */}
-                    {due && (
-                      <span style={{ fontSize: 11, color: due.color, fontWeight: 500 }}>
-                        📅 {due.label}
-                      </span>
-                    )}
-                  </div>
-                </div>
+                    flexShrink: 0, marginTop: 2, color: C.bd,
+                    fontSize: 14, lineHeight: 1, cursor: 'grab', userSelect: 'none',
+                  }}>⠿</div>
 
-                {/* Actions */}
-                <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
-                  <button onClick={() => startEdit(todo)} style={btnSm} title="수정">✏️</button>
+                  {/* Checkbox */}
                   <button
-                    onClick={() => deleteTodo(todo.id)}
-                    style={{ ...btnSm, color: C.dn }}
-                    title="삭제"
+                    onClick={() => toggleComplete(todo)}
+                    style={{
+                      width: 20, height: 20, borderRadius: 6, flexShrink: 0, marginTop: 1,
+                      border: `2px solid ${todo.completed ? C.su : C.bd}`,
+                      background: todo.completed ? C.su : 'transparent',
+                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      padding: 0,
+                    }}
                   >
-                    🗑️
+                    {todo.completed && (
+                      <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                        <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
                   </button>
+
+                  {/* Content */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      fontSize: 14, fontWeight: 500, color: C.tp,
+                      textDecoration: todo.completed ? 'line-through' : 'none',
+                      marginBottom: 4,
+                    }}>
+                      {todo.title}
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: pm.color, background: pm.bg, padding: '1px 7px', borderRadius: 4 }}>
+                        {pm.label}
+                      </span>
+                      <span style={{ fontSize: 11, color: C.ts, background: C.sfh, border: `1px solid ${C.bd}`, padding: '1px 7px', borderRadius: 4 }}>
+                        {todo.category}
+                      </span>
+                      {due && <span style={{ fontSize: 11, color: due.color, fontWeight: 500 }}>📅 {due.label}</span>}
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
+                    <button onClick={() => startEdit(todo)} style={btnSm} title="수정">✏️</button>
+                    <button onClick={() => deleteTodo(todo.id)} style={{ ...btnSm, color: C.dn }} title="삭제">🗑️</button>
+                  </div>
                 </div>
               </div>
             )
