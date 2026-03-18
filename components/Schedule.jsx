@@ -265,8 +265,12 @@ export default function Schedule(){
       const oldEnd=oldLesson.recurring_end_date;
       // 기존 시리즈 종료
       await supabase.from('lessons').update({recurring_end_date:vd}).eq('id',oldLesson.id);
+      // 새 반복 시리즈 시작 날짜: f.date가 vd보다 이전이면 vd로 맞춤 (중복 방지)
+      const newStartDate=f.date<vd?vd:f.date;
+      const newStartDw=new Date(newStartDate+'T00:00:00').getDay();
+      const newRecurringDay=newStartDw===0?7:newStartDw;
       // 새 반복 시리즈 생성
-      const{data,error}=await supabase.from('lessons').insert({student_id:f.student_id,date:f.date,start_hour:f.start_hour,start_min:f.start_min,duration:f.duration,subject:f.subject,topic:f.topic||"",is_recurring:true,recurring_day:f.recurring_day,recurring_end_date:oldEnd||null,status:'scheduled',user_id:user.id}).select('*, homework(*), files(*)').single();
+      const{data,error}=await supabase.from('lessons').insert({student_id:f.student_id,date:newStartDate,start_hour:f.start_hour,start_min:f.start_min,duration:f.duration,subject:f.subject,topic:f.topic||"",is_recurring:true,recurring_day:newRecurringDay,recurring_end_date:oldEnd||null,status:'scheduled',user_id:user.id}).select('*, homework(*), files(*)').single();
       if(!error&&data){
         setLessons(p=>[...p.map(x=>x.id===oldLesson.id?{...x,...origFields,recurring_end_date:vd}:x),data]);
         const nid=data.id;const oid=oldLesson.id;
