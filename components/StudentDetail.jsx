@@ -113,6 +113,9 @@ export default function StudentDetail({ student, initialTab }) {
   const [showNewNote,setShowNewNote]=useState(false);
   const [noteTitle,setNoteTitle]=useState("");
   const [noteBody,setNoteBody]=useState("");
+  const [editingNoteId,setEditingNoteId]=useState(null);
+  const [editNoteTitle,setEditNoteTitle]=useState("");
+  const [editNoteBody,setEditNoteBody]=useState("");
   const [pinnedNotes,setPinnedNotes]=useState(()=>{try{const v=localStorage.getItem("pinned_notes_"+student.id);return v?JSON.parse(v):[];}catch{return[];}});
   useEffect(()=>{try{localStorage.setItem("pinned_notes_"+student.id,JSON.stringify(pinnedNotes));}catch{}},[pinnedNotes,student.id]);
 
@@ -208,6 +211,9 @@ export default function StudentDetail({ student, initialTab }) {
   const updWrong=(id,key,val)=>{setWrongs(p=>p.map(w=>w.id===id?{...w,[key]:val}:w));const tk=id+key;clearTimeout(wTimers.current[tk]);wTimers.current[tk]=setTimeout(async()=>{await supabase.from('wrong_answers').update({[key]:val}).eq('id',id);},500);};
   const addNote=async()=>{if(!noteBody.trim())return;const{data,error}=await supabase.from('reports').insert({student_id:s.id,title:noteTitle.trim()||fd(new Date()),body:noteBody,is_shared:false,type:'note',date:fd(new Date()),user_id:user.id}).select().single();if(error){toast?.('메모 저장에 실패했습니다','error');return;}if(data){setNotes(p=>[data,...p]);setNoteTitle("");setNoteBody("");setShowNewNote(false);toast?.('메모가 저장되었습니다');}};
   const delNote=async(id)=>{if(!await confirm('메모를 삭제하시겠습니까?',{danger:true,confirmText:'삭제'}))return;const{error}=await supabase.from('reports').delete().eq('id',id);if(error){toast?.('삭제에 실패했습니다','error');return;}setNotes(p=>p.filter(n=>n.id!==id));setPinnedNotes(p=>p.filter(pid=>pid!==id));toast?.('메모가 삭제되었습니다');};
+  const startEditNote=(n)=>{setEditingNoteId(n.id);setEditNoteTitle(n.title||"");setEditNoteBody(n.body||"");};
+  const cancelEditNote=()=>{setEditingNoteId(null);setEditNoteTitle("");setEditNoteBody("");};
+  const saveEditNote=async(id)=>{if(!editNoteBody.trim())return;const{error}=await supabase.from('reports').update({title:editNoteTitle.trim()||fd(new Date()),body:editNoteBody}).eq('id',id);if(error){toast?.('메모 수정에 실패했습니다','error');return;}setNotes(p=>p.map(n=>n.id===id?{...n,title:editNoteTitle.trim()||fd(new Date()),body:editNoteBody}:n));cancelEditNote();toast?.('메모가 수정되었습니다');};
   const togglePin=(id)=>{setPinnedNotes(p=>p.includes(id)?p.filter(pid=>pid!==id):[...p,id]);};
 
   const addRp=async()=>{if(!nT.trim())return;const{data,error}=await supabase.from('reports').insert({student_id:s.id,title:nT,body:nB,is_shared:!nS,date:fd(new Date()),user_id:user.id}).select().single();if(error){toast?.('레포트 저장에 실패했습니다','error');return;}if(data){setReports(p=>[data,...p]);setNT("");setNB("");setNS(false);setShowNew(false);toast?.('레포트가 등록되었습니다');}};
@@ -606,20 +612,34 @@ export default function StudentDetail({ student, initialTab }) {
           </div>)}
           {sorted.length===0?(<div style={{textAlign:"center",padding:40,color:C.tt,background:C.sf,border:"1px solid "+C.bd,borderRadius:14}}><div style={{fontSize:14}}>메모가 없습니다</div><div style={{fontSize:12,marginTop:4,color:C.tt}}>학생 성향, 주의사항, 학부모 요청 등을 기록해보세요</div></div>):(
             <div style={{display:"flex",flexDirection:"column",gap:12}}>
-              {sorted.map(n=>{const pinned=pinnedNotes.includes(n.id);return(
-                <div key={n.id} style={{background:C.sf,border:"1px solid "+(pinned?C.ac:C.bd),borderRadius:14,padding:18,borderLeft:pinned?"3px solid "+C.ac:"none"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-                    <div style={{display:"flex",alignItems:"center",gap:8,flex:1,minWidth:0}}>
-                      <button onClick={()=>togglePin(n.id)} title={pinned?"고정 해제":"고정"} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,padding:0,flexShrink:0,opacity:pinned?1:.4}}>{pinned?"📌":"📌"}</button>
-                      <span style={{fontSize:14,fontWeight:600,color:C.tp,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{n.title||"메모"}</span>
-                      {pinned&&<span style={{background:C.as,color:C.ac,padding:"1px 6px",borderRadius:4,fontSize:11,fontWeight:600,flexShrink:0}}>고정</span>}
+              {sorted.map(n=>{const pinned=pinnedNotes.includes(n.id);const isEditing=editingNoteId===n.id;return(
+                <div key={n.id} style={{background:C.sf,border:"1px solid "+(isEditing?C.ac:pinned?C.ac:C.bd),borderRadius:14,padding:18,borderLeft:isEditing?"3px solid "+C.ac:pinned?"3px solid "+C.ac:"none"}}>
+                  {isEditing?(
+                    <div>
+                      <div style={{marginBottom:10}}><label style={ls}>제목 <span style={{fontWeight:400,color:C.tt}}>(선택)</span></label><input value={editNoteTitle} onChange={e=>setEditNoteTitle(e.target.value)} style={is} placeholder="예: 학부모 요청사항, 학생 성향 메모"/></div>
+                      <div style={{marginBottom:10}}><label style={ls}>내용</label><textarea value={editNoteBody} onChange={e=>setEditNoteBody(e.target.value)} style={{...is,height:100,resize:"vertical",lineHeight:1.6}} placeholder="학생 관련 메모를 자유롭게 기록하세요..."/></div>
+                      <div style={{display:"flex",justifyContent:"flex-end",gap:8}}>
+                        <button onClick={cancelEditNote} style={{background:C.sfh,color:C.ts,border:"1px solid "+C.bd,borderRadius:8,padding:"8px 14px",fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>취소</button>
+                        <button onClick={()=>saveEditNote(n.id)} style={{background:C.pr,color:"#fff",border:"none",borderRadius:8,padding:"8px 16px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>저장</button>
+                      </div>
                     </div>
-                    <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
-                      <span style={{fontSize:12,color:C.tt}}>{n.date}</span>
-                      <button onClick={()=>delNote(n.id)} style={{background:"none",border:"none",fontSize:11,color:C.tt,cursor:"pointer",fontFamily:"inherit",padding:0,opacity:.6}}>삭제</button>
-                    </div>
-                  </div>
-                  <div style={{fontSize:13,color:C.ts,lineHeight:1.7,whiteSpace:"pre-wrap"}}>{n.body}</div>
+                  ):(
+                    <>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+                        <div style={{display:"flex",alignItems:"center",gap:8,flex:1,minWidth:0}}>
+                          <button onClick={()=>togglePin(n.id)} title={pinned?"고정 해제":"고정"} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,padding:0,flexShrink:0,opacity:pinned?1:.4}}>{pinned?"📌":"📌"}</button>
+                          <span style={{fontSize:14,fontWeight:600,color:C.tp,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{n.title||"메모"}</span>
+                          {pinned&&<span style={{background:C.as,color:C.ac,padding:"1px 6px",borderRadius:4,fontSize:11,fontWeight:600,flexShrink:0}}>고정</span>}
+                        </div>
+                        <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+                          <span style={{fontSize:12,color:C.tt}}>{n.date}</span>
+                          <button onClick={()=>startEditNote(n)} style={{background:"none",border:"none",fontSize:11,color:C.tt,cursor:"pointer",fontFamily:"inherit",padding:0,opacity:.6}}>수정</button>
+                          <button onClick={()=>delNote(n.id)} style={{background:"none",border:"none",fontSize:11,color:C.tt,cursor:"pointer",fontFamily:"inherit",padding:0,opacity:.6}}>삭제</button>
+                        </div>
+                      </div>
+                      <div style={{fontSize:13,color:C.ts,lineHeight:1.7,whiteSpace:"pre-wrap"}}>{n.body}</div>
+                    </>
+                  )}
                 </div>
               );})}
             </div>
