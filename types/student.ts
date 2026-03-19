@@ -6,6 +6,7 @@ export interface Student {
   subject: string;
   grade: string;
   school?: string;
+  address?: string;
   birth_date?: string;
   phone?: string;
   parent_phone?: string;
@@ -50,6 +51,7 @@ export interface StudentFormData {
   birth_date?: string;
   subject: string;
   school?: string;
+  address?: string;
   phone?: string;
   parent_phone?: string;
   fee_per_class?: number;
