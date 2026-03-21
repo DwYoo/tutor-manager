@@ -15,7 +15,19 @@ export const SC = [
   { bg: "#EDE9FE", t: "#5B21B6", b: "#C4B5FD" },
   { bg: "#FFE4E6", t: "#9F1239", b: "#FDA4AF" },
   { bg: "#CCFBF1", t: "#115E59", b: "#5EEAD4" },
-  { bg: "#FEE2E2", t: "#991B1B", b: "#FCA5A5" }
+  { bg: "#FEF9C3", t: "#713F12", b: "#FDE047" },
+  { bg: "#E0E7FF", t: "#3730A3", b: "#A5B4FC" },
+  { bg: "#F0FDF4", t: "#14532D", b: "#86EFAC" },
+  { bg: "#FFF7ED", t: "#7C2D12", b: "#FDBA74" },
+  { bg: "#F0F9FF", t: "#0C4A6E", b: "#7DD3FC" },
+  { bg: "#FDF4FF", t: "#6B21A8", b: "#E879F9" },
+  { bg: "#ECFDF5", t: "#064E3B", b: "#34D399" },
+  { bg: "#FFF1F2", t: "#881337", b: "#FB7185" },
+  { bg: "#F8FAFC", t: "#1E293B", b: "#94A3B8" },
+  { bg: "#FFFBEB", t: "#78350F", b: "#F59E0B" },
+  { bg: "#EFF6FF", t: "#1D4ED8", b: "#60A5FA" },
+  { bg: "#FFF0F6", t: "#831843", b: "#F472B6" },
+  { bg: "#E8FFF3", t: "#065F46", b: "#10B981" }
 ]
 
 export const STATUS = [

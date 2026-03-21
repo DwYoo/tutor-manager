@@ -100,7 +100,7 @@ export default function Dashboard(){
   const unpaidAmount=monthRecs.reduce((a,r)=>r.status!=="paid"?a+Math.max(0,r.totalDue-r.paidAmount):a,0);
 
   const getStu=sid=>students.find(x=>x.id===sid);
-  const getCol=sid=>{const s=getStu(sid);return SC[(s?.color_index||0)%8];};
+  const getCol=sid=>{const s=getStu(sid);return SC[(s?.color_index||0)%SC.length];};
 
   const getNextClass=(sid)=>{for(let offset=0;offset<90;offset++){const d=new Date(today);d.setDate(today.getDate()+offset);const sLessons=lessons.filter(l=>l.student_id===sid&&lessonOnDate(l,d));for(const l of sLessons){const lesMin=l.start_hour*60+l.start_min;if(offset===0&&lesMin<=today.getHours()*60+today.getMinutes())continue;return`${DK[d.getDay()]} ${p2(l.start_hour)}:${p2(l.start_min)}`;}}return"-";};
 
@@ -168,7 +168,7 @@ export default function Dashboard(){
           <h3 style={{fontSize:15,fontWeight:600,color:C.tp}}>{nextPrep?.isInProgress?"진행중 수업":"다음 수업 준비"}</h3>
           {nextPrep&&<span style={{fontSize:12,color:nextPrep.isInProgress?"#EA580C":C.ac,fontWeight:600}}>{nextPrep.dayLabel} {p2(nextPrep.lesson.start_hour)}:{p2(nextPrep.lesson.start_min)}</span>}
         </div>
-        {nextPrep?(()=>{const{lesson:nl,student:ns,last,hwTotal,hwDone,scoreTrend,lastScore}=nextPrep;const co=SC[(ns.color_index||0)%8];const em=nl.start_hour*60+nl.start_min+nl.duration;return(
+        {nextPrep?(()=>{const{lesson:nl,student:ns,last,hwTotal,hwDone,scoreTrend,lastScore}=nextPrep;const co=SC[(ns.color_index||0)%SC.length];const em=nl.start_hour*60+nl.start_min+nl.duration;return(
           <div onClick={()=>setDLes(mkLes(nl))} style={{cursor:"pointer",borderRadius:12,border:`1px solid ${C.bl}`,borderLeft:`4px solid ${co.b}`,padding:16}} className="hcard">
             <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14}}>
               <div style={{width:40,height:40,borderRadius:10,background:co.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:700,color:co.t}}>{(ns.name||"?")[0]}</div>
@@ -254,7 +254,7 @@ export default function Dashboard(){
       <div style={{background:C.sf,border:`1px solid ${C.bd}`,borderRadius:14,padding:20}}>
         <h3 style={{fontSize:15,fontWeight:600,color:C.tp,marginBottom:12}}>주의가 필요한 학생</h3>
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
-          {studentAlerts.slice(0,5).map(({student:s,alerts:al})=>{const co=SC[(s.color_index||0)%8];return(
+          {studentAlerts.slice(0,5).map(({student:s,alerts:al})=>{const co=SC[(s.color_index||0)%SC.length];return(
             <div key={s.id} onClick={()=>router.push('/students/'+s.id)} style={{display:"flex",alignItems:"flex-start",gap:8,padding:"10px 10px",borderRadius:8,border:`1px solid ${C.bl}`,cursor:"pointer"}} className="hcard">
               <div style={{width:24,height:24,borderRadius:6,background:co.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:co.t,flexShrink:0,marginTop:1}}>{(s.name||"?")[0]}</div>
               <div style={{flex:1}}>
@@ -304,7 +304,7 @@ export default function Dashboard(){
         </div>
         {stuStat.length>0?(
         <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(auto-fill,minmax(220px,1fr))",gap:10}}>
-          {stuStat.map(({s,hwInc,recent,nc})=>{const co=SC[(s.color_index||0)%8];
+          {stuStat.map(({s,hwInc,recent,nc})=>{const co=SC[(s.color_index||0)%SC.length];
             return(
             <div key={s.id} onClick={()=>router.push('/students/'+s.id)} style={{padding:12,borderRadius:10,border:`1px solid ${C.bl}`,cursor:"pointer"}} className="hcard">
               <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>

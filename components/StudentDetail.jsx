@@ -31,7 +31,7 @@ export default function StudentDetail({ student, initialTab }) {
   const s = student;
   if (!s) return null;
   const tog = menuBtn;
-  const col = SC[(typeof s.color_index==='number'?s.color_index:s.name?s.name.charCodeAt(0):0)%8]||SC[0];
+  const col = SC[(typeof s.color_index==='number'?s.color_index:s.name?s.name.charCodeAt(0):0)%SC.length]||SC[0];
 
   const [mainTab,setMainTab]=useState(initialTab?.mainTab||"class");
   const [subTab,setSubTab]=useState(initialTab?.subTab||"timeline");
