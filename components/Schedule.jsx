@@ -320,7 +320,7 @@ export default function Schedule(){
       const{error}=await supabase.from('lessons').delete().eq('id',id);
       if(error){toast?.('수업 삭제에 실패했습니다','error');return;}
       setLessons(p=>p.filter(l=>l.id!==id));setMO(false);setEL(null);setCtx(null);
-      {pushUndo(async()=>{const{student_id,date,start_hour,start_min,duration,subject,topic,is_recurring,recurring_day,status:os,recurring_end_date}=les;const{data}=await supabase.from('lessons').insert({student_id,date,start_hour,start_min,duration,subject,topic,is_recurring,recurring_day,recurring_end_date,status:os||'scheduled',user_id:user.id}).select('*, homework(*), files(*)').single();if(data)setLessons(p=>[...p,data]);},`${st?.name||''} 반복수업 삭제`);}
+      {pushUndo(async()=>{const{student_id,date,start_hour,start_min,duration,subject,topic,is_recurring,recurring_day,status:os,recurring_end_date,recurring_exceptions}=les;const{data}=await supabase.from('lessons').insert({student_id,date,start_hour,start_min,duration,subject,topic,is_recurring,recurring_day,recurring_end_date,recurring_exceptions:recurring_exceptions||[],status:os||'scheduled',user_id:user.id}).select('*, homework(*), files(*)').single();if(data)setLessons(p=>[...p,data]);},`${st?.name||''} 반복수업 삭제`);}
     }else{
       const oldEnd=les.recurring_end_date;
       const{error}=await supabase.from('lessons').update({recurring_end_date:viewDate}).eq('id',id);
