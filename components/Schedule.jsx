@@ -438,9 +438,9 @@ export default function Schedule(){
         const cf=checkConflict(lastPos.date,lastPos.start_hour,lastPos.start_min,l.duration,l.id);
         if(cf){setLessons(p=>p.map(x=>x.id===l.id?{...x,...origPos}:x));return;}
         // 반복 수업 드래그 시 팝업
-        if(l.is_recurring){
+        if(l.is_recurring||l.recurring_series_id){
           const old=lessons.find(x=>x.id===l.id)||l;
-          const fData={...lastPos,student_id:l.student_id,duration:l.duration,subject:l.subject,topic:l.topic||"",is_recurring:true,recurring_day:lastPos.recurring_day};
+          const fData={...lastPos,student_id:l.student_id,duration:l.duration,subject:l.subject,topic:l.topic||"",is_recurring:l.is_recurring,recurring_day:lastPos.recurring_day,recurring_series_id:l.recurring_series_id||null};
           setRecurEdit({formData:fData,oldLesson:{...old,...origPos},viewDate:viewDate,fromDrag:true,dragOrigPos:{id:l.id,...origPos}});
           return;
         }
