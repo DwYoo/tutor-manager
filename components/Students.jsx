@@ -55,7 +55,7 @@ export default function Students(){
       toast?.('학생 정보가 저장되었습니다');fetchStudents();
     }else{
       const maxSort=students.reduce((m,s)=>Math.max(m,s.sort_order??-1),-1);
-      const{error}=await supabase.from('students').insert({...full,color_index:students.length%8,fee_status:'unpaid',user_id:user.id,sort_order:maxSort+1});
+      const{error}=await supabase.from('students').insert({...full,color_index:students.length%SC.length,fee_status:'unpaid',user_id:user.id,sort_order:maxSort+1});
       if(error){toast?.('학생 추가에 실패했습니다','error');setSaving(false);return;}
       toast?.('학생이 추가되었습니다');fetchStudents();
     }
@@ -114,7 +114,7 @@ export default function Students(){
       {/* Student cards */}
       <div className="stu-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:14}}>
         {filtered.map((s,idx)=>{
-          const col=SC[(s.color_index||0)%8];
+          const col=SC[(s.color_index||0)%SC.length];
           const isDrag=dragId===s.id;
           const isBusy=busyIds.has(s.id);
           const showL=canDrag&&dragId&&!isDrag&&dropIdx===idx&&!noDrop;

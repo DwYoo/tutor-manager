@@ -139,7 +139,7 @@ export default function ShareView({ token }) {
   );
 
   if (!s) return null;
-  const col = SC[(typeof s.color_index === 'number' ? s.color_index : (s.name ? s.name.charCodeAt(0) : 0)) % 8] || SC[0];
+  const col = SC[(typeof s.color_index === 'number' ? s.color_index : (s.name ? s.name.charCodeAt(0) : 0)) % SC.length] || SC[0];
 
   // Filter lessons to only show past lessons (not future ones)
   const today = new Date().toISOString().split('T')[0];

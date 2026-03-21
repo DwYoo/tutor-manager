@@ -86,7 +86,7 @@ function TplBar({ field, value, onApply }) {
 export default function LessonDetailModal({ les, student, textbooks = [], onUpdate, onClose }) {
   const { user } = useAuth();
   const toast = useToast();
-  const col = SC[(student?.color_index ?? 0) % 8];
+  const col = SC[(student?.color_index ?? 0) % SC.length];
   const sh = les.sh ?? les.start_hour ?? 0, sm = les.sm ?? les.start_min ?? 0, dur = les.dur ?? les.duration ?? 0;
   const sub = les.sub ?? les.subject ?? "", rep = les.rep ?? les.is_recurring ?? false;
   const em = sh * 60 + sm + dur;
