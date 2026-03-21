@@ -80,7 +80,7 @@ function SchModal({les,students,onSave,onClose,checkConflict,durPresets,isMobile
         <div><label style={ls}>{isPers?"메모":"수업 주제"}</label><input value={f.topic} onChange={e=>u("topic",e.target.value)} style={{...is,minHeight:44}} placeholder={isPers?"메모...":"수업 주제..."}/></div>
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
           <label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,color:C.ts,cursor:"pointer"}}><input type="checkbox" checked={f.is_recurring} onChange={e=>{u("is_recurring",e.target.checked);if(!e.target.checked)u("recurring_end_date","");}}/>매주 반복</label>
-          {f.is_recurring&&<div><label style={ls}>반복 종료일 <span style={{color:C.dn,fontWeight:400}}>(필수)</span></label><input type="date" value={f.recurring_end_date} min={f.date} onChange={e=>u("recurring_end_date",e.target.value)} style={{...is,minHeight:44}}/></div>}
+          {f.is_recurring&&<div><label style={ls}>반복 종료일 <span style={{color:C.dn,fontWeight:400}}>(필수)</span></label><input type="date" value={f.recurring_end_date} min={f.date} onChange={e=>u("recurring_end_date",e.target.value)} style={{...is,minHeight:44}}/><div style={{display:"flex",gap:4,marginTop:6}}>{[["1개월",1],["3개월",3],["6개월",6],["1년",12]].map(([lbl,mo])=>{const d=new Date(f.date+'T00:00:00');d.setMonth(d.getMonth()+mo);const v=fd(d);return(<button key={lbl} type="button" onClick={()=>u("recurring_end_date",v)} style={{flex:1,padding:"5px 0",borderRadius:6,border:`1px solid ${f.recurring_end_date===v?C.ac:C.bd}`,background:f.recurring_end_date===v?C.al:"transparent",color:f.recurring_end_date===v?C.ac:C.ts,fontSize:11,fontWeight:f.recurring_end_date===v?700:500,cursor:"pointer",fontFamily:"inherit",minHeight:36}}>{lbl}</button>);})}</div></div>}
         </div>
         {conflict&&<div style={{background:C.db,border:"1px solid #FECACA",borderRadius:8,padding:"8px 12px",fontSize:12,color:C.dn,fontWeight:500,display:"flex",alignItems:"center",gap:6}}>
           <span style={{fontSize:14}}>&#9888;</span>
@@ -302,9 +302,15 @@ export default function Schedule(){
     const st=isPers?null:getStu(f.student_id);
     if(eLes?.id){
       const old=lessons.find(l=>l.id===eLes.id);
-      // 시리즈 레코드 수정 → 항상 다이얼로그
+      // 시리즈 레코드 수정 → 시간/날짜 변경 시 다이얼로그, 그 외엔 이 수업만 수정
       if(old?.recurring_series_id){
-        setRecurEdit({formData:f,oldLesson:old,viewDate:eLes._viewDate||old.date,isSeries:true});
+        if(hasTimeChange(old,f)){
+          setRecurEdit({formData:f,oldLesson:old,viewDate:eLes._viewDate||old.date,isSeries:true});
+          setMO(false);setEL(null);return;
+        }
+        // 시간 변경 없음 → 이 수업만 subject/topic 업데이트
+        const{error}=await supabase.from('lessons').update({subject:f.subject,topic:f.topic}).eq('id',eLes.id);
+        if(!error){setLessons(p=>p.map(l=>l.id===eLes.id?{...l,subject:f.subject,topic:f.topic}:l));}
         setMO(false);setEL(null);return;
       }
       // 레거시 반복 수업이고 시간/날짜가 바뀌었으면 팝업
