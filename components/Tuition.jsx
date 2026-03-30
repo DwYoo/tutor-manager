@@ -202,8 +202,8 @@ export default function Tuition(){
   });
 
   const displayRecs=isMonthlyMode?monthRecs:cycleRecs;
-  /* In cycle mode, only count students who have reached that cycle */
-  const statsRecs=isMonthlyMode?monthRecs:cycleRecs.filter(r=>r.hasReachedCycle);
+  /* In cycle mode, align summary totals with displayed rows */
+  const statsRecs=isMonthlyMode?monthRecs:cycleRecs.filter(r=>r.targetCycleNum>0);
   const totalFee=statsRecs.reduce((a,r)=>a+r.totalDue,0);
   const totalPaid=statsRecs.reduce((a,r)=>a+r.paidAmount,0);
   const totalUnpaid=statsRecs.reduce((a,r)=>r.status!=="paid"?a+Math.max(0,r.totalDue-r.paidAmount):a,0);
