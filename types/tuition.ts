@@ -5,7 +5,7 @@ export type PaymentStatus = 'paid' | 'partial' | 'unpaid';
 export interface TuitionRecord {
   id: string;
   student_id: string;
-  month: string; // YYYY-MM format
+  month: string; // YYYY-MM for monthly mode; 'cyc-NN' for cycle mode
   amount: number; // paid amount
   fee_override?: number | null;
   classes_override?: number | null;
@@ -16,6 +16,11 @@ export interface TuitionRecord {
   memo?: string;
   user_id: string;
   created_at: string;
+  // 8-session cycle fields (added in migration 021)
+  period_type?: 'monthly' | 'cycle';
+  cycle_number?: number | null;
+  cycle_start_date?: string | null; // YYYY-MM-DD, date of 1st session in cycle
+  cycle_end_date?: string | null;   // YYYY-MM-DD, date of 8th session in cycle
 }
 
 export interface ReceiptFile {
