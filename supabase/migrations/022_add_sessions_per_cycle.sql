@@ -1,0 +1,1 @@
+ALTER TABLE students ADD COLUMN IF NOT EXISTS sessions_per_cycle INTEGER DEFAULT 8;
