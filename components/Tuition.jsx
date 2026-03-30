@@ -202,8 +202,8 @@ export default function Tuition(){
   });
 
   const displayRecs=isMonthlyMode?monthRecs:cycleRecs;
-  /* In cycle mode, only count students who have reached that cycle */
-  const statsRecs=isMonthlyMode?monthRecs:cycleRecs.filter(r=>r.hasReachedCycle);
+  /* In cycle mode, align summary totals with displayed rows */
+  const statsRecs=isMonthlyMode?monthRecs:cycleRecs.filter(r=>cycleOffset===0||r.targetCycleNum>0);
   const totalFee=statsRecs.reduce((a,r)=>a+r.totalDue,0);
   const totalPaid=statsRecs.reduce((a,r)=>a+r.paidAmount,0);
   const totalUnpaid=statsRecs.reduce((a,r)=>r.status!=="paid"?a+Math.max(0,r.totalDue-r.paidAmount):a,0);
@@ -560,7 +560,7 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
                 const st=STATUS.find(x=>x.id===r.status)||STATUS[2];
                 const isEditing=editId===(rec.id||s.id);
                 return(
-                  <tr key={s.id} className="tr" style={{borderBottom:"1px solid "+C.bl,opacity:curHidden.includes(s.id)?0.45:(!isMonthlyMode&&!r.hasReachedCycle)?0.7:1}}>
+                  <tr key={s.id} className="tr" style={{borderBottom:"1px solid "+C.bl,opacity:curHidden.includes(s.id)?0.45:1}}>
                     <td style={{padding:"10px 12px",fontWeight:600,color:C.tp}}><div style={{display:"flex",alignItems:"center",gap:5}}>{!isEditing&&<button onClick={()=>toggleHideStudent(s.id)} style={{width:16,height:16,background:"none",border:"none",cursor:"pointer",padding:0,flexShrink:0,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:15,lineHeight:1,fontWeight:300,fontFamily:"system-ui,sans-serif",color:curHidden.includes(s.id)?"#93C5FD":"#FCA5A5",opacity:0.7,transition:"opacity .15s",borderRadius:4}} title={curHidden.includes(s.id)?"학생 표시":"학생 숨기기"} aria-label={curHidden.includes(s.id)?"학생 표시":"학생 숨기기"}>{curHidden.includes(s.id)?"+":"−"}</button>}<span style={{color:r.isArchived?C.ts:C.tp}}>{s.name}</span>{r.isArchived&&<span style={{fontSize:11,color:C.tt,background:C.sfh,padding:"1px 4px",borderRadius:3}}>보관</span>}{!isMonthlyMode&&(r.isHiatus?<span style={{fontSize:10,fontWeight:600,color:"#6B7280",background:"#F3F4F6",padding:"1px 6px",borderRadius:4,whiteSpace:"nowrap"}}>휴강</span>:r.cycleInfo?<span style={{fontSize:10,color:C.tt,whiteSpace:"nowrap"}}>{formatCycleDate(r.cycleInfo.startDate)}~{r.cycleInfo.endDate?formatCycleDate(r.cycleInfo.endDate):"진행중"}</span>:r.expectedStart?<span style={{fontSize:10,color:C.tt,whiteSpace:"nowrap"}}>{formatCycleDate(r.expectedStart)}~{r.expectedEnd?formatCycleDate(r.expectedEnd)+"(예정)":"미확정"}</span>:null)}</div></td>
                     <td style={{padding:"10px 12px",color:C.ts}}>
                       {isEditing?<input type="number" value={editForm.fee_per_class} onChange={e=>{const fpc=e.target.value;const cls=editForm.classesOverride!==""?parseInt(editForm.classesOverride)||0:r.autoLessonCnt;const newFee=(parseInt(fpc)||0)*cls;const carry=parseInt(editForm.carryover)||0;const newTotal=newFee+carry;const a=parseInt(editForm.amount)||0;setEditForm(p=>({...p,fee_per_class:fpc,tuitionFee:newFee,totalDue:newTotal,status:autoStatus(a,newTotal)}));}} style={{...eis,width:80}}/>:
