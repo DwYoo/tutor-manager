@@ -177,6 +177,8 @@ export default function Tuition(){
   /* 8-session cycle computations */
   const studentCyclesMap=useMemo(()=>{const map={};for(const s of allStudents){map[s.id]=getStudentCycles(lessons,s.id,s.sessions_per_cycle??8);}return map;},[students,lessons]);
   const todayStr=new Date().toISOString().slice(0,10);
+  const maxCycleOffset=useMemo(()=>allStudents.reduce((mx,s)=>{const cycles=studentCyclesMap[s.id]||[];const activeCycles=cycles.filter(c=>c.startDate&&c.startDate<=todayStr);const latest=activeCycles.length>0?activeCycles[activeCycles.length-1].cycleNumber:0;return Math.max(mx,Math.max(0,latest-1));},0),[allStudents,studentCyclesMap,todayStr]);
+  useEffect(()=>{if(cycleOffset>maxCycleOffset)setCycleOffset(maxCycleOffset);},[cycleOffset,maxCycleOffset]);
   const cycleRecs=allStudents.map(s=>{const spc=s.sessions_per_cycle??8;const isHiatus=spc===0;const cycles=studentCyclesMap[s.id]||[];const activeCycles=cycles.filter(c=>c.startDate&&c.startDate<=todayStr);const latestCycleNum=activeCycles.length>0?activeCycles[activeCycles.length-1].cycleNumber:0;const targetCycleNum=cycleOffset===0?Math.max(1,latestCycleNum):Math.max(0,latestCycleNum-cycleOffset);const cycleInfo=targetCycleNum>0?cycles.find(c=>c.cycleNumber===targetCycleNum):null;const cyclePeriodKey=targetCycleNum>0?`cyc-${String(targetCycleNum).padStart(2,'0')}`:null;const rec=cyclePeriodKey?tuitions.find(t=>t.student_id===s.id&&t.month===cyclePeriodKey):null;
     /* 실제 완료된 수업 수 (오늘 이전, 해당 기수 범위 내) */
     const cycleStart=cycleInfo?.startDate;const cycleEnd=cycleInfo?.endDate;const pastSessionsInCycle=cycleStart?lessons.filter(l=>l.student_id===s.id&&l.status!=='cancelled'&&l.status!=='makeup'&&(l.date||'')>=cycleStart&&(l.date||'')<=todayStr&&(!cycleEnd||(l.date||'')<=cycleEnd)).length:0;
@@ -506,7 +508,7 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
             </>
           ):(
             <>
-              <button className="nb" onClick={()=>{setCycleOffset(o=>o+1);setEditId(null);setEditForm({});setShowHidden(false);}}><IcL/></button>
+              <button className="nb" onClick={()=>{setCycleOffset(o=>Math.min(maxCycleOffset,o+1));setEditId(null);setEditForm({});setShowHidden(false);}} disabled={cycleOffset>=maxCycleOffset} style={{opacity:cycleOffset>=maxCycleOffset?.3:1}}><IcL/></button>
               <span style={{fontSize:15,fontWeight:600,color:C.tp,minWidth:110,textAlign:"center"}}>{cycleOffset===0?"현재 주기":`${cycleOffset}기 전`}</span>
               <button className="nb" onClick={()=>{setCycleOffset(o=>Math.max(0,o-1));setEditId(null);setEditForm({});setShowHidden(false);}} disabled={cycleOffset===0} style={{opacity:cycleOffset===0?.3:1}}><IcR/></button>
             </>
