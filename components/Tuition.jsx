@@ -124,7 +124,7 @@ export default function Tuition(){
     setLoading(true);setFetchError(false);
     try{
       const[sRes,tRes,lRes,rfRes]=await Promise.all([
-        supabase.from('students').select('id,name,subject,grade,school,color_index,archived,sort_order,fee_per_class,fee_status,birth_date,created_at').order('created_at'),
+        supabase.from('students').select('id,name,subject,grade,school,color_index,archived,sort_order,fee_per_class,fee_status,birth_date,created_at,sessions_per_cycle').order('created_at'),
         supabase.from('tuition').select('*'),
         supabase.from('lessons').select('id,student_id,date,start_hour,start_min,duration,status,is_recurring,recurring_day,recurring_end_date,recurring_exceptions'),
         supabase.from('receipt_files').select('*').order('created_at',{ascending:false}),
@@ -175,9 +175,9 @@ export default function Tuition(){
   const stuNumMap={};[...students].sort((a,b)=>{const sa=a.sort_order??Infinity,sb=b.sort_order??Infinity;if(sa!==sb)return sa-sb;if(!!a.archived!==!!b.archived)return a.archived?1:-1;const ca=new Date(a.created_at).getTime(),cb=new Date(b.created_at).getTime();return ca!==cb?ca-cb:(a.id<b.id?-1:1);}).forEach((s,i)=>{stuNumMap[s.id]=i+1;});
 
   /* 8-session cycle computations */
-  const studentCyclesMap=useMemo(()=>{const map={};for(const s of allStudents){map[s.id]=getStudentCycles(lessons,s.id);}return map;},[students,lessons]);
+  const studentCyclesMap=useMemo(()=>{const map={};for(const s of allStudents){map[s.id]=getStudentCycles(lessons,s.id,s.sessions_per_cycle||8);}return map;},[students,lessons]);
   const todayStr=new Date().toISOString().slice(0,10);
-  const cycleRecs=allStudents.map(s=>{const cycles=studentCyclesMap[s.id]||[];const activeCycles=cycles.filter(c=>c.startDate&&c.startDate<=todayStr);const latestCycleNum=activeCycles.length>0?activeCycles[activeCycles.length-1].cycleNumber:0;const targetCycleNum=Math.max(0,latestCycleNum-cycleOffset);const cycleInfo=targetCycleNum>0?cycles.find(c=>c.cycleNumber===targetCycleNum):null;const cyclePeriodKey=targetCycleNum>0?`cyc-${String(targetCycleNum).padStart(2,'0')}`:null;const rec=cyclePeriodKey?tuitions.find(t=>t.student_id===s.id&&t.month===cyclePeriodKey):null;const sessionCount=cycleInfo?.sessionCount||0;const classesOverridden=rec?.classes_override!=null;const lessonCnt=classesOverridden?rec.classes_override:sessionCount;const autoFee=(s.fee_per_class||0)*lessonCnt;const tuitionFeeManual=rec?.tuition_fee_override!=null;const displayFee=tuitionFeeManual?rec.tuition_fee_override:autoFee;const carryover=rec?.carryover||0;const autoTotalDue=displayFee+carryover;const totalDueManual=!!(rec&&rec.fee_manual&&rec.fee_override!=null);const totalDue=totalDueManual?rec.fee_override:autoTotalDue;const paidAmount=rec?.amount||0;const status=autoStatus(paidAmount,totalDue);const{expectedStart,expectedEnd}=cycleInfo&&cycleInfo.isComplete?{expectedStart:null,expectedEnd:null}:getExpectedCycleDates(lessons,s.id);return{student:s,record:rec||{student_id:s.id,month:cyclePeriodKey||'',period_type:'cycle',cycle_number:targetCycleNum,status:'unpaid',amount:0,carryover:0,memo:''},cycleInfo,cyclePeriodKey,targetCycleNum,hasReachedCycle:cycleInfo!=null,expectedStart,expectedEnd,autoLessonCnt:sessionCount,lessonCnt,classesOverridden,autoFee,carryover,autoTotalDue,totalDue,displayFee,paidAmount,status,tuitionFeeManual,totalDueManual,hasSavedTotalDueOverride:!!(rec&&rec.fee_override!=null),isArchived:!!s.archived};});
+  const cycleRecs=allStudents.map(s=>{const spc=s.sessions_per_cycle||8;const cycles=studentCyclesMap[s.id]||[];const activeCycles=cycles.filter(c=>c.startDate&&c.startDate<=todayStr);const latestCycleNum=activeCycles.length>0?activeCycles[activeCycles.length-1].cycleNumber:0;const targetCycleNum=Math.max(0,latestCycleNum-cycleOffset);const cycleInfo=targetCycleNum>0?cycles.find(c=>c.cycleNumber===targetCycleNum):null;const cyclePeriodKey=targetCycleNum>0?`cyc-${String(targetCycleNum).padStart(2,'0')}`:null;const rec=cyclePeriodKey?tuitions.find(t=>t.student_id===s.id&&t.month===cyclePeriodKey):null;const sessionCount=cycleInfo?.sessionCount||0;const autoLessonCnt=cycleInfo?sessionCount:spc;const classesOverridden=rec?.classes_override!=null;const lessonCnt=classesOverridden?rec.classes_override:autoLessonCnt;const autoFee=(s.fee_per_class||0)*lessonCnt;const tuitionFeeManual=rec?.tuition_fee_override!=null;const displayFee=tuitionFeeManual?rec.tuition_fee_override:autoFee;const carryover=rec?.carryover||0;const autoTotalDue=displayFee+carryover;const totalDueManual=!!(rec&&rec.fee_manual&&rec.fee_override!=null);const totalDue=totalDueManual?rec.fee_override:autoTotalDue;const paidAmount=rec?.amount||0;const status=autoStatus(paidAmount,totalDue);const{expectedStart,expectedEnd}=cycleInfo&&cycleInfo.isComplete?{expectedStart:null,expectedEnd:null}:getExpectedCycleDates(lessons,s.id,spc);return{student:s,record:rec||{student_id:s.id,month:cyclePeriodKey||'',period_type:'cycle',cycle_number:targetCycleNum,status:'unpaid',amount:0,carryover:0,memo:''},cycleInfo,cyclePeriodKey,targetCycleNum,hasReachedCycle:cycleInfo!=null,sessionsPerCycle:spc,expectedStart,expectedEnd,autoLessonCnt,lessonCnt,classesOverridden,autoFee,carryover,autoTotalDue,totalDue,displayFee,paidAmount,status,tuitionFeeManual,totalDueManual,hasSavedTotalDueOverride:!!(rec&&rec.fee_override!=null),isArchived:!!s.archived};});
 
   const monthRecs=allStudents.map(s=>{
     const rec=tuitions.find(t=>t.student_id===s.id&&t.month===curMonth);
@@ -255,6 +255,7 @@ export default function Tuition(){
       totalDueManual:r.totalDueManual,
       _cyclePeriodKey:r.cyclePeriodKey||null,
       _cycleNumber:r.targetCycleNum||null,
+      sessions_per_cycle:r.student.sessions_per_cycle||8,
     });
   };
   const cancelEdit=()=>{setEditId(null);setEditForm({});};
@@ -304,8 +305,9 @@ export default function Tuition(){
       }
       if(ok){
         const feePerClass=editedFeePerClass;
-        await supabase.from('students').update({fee_status:editForm.status,fee_per_class:feePerClass}).eq('id',studentId);
-        setStudents(p=>p.map(s=>s.id===studentId?{...s,fee_status:editForm.status,fee_per_class:feePerClass}:s));
+        const spc=parseInt(editForm.sessions_per_cycle)||8;
+        await supabase.from('students').update({fee_status:editForm.status,fee_per_class:feePerClass,sessions_per_cycle:spc}).eq('id',studentId);
+        setStudents(p=>p.map(s=>s.id===studentId?{...s,fee_status:editForm.status,fee_per_class:feePerClass,sessions_per_cycle:spc}:s));
         setEditId(null);setEditForm({});
       }
     }finally{setSaving(false);}
@@ -510,7 +512,7 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
       {/* Mode toggle */}
       <div style={{display:"flex",background:C.sfh,borderRadius:10,padding:3,marginBottom:20,width:"fit-content",border:"1px solid "+C.bd}}>
         <button onClick={()=>{setViewMode('monthly');try{localStorage.setItem('tuition-view-mode','monthly');}catch{}setEditId(null);setEditForm({});}} style={{padding:"6px 20px",borderRadius:7,border:"none",cursor:"pointer",fontSize:13,fontWeight:600,fontFamily:"inherit",background:isMonthlyMode?C.sf:"none",color:isMonthlyMode?C.tp:C.tt,boxShadow:isMonthlyMode?"0 1px 4px rgba(0,0,0,.08)":"none",transition:"all .15s"}}>월 단위</button>
-        <button onClick={()=>{setViewMode('cycle');try{localStorage.setItem('tuition-view-mode','cycle');}catch{}setCycleOffset(0);setEditId(null);setEditForm({});}} style={{padding:"6px 20px",borderRadius:7,border:"none",cursor:"pointer",fontSize:13,fontWeight:600,fontFamily:"inherit",background:!isMonthlyMode?C.sf:"none",color:!isMonthlyMode?C.tp:C.tt,boxShadow:!isMonthlyMode?"0 1px 4px rgba(0,0,0,.08)":"none",transition:"all .15s"}}>8회차</button>
+        <button onClick={()=>{setViewMode('cycle');try{localStorage.setItem('tuition-view-mode','cycle');}catch{}setCycleOffset(0);setEditId(null);setEditForm({});}} style={{padding:"6px 20px",borderRadius:7,border:"none",cursor:"pointer",fontSize:13,fontWeight:600,fontFamily:"inherit",background:!isMonthlyMode?C.sf:"none",color:!isMonthlyMode?C.tp:C.tt,boxShadow:!isMonthlyMode?"0 1px 4px rgba(0,0,0,.08)":"none",transition:"all .15s"}}>회차별</button>
       </div>
 
       {/* Stats */}
@@ -524,7 +526,7 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
       {/* 8회차 탭 첫 사용 안내 */}
       {!isMonthlyMode&&tuitions.filter(t=>t.period_type==='cycle').length===0&&(
         <div style={{background:"#EFF6FF",border:"1px solid #93C5FD",borderRadius:12,padding:"12px 16px",marginBottom:16,fontSize:12,color:"#1D4ED8"}}>
-          💡 8회차 납부 기록은 월 단위 납부 기록과 별개입니다. 각 학생의 현재 진행 주기를 확인 후 수정 버튼으로 납부 내역을 처음 입력해주세요.
+          💡 회차별 납부 기록은 월 단위 납부 기록과 별개입니다. 각 학생의 현재 진행 주기를 확인 후 수정 버튼으로 납부 내역을 처음 입력해주세요.
         </div>
       )}
       {/* Cash receipt alert */}
@@ -560,9 +562,9 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
                       <>₩{(s.fee_per_class||0).toLocaleString()}</>}
                     </td>
                     <td style={{padding:"10px 12px"}}>
-                      {isEditing?<div style={{display:"flex",alignItems:"center",gap:4}}><input type="number" value={editForm.classesOverride!==""?editForm.classesOverride:r.autoLessonCnt} onChange={e=>{const cv=e.target.value;const cls=parseInt(cv)||0;const fpc=parseInt(editForm.fee_per_class)||0;const newFee=fpc*cls;const carry=parseInt(editForm.carryover)||0;const newTotal=newFee+carry;const a=parseInt(editForm.amount)||0;setEditForm(p=>({...p,classesOverride:cv,tuitionFee:newFee,totalDue:newTotal,status:autoStatus(a,newTotal)}));}} style={{...eis,width:50}}/><span style={{fontSize:11}}>회</span></div>:
-                      !isMonthlyMode&&!r.hasReachedCycle?<div style={{display:"flex",alignItems:"center",gap:4,whiteSpace:"nowrap"}}><span style={{fontWeight:600}}>0회</span><span style={{fontSize:10,color:C.tt}}>/8회</span></div>:
-                      <div style={{display:"flex",alignItems:"center",gap:4,whiteSpace:"nowrap"}}><span style={{fontWeight:600}}>{r.lessonCnt}회</span>{!isMonthlyMode&&<span style={{fontSize:10,color:C.tt}}>/8회</span>}{r.classesOverridden?<button onClick={()=>toggleClassesMode(s.id)} style={{fontSize:11,color:"#e67e22",cursor:"pointer",background:"none",padding:"1px 4px",borderRadius:3,border:"1px solid #e67e22",fontWeight:600,fontFamily:"inherit",whiteSpace:"nowrap",lineHeight:"normal"}}>수동</button>:(isMonthlyMode?<span style={{fontSize:11,color:C.ac,background:C.as,padding:"1px 4px",borderRadius:3,fontWeight:600,whiteSpace:"nowrap",lineHeight:"normal"}}>자동</span>:null)}</div>}
+                      {isEditing?<div style={{display:"flex",flexDirection:"column",gap:4}}><div style={{display:"flex",alignItems:"center",gap:4}}><input type="number" value={editForm.classesOverride!==""?editForm.classesOverride:r.autoLessonCnt} onChange={e=>{const cv=e.target.value;const cls=parseInt(cv)||0;const fpc=parseInt(editForm.fee_per_class)||0;const newFee=fpc*cls;const carry=parseInt(editForm.carryover)||0;const newTotal=newFee+carry;const a=parseInt(editForm.amount)||0;setEditForm(p=>({...p,classesOverride:cv,tuitionFee:newFee,totalDue:newTotal,status:autoStatus(a,newTotal)}));}} style={{...eis,width:50}}/><span style={{fontSize:11}}>회</span></div>{!isMonthlyMode&&<div style={{display:"flex",alignItems:"center",gap:4}}><span style={{fontSize:10,color:C.tt}}>기준</span><input type="number" value={editForm.sessions_per_cycle} onChange={e=>setEditForm(p=>({...p,sessions_per_cycle:e.target.value}))} style={{...eis,width:40}}/><span style={{fontSize:10,color:C.tt}}>회차</span></div>}</div>:
+                      !isMonthlyMode&&!r.hasReachedCycle?<div style={{display:"flex",alignItems:"center",gap:4,whiteSpace:"nowrap"}}><span style={{fontWeight:600}}>0회</span><span style={{fontSize:10,color:C.tt}}>/{r.sessionsPerCycle}회</span></div>:
+                      <div style={{display:"flex",alignItems:"center",gap:4,whiteSpace:"nowrap"}}><span style={{fontWeight:600}}>{r.lessonCnt}회</span>{!isMonthlyMode&&<span style={{fontSize:10,color:C.tt}}>/{r.sessionsPerCycle}회</span>}{r.classesOverridden?<button onClick={()=>toggleClassesMode(s.id)} style={{fontSize:11,color:"#e67e22",cursor:"pointer",background:"none",padding:"1px 4px",borderRadius:3,border:"1px solid #e67e22",fontWeight:600,fontFamily:"inherit",whiteSpace:"nowrap",lineHeight:"normal"}}>수동</button>:(isMonthlyMode?<span style={{fontSize:11,color:C.ac,background:C.as,padding:"1px 4px",borderRadius:3,fontWeight:600,whiteSpace:"nowrap",lineHeight:"normal"}}>자동</span>:null)}</div>}
                     </td>
                     <td style={{padding:"10px 12px",fontWeight:500,color:C.tp}}>
                       {isEditing?<input type="number" value={editForm.tuitionFee} onChange={e=>{const tf=e.target.value;const carry=parseInt(editForm.carryover)||0;setEditForm(p=>({...p,tuitionFee:tf,totalDue:(parseInt(tf)||0)+carry}));}} style={{...eis,width:90}}/>:
