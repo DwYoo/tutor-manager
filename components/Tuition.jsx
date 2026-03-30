@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
@@ -12,6 +12,7 @@ import { SkeletonCard } from '@/components/ui';
 import { useToast } from '@/components/Toast';
 import { escapeHtml } from '@/lib/sanitize';
 import { validateFiles, RECEIPT_MIMES } from '@/lib/fileValidation';
+import { getStudentCycles, formatCycleDate } from '@/lib/cycleUtils';
 import { useLessonCount } from '@/hooks/useLessonCount';
 const IcL=()=>(<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>);
 const IcR=()=>(<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>);
@@ -47,6 +48,8 @@ export default function Tuition(){
   const[hiddenStudents,setHiddenStudents]=useState(()=>{try{return JSON.parse(localStorage.getItem('tuition-hidden')||'{}');}catch{return{};}});
   const[showHidden,setShowHidden]=useState(false);
   const[isMobile,setIsMobile]=useState(false);
+  const[viewMode,setViewMode]=useState(()=>{try{return localStorage.getItem('tuition-view-mode')||'monthly';}catch{return'monthly';}});
+  const[curCycle,setCurCycle]=useState(1);
   useEffect(()=>{const ck=()=>setIsMobile(window.innerWidth<640);ck();window.addEventListener("resize",ck);return()=>window.removeEventListener("resize",ck);},[]);
 
   // Sync seal image & tutor name from Supabase Storage (cross-device)
@@ -113,6 +116,9 @@ export default function Tuition(){
   const year=+curMonth.split("-")[0],month=+curMonth.split("-")[1];
   const prevM=()=>{const m=month===1?12:month-1;const y=month===1?year-1:year;setCurMonth(y+"-"+p2(m));setEditId(null);setEditForm({});setShowHidden(false);};
   const nextM=()=>{const m=month===12?1:month+1;const y=month===12?year+1:year;setCurMonth(y+"-"+p2(m));setEditId(null);setEditForm({});setShowHidden(false);};
+  const isMonthlyMode=viewMode==='monthly';
+  const curPeriodKey=isMonthlyMode?curMonth:`cyc-${String(curCycle).padStart(2,'0')}`;
+  const periodPayload=isMonthlyMode?{period_type:'monthly'}:{period_type:'cycle',cycle_number:curCycle};
 
   const[fetchError,setFetchError]=useState(false);
   const[saving,setSaving]=useState(false);
@@ -169,6 +175,12 @@ export default function Tuition(){
   const allStudents=[...activeStudents,...archivedWithActivity];
   /* Student numbers: sort_order 기반 (보관=유지, 순서변경=반영, 삭제=당겨짐) */
   const stuNumMap={};[...students].sort((a,b)=>{const sa=a.sort_order??Infinity,sb=b.sort_order??Infinity;if(sa!==sb)return sa-sb;if(!!a.archived!==!!b.archived)return a.archived?1:-1;const ca=new Date(a.created_at).getTime(),cb=new Date(b.created_at).getTime();return ca!==cb?ca-cb:(a.id<b.id?-1:1);}).forEach((s,i)=>{stuNumMap[s.id]=i+1;});
+
+  /* 8-session cycle computations */
+  const studentCyclesMap=useMemo(()=>{const map={};for(const s of allStudents){map[s.id]=getStudentCycles(lessons,s.id);}return map;},[students,lessons]);
+  const maxCycle=useMemo(()=>Math.max(1,...Object.values(studentCyclesMap).map(cs=>cs.length>0?cs[cs.length-1].cycleNumber:0)),[studentCyclesMap]);
+  const cycleRecs=allStudents.map(s=>{const cycles=studentCyclesMap[s.id]||[];const cycleInfo=cycles.find(c=>c.cycleNumber===curCycle);const rec=tuitions.find(t=>t.student_id===s.id&&t.month===curPeriodKey);const sessionCount=cycleInfo?.sessionCount||0;const classesOverridden=rec?.classes_override!=null;const lessonCnt=classesOverridden?rec.classes_override:sessionCount;const autoFee=(s.fee_per_class||0)*lessonCnt;const tuitionFeeManual=rec?.tuition_fee_override!=null;const displayFee=tuitionFeeManual?rec.tuition_fee_override:autoFee;const carryover=rec?.carryover||0;const autoTotalDue=displayFee+carryover;const totalDueManual=!!(rec&&rec.fee_manual&&rec.fee_override!=null);const totalDue=totalDueManual?rec.fee_override:autoTotalDue;const paidAmount=rec?.amount||0;const status=autoStatus(paidAmount,totalDue);return{student:s,record:rec||{student_id:s.id,month:curPeriodKey,period_type:'cycle',cycle_number:curCycle,status:'unpaid',amount:0,carryover:0,memo:''},cycleInfo,hasReachedCycle:cycleInfo!=null,autoLessonCnt:sessionCount,lessonCnt,classesOverridden,autoFee,carryover,autoTotalDue,totalDue,displayFee,paidAmount,status,tuitionFeeManual,totalDueManual,hasSavedTotalDueOverride:!!(rec&&rec.fee_override!=null),isArchived:!!s.archived};});
+
   const monthRecs=allStudents.map(s=>{
     const rec=tuitions.find(t=>t.student_id===s.id&&t.month===curMonth);
     const autoLessonCnt=countLessons(s.id,year,month);
@@ -186,16 +198,19 @@ export default function Tuition(){
     return{student:s,record:rec||{student_id:s.id,month:curMonth,status:"unpaid",amount:0,carryover:0,memo:""},autoLessonCnt,lessonCnt,classesOverridden,autoFee,carryover,autoTotalDue,totalDue,displayFee,paidAmount,status,tuitionFeeManual,totalDueManual,hasSavedTotalDueOverride:!!(rec&&rec.fee_override!=null),isArchived:!!s.archived};
   });
 
-  const totalFee=monthRecs.reduce((a,r)=>a+r.totalDue,0);
-  const totalPaid=monthRecs.reduce((a,r)=>a+r.paidAmount,0);
-  const totalUnpaid=monthRecs.reduce((a,r)=>r.status!=="paid"?a+Math.max(0,r.totalDue-r.paidAmount):a,0);
+  const displayRecs=isMonthlyMode?monthRecs:cycleRecs;
+  const totalFee=displayRecs.reduce((a,r)=>a+r.totalDue,0);
+  const totalPaid=displayRecs.reduce((a,r)=>a+r.paidAmount,0);
+  const totalUnpaid=displayRecs.reduce((a,r)=>r.status!=="paid"?a+Math.max(0,r.totalDue-r.paidAmount):a,0);
   const collectRate=totalFee>0?Math.max(0,Math.round((totalFee-totalUnpaid)/totalFee*100)):0;
 
-  /* Hide/show students per month */
-  const toggleHideStudent=(sid)=>{setHiddenStudents(prev=>{const h=prev[curMonth]||[];const n=h.includes(sid)?{...prev,[curMonth]:h.filter(x=>x!==sid)}:{...prev,[curMonth]:[...h,sid]};try{localStorage.setItem('tuition-hidden',JSON.stringify(n));}catch{}return n;});};
-  const curHidden=hiddenStudents[curMonth]||[];
+  /* Hide/show students per period */
+  const toggleHideStudent=(sid)=>{setHiddenStudents(prev=>{const h=prev[curPeriodKey]||[];const n=h.includes(sid)?{...prev,[curPeriodKey]:h.filter(x=>x!==sid)}:{...prev,[curPeriodKey]:[...h,sid]};try{localStorage.setItem('tuition-hidden',JSON.stringify(n));}catch{}return n;});};
+  const curHidden=hiddenStudents[curPeriodKey]||[];
   const visibleRecs=showHidden?monthRecs:monthRecs.filter(r=>!curHidden.includes(r.student.id));
   const hiddenCount=monthRecs.filter(r=>curHidden.includes(r.student.id)).length;
+  const visibleCycleRecs=showHidden?cycleRecs:cycleRecs.filter(r=>!curHidden.includes(r.student.id));
+  const hiddenCycleCount=cycleRecs.filter(r=>curHidden.includes(r.student.id)).length;
 
   /* Monthly chart (last 6 months ending at curMonth) */
   const monthlyChart=Array.from({length:6},(_,i)=>{
@@ -203,6 +218,13 @@ export default function Tuition(){
     const mk=d.getFullYear()+"-"+p2(d.getMonth()+1);
     const sum=tuitions.filter(t=>t.month===mk).reduce((a,t)=>a+(t.amount||0),0);
     return{month:(d.getMonth()+1)+"월",income:sum};
+  });
+  /* Cycle chart (last 6 cycles ending at curCycle) */
+  const cycleChart=Array.from({length:6},(_,i)=>{
+    const cn=Math.max(1,curCycle-5+i);
+    const pk=`cyc-${String(cn).padStart(2,'0')}`;
+    const sum=tuitions.filter(t=>t.month===pk).reduce((a,t)=>a+(t.amount||0),0);
+    return{month:`${cn}기`,income:sum};
   });
 
   /* CRUD */
@@ -239,9 +261,9 @@ export default function Tuition(){
       const effectiveFee=isTuitionFeeManual?tuitionFeeVal:autoFee;
       const autoTotalDue=effectiveFee+carryoverVal;
       const isTotalDueManual=(totalDueVal!==autoTotalDue);
-      const existing=tuitions.find(t=>t.student_id===studentId&&t.month===curMonth);
+      const existing=tuitions.find(t=>t.student_id===studentId&&t.month===curPeriodKey);
       const payload={
-        student_id:studentId,month:curMonth,
+        student_id:studentId,month:curPeriodKey,...periodPayload,
         status:editForm.status,
         amount:parseInt(editForm.amount)||0,
         carryover:carryoverVal,
@@ -276,20 +298,20 @@ export default function Tuition(){
 
   // Toggle cash receipt issued
   const toggleCashReceipt=async(studentId)=>{
-    const existing=tuitions.find(t=>t.student_id===studentId&&t.month===curMonth);
+    const existing=tuitions.find(t=>t.student_id===studentId&&t.month===curPeriodKey);
     const newVal=existing?!existing.cash_receipt_issued:true;
     if(existing){
       await supabase.from('tuition').update({cash_receipt_issued:newVal}).eq('id',existing.id);
       setTuitions(p=>p.map(t=>t.id===existing.id?{...t,cash_receipt_issued:newVal}:t));
     }else{
-      const{data}=await supabase.from('tuition').insert({student_id:studentId,month:curMonth,cash_receipt_issued:newVal,status:'unpaid',amount:0,carryover:0,user_id:user.id}).select().single();
+      const{data}=await supabase.from('tuition').insert({student_id:studentId,month:curPeriodKey,...periodPayload,cash_receipt_issued:newVal,status:'unpaid',amount:0,carryover:0,user_id:user.id}).select().single();
       if(data)setTuitions(p=>[...p,data]);
     }
   };
 
   // 수업료 자동↔수동 토글
   const toggleTuitionFeeMode=async(studentId)=>{
-    const existing=tuitions.find(t=>t.student_id===studentId&&t.month===curMonth);
+    const existing=tuitions.find(t=>t.student_id===studentId&&t.month===curPeriodKey);
     if(!existing)return;
     const update={tuition_fee_override:existing.tuition_fee_override!=null?null:existing.tuition_fee_override};
     const{error}=await supabase.from('tuition').update(update).eq('id',existing.id);
@@ -298,7 +320,7 @@ export default function Tuition(){
   };
   // 청구액 자동↔수동 토글 (이전 수동값 보존)
   const toggleTotalDueMode=async(studentId)=>{
-    const existing=tuitions.find(t=>t.student_id===studentId&&t.month===curMonth);
+    const existing=tuitions.find(t=>t.student_id===studentId&&t.month===curPeriodKey);
     if(!existing)return;
     const newManual=!existing.fee_manual;
     const update={fee_manual:newManual};
@@ -308,9 +330,9 @@ export default function Tuition(){
     setTuitions(p=>p.map(t=>t.id===existing.id?{...t,...update}:t));
   };
   const toggleClassesMode=async(studentId)=>{
-    const existing=tuitions.find(t=>t.student_id===studentId&&t.month===curMonth);
+    const existing=tuitions.find(t=>t.student_id===studentId&&t.month===curPeriodKey);
     if(!existing)return;
-    const newVal=existing.classes_override!=null?null:countLessons(studentId,year,month);
+    const newVal=existing.classes_override!=null?null:(isMonthlyMode?countLessons(studentId,year,month):(studentCyclesMap[studentId]?.find(c=>c.cycleNumber===curCycle)?.sessionCount||0));
     const{error}=await supabase.from('tuition').update({classes_override:newVal}).eq('id',existing.id);
     if(error)return;
     setTuitions(p=>p.map(t=>t.id===existing.id?{...t,classes_override:newVal}:t));
@@ -321,8 +343,11 @@ export default function Tuition(){
     const pd=r.record.paid_date;
     const d=pd?new Date(pd+'T00:00:00'):new Date();
     setReceiptData(r);
+    const stuNo=p2(stuNumMap[r.student.id]||((idx??0)+1));
+    const serialNo=isMonthlyMode?`${String(year).slice(-2)}${p2(month)}-${stuNo}`:`C${String(curCycle).padStart(2,'0')}-${stuNo}`;
+    const period=isMonthlyMode?`${year}년 ${month}월`:`${curCycle}기 (${formatCycleDate(r.cycleInfo?.startDate)}~${formatCycleDate(r.cycleInfo?.endDate)})`;
     setRcptForm({
-      serialNo:`${String(year).slice(-2)}${p2(month)}-${p2(stuNumMap[r.student.id]||((idx??0)+1))}`,period:`${year}년 ${month}월`,
+      serialNo,period,
       regNo:p2(stuNumMap[r.student.id]||((idx??0)+1)),
       name:r.student.name||'',birthDate:r.student.birth_date||'',subject:r.student.subject||'',
       tuitionFee:String(r.paidAmount||0),
@@ -430,14 +455,29 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
   return(
     <div className="tui-container" style={{padding:isMobile?16:28}}>
       {/* Header */}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24,flexWrap:"wrap",gap:12}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:12}}>
         <div style={{display:"flex",alignItems:"center",gap:12}}>{tog}<h1 style={{fontSize:isMobile?17:20,fontWeight:700,color:C.tp}}>수업료 관리</h1></div>
         <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-          <button className="nb" onClick={prevM}><IcL/></button>
-          <span style={{fontSize:15,fontWeight:600,color:C.tp,minWidth:110,textAlign:"center"}}>{year}년 {month}월</span>
-          <button className="nb" onClick={nextM}><IcR/></button>
-          <button onClick={()=>{exportTuitionCSV(monthRecs,`${year}년 ${month}월`);toast?.('CSV 파일이 다운로드되었습니다');}} style={{marginLeft:8,padding:"6px 14px",borderRadius:8,border:"1px solid "+C.bd,background:C.sf,color:C.ts,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>CSV 내보내기</button>
+          {isMonthlyMode?(
+            <>
+              <button className="nb" onClick={prevM}><IcL/></button>
+              <span style={{fontSize:15,fontWeight:600,color:C.tp,minWidth:110,textAlign:"center"}}>{year}년 {month}월</span>
+              <button className="nb" onClick={nextM}><IcR/></button>
+            </>
+          ):(
+            <>
+              <button className="nb" onClick={()=>{setCurCycle(c=>Math.max(1,c-1));setEditId(null);setEditForm({});setShowHidden(false);}} disabled={curCycle<=1}><IcL/></button>
+              <span style={{fontSize:15,fontWeight:600,color:C.tp,minWidth:110,textAlign:"center"}}>전체 {curCycle}기</span>
+              <button className="nb" onClick={()=>{setCurCycle(c=>c+1);setEditId(null);setEditForm({});setShowHidden(false);}}><IcR/></button>
+            </>
+          )}
+          <button onClick={()=>{const label=isMonthlyMode?`${year}년 ${month}월`:`전체 ${curCycle}기`;exportTuitionCSV(displayRecs,label);toast?.('CSV 파일이 다운로드되었습니다');}} style={{marginLeft:8,padding:"6px 14px",borderRadius:8,border:"1px solid "+C.bd,background:C.sf,color:C.ts,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>CSV 내보내기</button>
         </div>
+      </div>
+      {/* Mode toggle */}
+      <div style={{display:"flex",background:C.sfh,borderRadius:10,padding:3,marginBottom:20,width:"fit-content",border:"1px solid "+C.bd}}>
+        <button onClick={()=>{setViewMode('monthly');try{localStorage.setItem('tuition-view-mode','monthly');}catch{}setEditId(null);setEditForm({});}} style={{padding:"6px 20px",borderRadius:7,border:"none",cursor:"pointer",fontSize:13,fontWeight:600,fontFamily:"inherit",background:isMonthlyMode?C.sf:"none",color:isMonthlyMode?C.tp:C.tt,boxShadow:isMonthlyMode?"0 1px 4px rgba(0,0,0,.08)":"none",transition:"all .15s"}}>월 단위</button>
+        <button onClick={()=>{setViewMode('cycle');try{localStorage.setItem('tuition-view-mode','cycle');}catch{}setCurCycle(maxCycle);setEditId(null);setEditForm({});}} style={{padding:"6px 20px",borderRadius:7,border:"none",cursor:"pointer",fontSize:13,fontWeight:600,fontFamily:"inherit",background:!isMonthlyMode?C.sf:"none",color:!isMonthlyMode?C.tp:C.tt,boxShadow:!isMonthlyMode?"0 1px 4px rgba(0,0,0,.08)":"none",transition:"all .15s"}}>8회차</button>
       </div>
 
       {/* Stats */}
@@ -449,7 +489,7 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
       </div>
 
       {/* Cash receipt alert */}
-      {(()=>{const missed=monthRecs.filter(r=>!r.record.cash_receipt_issued&&r.paidAmount>0);return missed.length>0?(
+      {(()=>{const missed=displayRecs.filter(r=>!r.record.cash_receipt_issued&&r.paidAmount>0);return missed.length>0?(
         <div style={{background:"#FEF3C7",border:"1px solid #F59E0B",borderRadius:12,padding:"14px 18px",marginBottom:20,display:"flex",alignItems:"flex-start",gap:10}}>
           <span style={{fontSize:18,lineHeight:1,flexShrink:0}}>&#9888;&#65039;</span>
           <div style={{flex:1}}>
@@ -463,26 +503,27 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
       <div className="tu-grid" style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 280px",gap:isMobile?14:20}}>
         {/* Table */}
         <div className="table-scroll" style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,overflow:"auto",WebkitOverflowScrolling:"touch"}}>
-          {hiddenCount>0&&<div style={{padding:"8px 14px",display:"flex",alignItems:"center",gap:8,borderBottom:"1px solid "+C.bl,background:C.sfh}}><span style={{fontSize:11,color:C.tt}}>{hiddenCount}명 숨김</span><button onClick={()=>setShowHidden(!showHidden)} style={{fontSize:11,color:C.ac,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",textDecoration:"underline",padding:0}}>{showHidden?"숨김 적용":"모두 표시"}</button></div>}
+          {(()=>{const hc=isMonthlyMode?hiddenCount:hiddenCycleCount;return hc>0&&<div style={{padding:"8px 14px",display:"flex",alignItems:"center",gap:8,borderBottom:"1px solid "+C.bl,background:C.sfh}}><span style={{fontSize:11,color:C.tt}}>{hc}명 숨김</span><button onClick={()=>setShowHidden(!showHidden)} style={{fontSize:11,color:C.ac,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",textDecoration:"underline",padding:0}}>{showHidden?"숨김 적용":"모두 표시"}</button></div>;})()}
           <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
             <thead><tr style={{borderBottom:"1px solid "+C.bd}}>
               {["학생","회당단가","횟수","수업료","이월","청구액","납부","상태","입금일","현금영수증","메모",""].map((h,i)=>(<th key={i} style={{padding:"12px",paddingLeft:i===0?"30px":"12px",textAlign:h==="현금영수증"?"center":"left",fontSize:11,fontWeight:600,color:C.tt,background:C.sfh,whiteSpace:"nowrap"}}>{h}</th>))}
             </tr></thead>
             <tbody>
-              {visibleRecs.map((r,idx)=>{
+              {(isMonthlyMode?visibleRecs:visibleCycleRecs).map((r,idx)=>{
                 const{student:s,record:rec}=r;
                 const st=STATUS.find(x=>x.id===r.status)||STATUS[2];
                 const isEditing=editId===(rec.id||s.id);
                 return(
-                  <tr key={s.id} className="tr" style={{borderBottom:"1px solid "+C.bl,opacity:curHidden.includes(s.id)?0.45:1}}>
-                    <td style={{padding:"10px 12px",fontWeight:600,color:C.tp}}><div style={{display:"flex",alignItems:"center",gap:5}}>{!isEditing&&<button onClick={()=>toggleHideStudent(s.id)} style={{width:16,height:16,background:"none",border:"none",cursor:"pointer",padding:0,flexShrink:0,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:15,lineHeight:1,fontWeight:300,fontFamily:"system-ui,sans-serif",color:curHidden.includes(s.id)?"#93C5FD":"#FCA5A5",opacity:0.7,transition:"opacity .15s",borderRadius:4}} title={curHidden.includes(s.id)?"학생 표시":"학생 숨기기"} aria-label={curHidden.includes(s.id)?"학생 표시":"학생 숨기기"}>{curHidden.includes(s.id)?"+":"−"}</button>}<span style={{color:r.isArchived?C.ts:C.tp}}>{s.name}</span>{r.isArchived&&<span style={{fontSize:11,color:C.tt,background:C.sfh,padding:"1px 4px",borderRadius:3}}>보관</span>}</div></td>
+                  <tr key={s.id} className="tr" style={{borderBottom:"1px solid "+C.bl,opacity:curHidden.includes(s.id)?0.45:(!isMonthlyMode&&!r.hasReachedCycle)?0.4:1}}>
+                    <td style={{padding:"10px 12px",fontWeight:600,color:C.tp}}><div style={{display:"flex",alignItems:"center",gap:5}}>{!isEditing&&<button onClick={()=>toggleHideStudent(s.id)} style={{width:16,height:16,background:"none",border:"none",cursor:"pointer",padding:0,flexShrink:0,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:15,lineHeight:1,fontWeight:300,fontFamily:"system-ui,sans-serif",color:curHidden.includes(s.id)?"#93C5FD":"#FCA5A5",opacity:0.7,transition:"opacity .15s",borderRadius:4}} title={curHidden.includes(s.id)?"학생 표시":"학생 숨기기"} aria-label={curHidden.includes(s.id)?"학생 표시":"학생 숨기기"}>{curHidden.includes(s.id)?"+":"−"}</button>}<span style={{color:r.isArchived?C.ts:C.tp}}>{s.name}</span>{r.isArchived&&<span style={{fontSize:11,color:C.tt,background:C.sfh,padding:"1px 4px",borderRadius:3}}>보관</span>}{!isMonthlyMode&&r.cycleInfo&&<span style={{fontSize:10,color:C.tt,whiteSpace:"nowrap"}}>{formatCycleDate(r.cycleInfo.startDate)}~{r.cycleInfo.endDate?formatCycleDate(r.cycleInfo.endDate):"진행중"}</span>}</div></td>
                     <td style={{padding:"10px 12px",color:C.ts}}>
                       {isEditing?<input type="number" value={editForm.fee_per_class} onChange={e=>{const fpc=e.target.value;const cls=editForm.classesOverride!==""?parseInt(editForm.classesOverride)||0:r.autoLessonCnt;const newFee=(parseInt(fpc)||0)*cls;const carry=parseInt(editForm.carryover)||0;const newTotal=newFee+carry;const a=parseInt(editForm.amount)||0;setEditForm(p=>({...p,fee_per_class:fpc,tuitionFee:newFee,totalDue:newTotal,status:autoStatus(a,newTotal)}));}} style={{...eis,width:80}}/>:
                       <>₩{(s.fee_per_class||0).toLocaleString()}</>}
                     </td>
                     <td style={{padding:"10px 12px"}}>
                       {isEditing?<div style={{display:"flex",alignItems:"center",gap:4}}><input type="number" value={editForm.classesOverride!==""?editForm.classesOverride:r.autoLessonCnt} onChange={e=>{const cv=e.target.value;const cls=parseInt(cv)||0;const fpc=parseInt(editForm.fee_per_class)||0;const newFee=fpc*cls;const carry=parseInt(editForm.carryover)||0;const newTotal=newFee+carry;const a=parseInt(editForm.amount)||0;setEditForm(p=>({...p,classesOverride:cv,tuitionFee:newFee,totalDue:newTotal,status:autoStatus(a,newTotal)}));}} style={{...eis,width:50}}/><span style={{fontSize:11}}>회</span></div>:
-                      <div style={{display:"flex",alignItems:"center",gap:4,whiteSpace:"nowrap"}}><span style={{fontWeight:600}}>{r.lessonCnt}회</span>{r.classesOverridden?<button onClick={()=>toggleClassesMode(s.id)} style={{fontSize:11,color:"#e67e22",cursor:"pointer",background:"none",padding:"1px 4px",borderRadius:3,border:"1px solid #e67e22",fontWeight:600,fontFamily:"inherit",whiteSpace:"nowrap",lineHeight:"normal"}}>수동</button>:<span style={{fontSize:11,color:C.ac,background:C.as,padding:"1px 4px",borderRadius:3,fontWeight:600,whiteSpace:"nowrap",lineHeight:"normal"}}>자동</span>}</div>}
+                      !isMonthlyMode&&!r.hasReachedCycle?<span style={{fontSize:11,color:C.tt}}>미도달</span>:
+                      <div style={{display:"flex",alignItems:"center",gap:4,whiteSpace:"nowrap"}}><span style={{fontWeight:600}}>{r.lessonCnt}회</span>{!isMonthlyMode&&<span style={{fontSize:10,color:C.tt}}>/8회</span>}{r.classesOverridden?<button onClick={()=>toggleClassesMode(s.id)} style={{fontSize:11,color:"#e67e22",cursor:"pointer",background:"none",padding:"1px 4px",borderRadius:3,border:"1px solid #e67e22",fontWeight:600,fontFamily:"inherit",whiteSpace:"nowrap",lineHeight:"normal"}}>수동</button>:(isMonthlyMode?<span style={{fontSize:11,color:C.ac,background:C.as,padding:"1px 4px",borderRadius:3,fontWeight:600,whiteSpace:"nowrap",lineHeight:"normal"}}>자동</span>:null)}</div>}
                     </td>
                     <td style={{padding:"10px 12px",fontWeight:500,color:C.tp}}>
                       {isEditing?<input type="number" value={editForm.tuitionFee} onChange={e=>{const tf=e.target.value;const carry=parseInt(editForm.carryover)||0;setEditForm(p=>({...p,tuitionFee:tf,totalDue:(parseInt(tf)||0)+carry}));}} style={{...eis,width:90}}/>:
@@ -541,12 +582,12 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
         {/* Right sidebar */}
         <div style={{display:"flex",flexDirection:"column",gap:14}}>
           <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:18}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}><div style={{fontSize:13,fontWeight:600,color:C.tp}}>월별 수입</div><div style={{fontSize:11,color:C.tt}}>단위: 만원</div></div>
-            <div style={{overflow:"hidden"}}><ResponsiveContainer width="100%" height={160}><BarChart data={monthlyChart} margin={{top:5,right:5,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke={C.bl} vertical={false}/><XAxis dataKey="month" tick={{fontSize:10,fill:C.tt}} axisLine={false} tickLine={false}/><YAxis tick={{fontSize:10,fill:C.tt}} axisLine={false} tickLine={false} tickFormatter={v=>Math.round(v/10000)}/><Tooltip content={<CustomTooltip/>}/><Bar dataKey="income" fill={C.ac} radius={[5,5,0,0]} barSize={20}/></BarChart></ResponsiveContainer></div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}><div style={{fontSize:13,fontWeight:600,color:C.tp}}>{isMonthlyMode?"월별 수입":"기수별 수입"}</div><div style={{fontSize:11,color:C.tt}}>단위: 만원</div></div>
+            <div style={{overflow:"hidden"}}><ResponsiveContainer width="100%" height={160}><BarChart data={isMonthlyMode?monthlyChart:cycleChart} margin={{top:5,right:5,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke={C.bl} vertical={false}/><XAxis dataKey="month" tick={{fontSize:10,fill:C.tt}} axisLine={false} tickLine={false}/><YAxis tick={{fontSize:10,fill:C.tt}} axisLine={false} tickLine={false} tickFormatter={v=>Math.round(v/10000)}/><Tooltip content={<CustomTooltip/>}/><Bar dataKey="income" fill={C.ac} radius={[5,5,0,0]} barSize={20}/></BarChart></ResponsiveContainer></div>
           </div>
           <div style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:14,padding:18}}>
             <div style={{fontSize:13,fontWeight:600,color:C.tp,marginBottom:12}}>미납 현황</div>
-            {monthRecs.filter(r=>r.status!=="paid").map(r=>{
+            {displayRecs.filter(r=>r.status!=="paid").map(r=>{
               const st=STATUS.find(x=>x.id===r.status)||STATUS[2];
               const owed=Math.max(0,r.totalDue-r.paidAmount);
               return(<div key={r.student.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid "+C.bl}}>
@@ -554,7 +595,7 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
                 <span style={{fontSize:12,fontWeight:600,color:st.c}}>₩{owed.toLocaleString()}</span>
               </div>);
             })}
-            {monthRecs.filter(r=>r.status!=="paid").length===0&&<div style={{textAlign:"center",padding:16,color:C.su,fontSize:12}}>전원 완납!</div>}
+            {displayRecs.filter(r=>r.status!=="paid").length===0&&<div style={{textAlign:"center",padding:16,color:C.su,fontSize:12}}>전원 완납!</div>}
           </div>
 
           {/* Receipt file storage */}
@@ -615,12 +656,12 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
               <button disabled={memoSaving} onClick={async()=>{
                 setMemoSaving(true);
                 try{
-                  const existing=tuitions.find(t=>t.student_id===memoPopup.studentId&&t.month===curMonth);
+                  const existing=tuitions.find(t=>t.student_id===memoPopup.studentId&&t.month===curPeriodKey);
                   if(existing){
                     await supabase.from('tuition').update({memo:memoText}).eq('id',existing.id);
                     setTuitions(p=>p.map(t=>t.id===existing.id?{...t,memo:memoText}:t));
                   }else{
-                    const{data}=await supabase.from('tuition').insert({student_id:memoPopup.studentId,month:curMonth,memo:memoText,status:'unpaid',amount:0,carryover:0,user_id:user.id}).select().single();
+                    const{data}=await supabase.from('tuition').insert({student_id:memoPopup.studentId,month:curPeriodKey,...periodPayload,memo:memoText,status:'unpaid',amount:0,carryover:0,user_id:user.id}).select().single();
                     if(data)setTuitions(p=>[...p,data]);
                   }
                   setMemoPopup(null);
