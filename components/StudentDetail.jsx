@@ -289,13 +289,11 @@ export default function StudentDetail({ student, initialTab }) {
   const delFile=async(id)=>{const file=standaloneFiles.find(f=>f.id===id);if(file?.file_url){try{const urlPath=new URL(file.file_url).pathname;const storagePath=urlPath.split('/object/public/files/')[1];if(storagePath)await supabase.storage.from('files').remove([decodeURIComponent(storagePath)]);}catch{}}const{error}=await supabase.from('files').delete().eq('id',id);if(error){toast?.('파일 삭제에 실패했습니다','error');return;}setStandaloneFiles(p=>p.filter(f=>f.id!==id));};
   const copyShareLink=async()=>{
     let tk=shareToken;
-    if(!tk){
-      tk=crypto.randomUUID();
-      const expiresAt=new Date();expiresAt.setDate(expiresAt.getDate()+30); // 30일 만료
-      const{error}=await supabase.from('students').update({share_token:tk,share_token_expires_at:expiresAt.toISOString()}).eq('id',s.id);
-      if(error){toast?.('공유 링크 생성에 실패했습니다','error');return;}
-      setShareToken(tk);
-    }
+    if(!tk) tk=crypto.randomUUID();
+    const expiresAt=new Date();expiresAt.setDate(expiresAt.getDate()+30); // 복사할 때마다 만료일 갱신
+    const{error}=await supabase.from('students').update({share_token:tk,share_token_expires_at:expiresAt.toISOString()}).eq('id',s.id);
+    if(error){toast?.('공유 링크 생성에 실패했습니다','error');return;}
+    setShareToken(tk);
     const url=window.location.origin+"/share/"+tk;
     try{await navigator.clipboard.writeText(url);setShareCopied(true);setTimeout(()=>setShareCopied(false),2000);}catch{prompt("링크를 복사하세요:",url);}
   };
