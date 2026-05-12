@@ -75,6 +75,7 @@ export default function ShareView({ token }) {
       }
       // RPC 성공: 단일 JSON 응답에서 데이터 추출
       if (!data || !data.student) { setError('not_found'); setLoading(false); return; }
+      if (data.student.share_token_expires_at && new Date(data.student.share_token_expires_at) < new Date()) { setError('not_found'); setLoading(false); return; }
       setS(data.student);
       if (data.student.share_permissions) setPerms(p => ({ ...p, ...data.student.share_permissions }));
       const allHw = data.homework || [];
