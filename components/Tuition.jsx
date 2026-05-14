@@ -124,7 +124,7 @@ export default function Tuition(){
     setLoading(true);setFetchError(false);
     try{
       const[sRes,tRes,lRes,rfRes]=await Promise.all([
-        supabase.from('students').select('id,name,subject,grade,school,color_index,archived,sort_order,fee_per_class,fee_status,birth_date,created_at,sessions_per_cycle').order('created_at'),
+        supabase.from('students').select('id,name,subject,grade,school,color_index,archived,sort_order,fee_per_class,fee_status,birth_date,created_at,sessions_per_cycle,cycle_start_num').order('created_at'),
         supabase.from('tuition').select('*'),
         supabase.from('lessons').select('id,student_id,date,start_hour,start_min,duration,status,is_recurring,recurring_day,recurring_end_date,recurring_exceptions'),
         supabase.from('receipt_files').select('*').order('created_at',{ascending:false}),
@@ -184,7 +184,7 @@ export default function Tuition(){
     const cycleStart=cycleInfo?.startDate;const cycleEnd=cycleInfo?.endDate;const nowMin=now.getHours()*60+now.getMinutes();const pastSessionsInCycle=cycleStart?lessons.filter(l=>{if(l.student_id!==s.id||l.status==='cancelled'||l.status==='makeup')return false;const ld=l.date||'';if(ld<cycleStart||ld>todayStr)return false;if(cycleEnd&&ld>cycleEnd)return false;if(ld<todayStr)return true;const endMin=(l.start_hour||0)*60+(l.start_min||0)+(l.duration||0);return nowMin>=endMin;}).length:0;
     const hasReachedCycle=pastSessionsInCycle>0;
     /* 요금 기준: 기수 전체(spc), 수동 override 가능 */
-    const classesOverridden=rec?.classes_override!=null;const autoLessonCnt=spc;const lessonCnt=classesOverridden?rec.classes_override:autoLessonCnt;const autoFee=(s.fee_per_class||0)*lessonCnt;const tuitionFeeManual=rec?.tuition_fee_override!=null;const displayFee=tuitionFeeManual?rec.tuition_fee_override:autoFee;const carryover=rec?.carryover||0;const autoTotalDue=displayFee+carryover;const totalDueManual=!!(rec&&rec.fee_manual&&rec.fee_override!=null);const totalDue=totalDueManual?rec.fee_override:autoTotalDue;const paidAmount=rec?.amount||0;const status=autoStatus(paidAmount,totalDue);const{expectedStart,expectedEnd}=cycleInfo&&cycleInfo.isComplete?{expectedStart:null,expectedEnd:null}:getExpectedCycleDates(lessons,s.id,spc);return{student:s,record:rec||{student_id:s.id,month:cyclePeriodKey||'',period_type:'cycle',cycle_number:targetCycleNum,status:'unpaid',amount:0,carryover:0,memo:''},cycleInfo,cyclePeriodKey,targetCycleNum,hasReachedCycle,sessionsPerCycle:spc,isHiatus,pastSessionsInCycle,expectedStart,expectedEnd,autoLessonCnt,lessonCnt,classesOverridden,autoFee,carryover,autoTotalDue,totalDue,displayFee,paidAmount,status,tuitionFeeManual,totalDueManual,hasSavedTotalDueOverride:!!(rec&&rec.fee_override!=null),isArchived:!!s.archived};});
+    const classesOverridden=rec?.classes_override!=null;const autoLessonCnt=spc;const lessonCnt=classesOverridden?rec.classes_override:autoLessonCnt;const autoFee=(s.fee_per_class||0)*lessonCnt;const tuitionFeeManual=rec?.tuition_fee_override!=null;const displayFee=tuitionFeeManual?rec.tuition_fee_override:autoFee;const carryover=rec?.carryover||0;const autoTotalDue=displayFee+carryover;const totalDueManual=!!(rec&&rec.fee_manual&&rec.fee_override!=null);const totalDue=totalDueManual?rec.fee_override:autoTotalDue;const paidAmount=rec?.amount||0;const status=autoStatus(paidAmount,totalDue);const{expectedStart,expectedEnd}=cycleInfo&&cycleInfo.isComplete?{expectedStart:null,expectedEnd:null}:getExpectedCycleDates(lessons,s.id,spc);const cycleStartNum=s.cycle_start_num??1;const displayCycleNum=targetCycleNum>0?targetCycleNum+cycleStartNum-1:0;return{student:s,record:rec||{student_id:s.id,month:cyclePeriodKey||'',period_type:'cycle',cycle_number:targetCycleNum,status:'unpaid',amount:0,carryover:0,memo:''},cycleInfo,cyclePeriodKey,targetCycleNum,displayCycleNum,cycleStartNum,hasReachedCycle,sessionsPerCycle:spc,isHiatus,pastSessionsInCycle,expectedStart,expectedEnd,autoLessonCnt,lessonCnt,classesOverridden,autoFee,carryover,autoTotalDue,totalDue,displayFee,paidAmount,status,tuitionFeeManual,totalDueManual,hasSavedTotalDueOverride:!!(rec&&rec.fee_override!=null),isArchived:!!s.archived};});
 
   const monthRecs=allStudents.map(s=>{
     const rec=tuitions.find(t=>t.student_id===s.id&&t.month===curMonth);
@@ -263,6 +263,7 @@ export default function Tuition(){
       _cyclePeriodKey:r.cyclePeriodKey||null,
       _cycleNumber:r.targetCycleNum||null,
       sessions_per_cycle:r.student.sessions_per_cycle??8,
+      cycle_start_num:r.student.cycle_start_num??1,
     });
   };
   const cancelEdit=()=>{setEditId(null);setEditForm({});};
@@ -313,8 +314,9 @@ export default function Tuition(){
       if(ok){
         const feePerClass=editedFeePerClass;
         const rawSpc=parseInt(editForm.sessions_per_cycle);const spc=!isNaN(rawSpc)?rawSpc:8;
-        await supabase.from('students').update({fee_status:editForm.status,fee_per_class:feePerClass,sessions_per_cycle:spc}).eq('id',studentId);
-        setStudents(p=>p.map(s=>s.id===studentId?{...s,fee_status:editForm.status,fee_per_class:feePerClass,sessions_per_cycle:spc}:s));
+        const rawStartNum=parseInt(editForm.cycle_start_num);const startNum=!isNaN(rawStartNum)&&rawStartNum>=1?rawStartNum:1;
+        await supabase.from('students').update({fee_status:editForm.status,fee_per_class:feePerClass,sessions_per_cycle:spc,cycle_start_num:startNum}).eq('id',studentId);
+        setStudents(p=>p.map(s=>s.id===studentId?{...s,fee_status:editForm.status,fee_per_class:feePerClass,sessions_per_cycle:spc,cycle_start_num:startNum}:s));
         setEditId(null);setEditForm({});
       }
     }finally{setSaving(false);}
@@ -385,7 +387,7 @@ export default function Tuition(){
     const d=pd?new Date(pd+'T00:00:00'):new Date();
     setReceiptData(r);
     const stuNo=p2(stuNumMap[r.student.id]||((idx??0)+1));
-    const cn=r.targetCycleNum||1;
+    const cn=r.displayCycleNum||r.targetCycleNum||1;
     const serialNo=isMonthlyMode?`${String(year).slice(-2)}${p2(month)}-${stuNo}`:`C${String(cn).padStart(2,'0')}-${stuNo}`;
     const period=isMonthlyMode?`${year}년 ${month}월`:`${cn}기 (${formatCycleDate(r.cycleInfo?.startDate)}~${formatCycleDate(r.cycleInfo?.endDate)})`;
     setRcptForm({
@@ -569,7 +571,7 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
                       <>₩{(s.fee_per_class||0).toLocaleString()}</>}
                     </td>
                     <td style={{padding:"10px 12px"}}>
-                      {isEditing?<div style={{display:"flex",flexDirection:"column",gap:4}}><div style={{display:"flex",alignItems:"center",gap:4}}><input type="number" value={editForm.classesOverride!==""?editForm.classesOverride:r.autoLessonCnt} onChange={e=>{const cv=e.target.value;const cls=parseInt(cv)||0;const fpc=parseInt(editForm.fee_per_class)||0;const newFee=fpc*cls;const carry=parseInt(editForm.carryover)||0;const newTotal=newFee+carry;const a=parseInt(editForm.amount)||0;setEditForm(p=>({...p,classesOverride:cv,tuitionFee:newFee,totalDue:newTotal,status:autoStatus(a,newTotal)}));}} style={{...eis,width:50}}/><span style={{fontSize:11}}>회</span></div>{!isMonthlyMode&&<div style={{display:"flex",alignItems:"center",gap:4}}><span style={{fontSize:10,color:C.tt}}>기준</span><input type="number" value={editForm.sessions_per_cycle} onChange={e=>setEditForm(p=>({...p,sessions_per_cycle:e.target.value}))} style={{...eis,width:40}}/><span style={{fontSize:10,color:C.tt}}>회차</span></div>}</div>:
+                      {isEditing?<div style={{display:"flex",flexDirection:"column",gap:4}}><div style={{display:"flex",alignItems:"center",gap:4}}><input type="number" value={editForm.classesOverride!==""?editForm.classesOverride:r.autoLessonCnt} onChange={e=>{const cv=e.target.value;const cls=parseInt(cv)||0;const fpc=parseInt(editForm.fee_per_class)||0;const newFee=fpc*cls;const carry=parseInt(editForm.carryover)||0;const newTotal=newFee+carry;const a=parseInt(editForm.amount)||0;setEditForm(p=>({...p,classesOverride:cv,tuitionFee:newFee,totalDue:newTotal,status:autoStatus(a,newTotal)}));}} style={{...eis,width:50}}/><span style={{fontSize:11}}>회</span></div>{!isMonthlyMode&&<div style={{display:"flex",alignItems:"center",gap:4}}><span style={{fontSize:10,color:C.tt}}>기준</span><input type="number" value={editForm.sessions_per_cycle} onChange={e=>setEditForm(p=>({...p,sessions_per_cycle:e.target.value}))} style={{...eis,width:40}}/><span style={{fontSize:10,color:C.tt}}>회차</span></div>}{!isMonthlyMode&&<div style={{display:"flex",alignItems:"center",gap:4}}><span style={{fontSize:10,color:C.tt}}>시작</span><input type="number" value={editForm.cycle_start_num} onChange={e=>setEditForm(p=>({...p,cycle_start_num:e.target.value}))} style={{...eis,width:40}} min="1"/><span style={{fontSize:10,color:C.tt}}>기부터</span></div>}</div>:
                       !isMonthlyMode&&!r.hasReachedCycle?(r.isHiatus?<span style={{fontSize:11,color:"#6B7280"}}>-</span>:<div style={{display:"flex",alignItems:"center",gap:4,whiteSpace:"nowrap"}}><span style={{fontWeight:600}}>0회</span><span style={{fontSize:10,color:C.tt}}>/{r.sessionsPerCycle}회</span></div>):
                       <div style={{display:"flex",alignItems:"center",gap:4,whiteSpace:"nowrap"}}><span style={{fontWeight:600}}>{isMonthlyMode?r.lessonCnt:r.pastSessionsInCycle}회</span>{!isMonthlyMode&&<span style={{fontSize:10,color:C.tt}}>/{r.sessionsPerCycle}회</span>}{r.classesOverridden?<button onClick={()=>toggleClassesMode(s.id)} style={{fontSize:11,color:"#e67e22",cursor:"pointer",background:"none",padding:"1px 4px",borderRadius:3,border:"1px solid #e67e22",fontWeight:600,fontFamily:"inherit",whiteSpace:"nowrap",lineHeight:"normal"}}>수동</button>:(isMonthlyMode?<span style={{fontSize:11,color:C.ac,background:C.as,padding:"1px 4px",borderRadius:3,fontWeight:600,whiteSpace:"nowrap",lineHeight:"normal"}}>자동</span>:null)}</div>}
                     </td>
@@ -639,7 +641,7 @@ body{margin:0;padding:0;font-family:'Batang','NanumMyeongjo','Noto Serif KR',ser
               const st=STATUS.find(x=>x.id===r.status)||STATUS[2];
               const owed=Math.max(0,r.totalDue-r.paidAmount);
               return(<div key={r.student.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid "+C.bl}}>
-                <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:12,fontWeight:600,color:C.tp}}>{r.student.name}</span>{!isMonthlyMode&&r.targetCycleNum>0&&<span style={{fontSize:10,color:C.tt}}>{r.targetCycleNum}기</span>}<span style={{background:st.bg,color:st.c,padding:"1px 5px",borderRadius:4,fontSize:11,fontWeight:600}}>{st.l}</span></div>
+                <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:12,fontWeight:600,color:C.tp}}>{r.student.name}</span>{!isMonthlyMode&&r.targetCycleNum>0&&<span style={{fontSize:10,color:C.tt}}>{r.displayCycleNum}기</span>}<span style={{background:st.bg,color:st.c,padding:"1px 5px",borderRadius:4,fontSize:11,fontWeight:600}}>{st.l}</span></div>
                 <span style={{fontSize:12,fontWeight:600,color:st.c}}>₩{owed.toLocaleString()}</span>
               </div>);
             })}
