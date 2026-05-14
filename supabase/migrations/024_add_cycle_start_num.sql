@@ -1,0 +1,1 @@
+ALTER TABLE students ADD COLUMN IF NOT EXISTS cycle_start_num INTEGER DEFAULT 1;
